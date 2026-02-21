@@ -9,4 +9,24 @@ module.exports = {
   turbopack: {
     root: path.join(__dirname),
   },
+  async rewrites() {
+    return [
+      {
+        source: '/models/:path*',
+        destination: '/work-retro/models/:path*',
+      },
+      {
+        source: '/fonts/:path*',
+        destination: '/work-retro/fonts/:path*',
+      },
+      {
+        source: '/textures/:path*',
+        destination: '/work-retro/textures/:path*',
+      },
+      {
+        source: '/images/:path*',
+        destination: '/work-retro/images/:path*',
+      },
+    ]
+  },
 }

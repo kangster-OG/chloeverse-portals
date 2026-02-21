@@ -1,20 +1,24 @@
-"use client";
+import { CollabsFilmCinema } from "@/components/collabs/CollabsFilmCinema";
+import { collabsFilmItems } from "@/lib/collabsFilmData";
 
-import { CollabsExperience } from "@/components/collabs/CollabsExperience";
-import { ReturnButton } from "@/components/ReturnButton";
-import { collabVideos } from "@/lib/portalData";
+type SearchParams = Record<string, string | string[] | undefined>;
 
-export default function CollabsPage() {
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-black text-white">
-      <CollabsExperience videos={collabVideos} />
+function getReturnUrl(searchParams?: SearchParams) {
+  const raw = searchParams?.return;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== "string") return "https://imchloekang.com";
+  const trimmed = value.trim();
+  // Simple safety: only allow https URLs.
+  if (!trimmed.startsWith("https://")) return "https://imchloekang.com";
+  return trimmed;
+}
 
-      <div className="pointer-events-none absolute left-5 top-4 z-20">
-        <h1 className="text-[10px] font-medium uppercase tracking-[0.42em] text-white/62 md:text-[11px]">COLLABS</h1>
-        <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-white/42 md:text-[11px]">Broadcast archive</p>
-      </div>
-
-      <ReturnButton label="Return" className="opacity-55 hover:opacity-95" />
-    </main>
-  );
+export default async function CollabsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams> | SearchParams;
+}) {
+  const resolvedSearchParams = (await searchParams) ?? undefined;
+  const returnUrl = getReturnUrl(resolvedSearchParams);
+  return <CollabsFilmCinema items={collabsFilmItems} returnUrl={returnUrl} />;
 }

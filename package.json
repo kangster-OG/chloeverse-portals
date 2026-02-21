@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
+    "dev:webpack": "next dev",
     "build": "next build",
+    "work:retro:sync": "node scripts/sync_work_retro.cjs",
     "start": "next start",
     "lint": "eslint"
   },

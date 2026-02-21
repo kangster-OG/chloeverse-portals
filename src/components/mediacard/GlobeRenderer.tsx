@@ -136,7 +136,7 @@ const FRONT = new THREE.Vector3(0, 0, 1);
 const GLOBE_RADIUS = 1;
 const DPR_CAP = 2;
 const EARTH_MASK_URL = "/mediacard/earth_mask.png";
-const MEDIACARD_BUILD_TAG = "mediacard_marketOverlay_forceDebug_v1";
+const MEDIACARD_BUILD_TAG = "mediacard_market_regionhover_nopatches_v2";
 
 const MARKET_NONE_ID = 0;
 const MARKET_ID = {
@@ -1344,7 +1344,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       const count = dots.marketId.length;
       let overlayCount = 0;
       for (let i = 0; i < count; i += 1) {
-        if (dots.marketId[i] > 0.5 && dots.marketW[i] > 0.001) overlayCount += 1;
+        if (dots.marketId[i] > 0.5) overlayCount += 1;
       }
       const positions = new Float32Array(overlayCount * 3);
       const phases = new Float32Array(overlayCount);
@@ -1354,7 +1354,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       for (let src = 0; src < count; src += 1) {
         const id = dots.marketId[src];
         const weight = dots.marketW[src];
-        if (id <= 0.5 || weight <= 0.001) continue;
+        if (id <= 0.5) continue;
         const src3 = src * 3;
         const dst3 = dst * 3;
         positions[dst3] = dots.positions[src3];
@@ -1362,7 +1362,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         positions[dst3 + 2] = dots.positions[src3 + 2];
         phases[dst] = dots.phases[src];
         marketId[dst] = id;
-        marketW[dst] = weight;
+        marketW[dst] = 1.0;
         dst += 1;
       }
       marketOverlayGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
@@ -1498,20 +1498,6 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         vec3 color = albedo * (0.62 + 0.55 * diff)
                    + vec3(1.0) * (0.28 * spec)
                    + albedo * (0.10 * rim);
-        vec3 worldN = normalize(vWorldN);
-        vec3 keyDir = normalize(uKeyDirWorld);
-        float cineStrength = clamp(uCineStrength, 0.0, 2.0);
-        float ndk = dot(worldN, keyDir);
-        float day = smoothstep(-0.05, 0.35, ndk);
-        float cine = mix(0.92, 1.06, day);
-        vec3 warm = vec3(1.02, 1.00, 0.97);
-        vec3 cool = vec3(0.96, 0.99, 1.04);
-        vec3 grade = mix(cool, warm, day);
-        color *= mix(vec3(1.0), grade * cine, cineStrength * 0.45);
-        vec3 Vw = normalize(cameraPosition - vWorldPos);
-        vec3 cineH = normalize(keyDir + Vw);
-        float cineSpec = pow(max(dot(worldN, cineH), 0.0), 80.0);
-        color += vec3(1.0) * (cineSpec * 0.12 * day);
         vec3 hotspotHue = mix(uViolet * vec3(0.84, 0.66, 1.02), vec3(0.55, 0.32, 0.92), 0.82);
         vec3 hotspotTint = mix(vec3(1.0), hotspotHue, 0.52);
         color = mix(color, color * hotspotTint, hotMix);
@@ -1561,17 +1547,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         float hotPeaks = smoothstep(0.78, 0.96, hotRaw);
         hotPeaks = pow(hotPeaks, 1.6);
         float hotMix = clamp(hotPeaks, 0.0, 1.0);
-
-        vec3 worldN = normalize(vWorldN);
-        vec3 keyDir = normalize(uKeyDirWorld);
-        float day = smoothstep(-0.05, 0.35, dot(worldN, keyDir));
-        float cine = mix(0.94, 1.04, day);
-        vec3 warm = vec3(1.02, 1.00, 0.97);
-        vec3 cool = vec3(0.96, 0.99, 1.04);
-        vec3 grade = mix(cool, warm, day);
-
         vec3 haloCol = mix(uBase * vec3(0.70, 0.56, 0.34), uViolet * vec3(0.72, 0.60, 0.90), hotMix * 0.5);
-        haloCol *= mix(vec3(1.0), grade * cine, clamp(uCineStrength, 0.0, 2.0) * 0.45);
         float alpha = (0.032 * body + 0.078 * edge) * front;
         gl_FragColor = vec4(haloCol, alpha);
       }
@@ -1595,7 +1571,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         vReveal = clamp(0.5 - asin(clamp(unit.y, -1.0, 1.0)) / 3.14159265359, 0.0, 1.0);
         float isHover = step(0.5, 1.0 - abs(aMarketId - uHoverMarket));
         float isActive = step(0.5, 1.0 - abs(aMarketId - uActiveMarket));
-        float w = clamp(aMarketW * (isHover + isActive), 0.0, 1.0);
+        float w = clamp(isHover + isActive, 0.0, 1.0);
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = clamp(uPointPx, ${MEDIACARD_TUNING.DOT_MIN_SIZE_DPR.toFixed(1)} * uDpr, ${(MEDIACARD_TUNING.DOT_MAX_SIZE_DPR * 1.25).toFixed(1)} * uDpr);
@@ -1618,7 +1594,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         float r = sqrt(r2);
         float isHover = step(0.5, 1.0 - abs(vMarketId - uHoverMarket));
         float isActive = step(0.5, 1.0 - abs(vMarketId - uActiveMarket));
-        float w = clamp(vMarketW * (isHover + isActive), 0.0, 1.0);
+        float w = clamp(isHover + isActive, 0.0, 1.0);
         vec3 accent = vec3(0.90, 0.84, 1.00);
         float disc = 1.0 - smoothstep(0.86, 1.0, r);
         float a = 0.70 * w;

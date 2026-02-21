@@ -33,6 +33,17 @@ const MENU_LINKS = [
 const SPOTLIGHT_RADIUS = 70;
 const BACKDROP_SPOTLIGHT_RADIUS = 34;
 const RAINBOW_COLORS = ["#ff4ea8", "#ff8a3d", "#ffd646", "#8aff5c", "#4ce4ff", "#6f8dff", "#da6dff"];
+const BACKDROP_COLORS = [
+  "#FF2D95",
+  "#FF3D00",
+  "#FFB300",
+  "#FFF44F",
+  "#00E676",
+  "#00E5FF",
+  "#2979FF",
+  "#7C4DFF",
+  "#E040FB",
+] as const;
 
 function seeded(seed: number, offset: number): number {
   const value = Math.sin(seed * 78.233 + offset * 39.425) * 43758.5453;
@@ -42,6 +53,20 @@ function seeded(seed: number, offset: number): number {
 function colorAt(seed: number, offset: number): string {
   const index = Math.floor(seeded(seed, offset) * RAINBOW_COLORS.length) % RAINBOW_COLORS.length;
   return RAINBOW_COLORS[index];
+}
+
+function backdropColorAt(seed: number, offset: number): string {
+  const index = Math.floor(seeded(seed, offset) * BACKDROP_COLORS.length) % BACKDROP_COLORS.length;
+  return BACKDROP_COLORS[index];
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3 ? clean.split("").map((char) => `${char}${char}`).join("") : clean;
+  const r = Number.parseInt(full.slice(0, 2), 16);
+  const g = Number.parseInt(full.slice(2, 4), 16);
+  const b = Number.parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 export function paintStyle(seed: number): CSSProperties {
@@ -90,27 +115,27 @@ export function paintBackdropStyle(seed: number): CSSProperties {
   const microPositions: string[] = [];
 
   for (let i = 0; i < 12; i += 1) {
-    const c1 = colorAt(seed, 300 + i * 3);
-    const c2 = colorAt(seed, 301 + i * 3);
-    const c3 = colorAt(seed, 302 + i * 3);
-    const size = [140, 180, 220][i % 3];
-    const px = Math.floor(seeded(seed, 350 + i) * size);
-    const py = Math.floor(seeded(seed, 390 + i) * size);
+    const c1 = backdropColorAt(seed, 300 + i * 5);
+    const c2 = backdropColorAt(seed, 301 + i * 5);
+    const c3 = backdropColorAt(seed, 302 + i * 5);
+    const c4 = backdropColorAt(seed, 303 + i * 5);
+    const c5 = backdropColorAt(seed, 304 + i * 5);
+    const angle = Math.floor(seeded(seed, 350 + i) * 360);
+    const size = [160, 200, 240][i % 3];
+    const px = Math.floor(seeded(seed, 390 + i) * size);
+    const py = Math.floor(seeded(seed, 430 + i) * size);
 
-    if (i % 4 === 0) {
+    if (i % 3 === 0) {
       broadLayers.push(
-        `conic-gradient(from ${Math.floor(seeded(seed, 420 + i) * 360)}deg at 50% 50%, ${c1} 0deg, ${c2} 132deg, ${c3} 248deg, ${c1} 360deg)`,
+        `repeating-conic-gradient(from ${angle}deg at 50% 50%, ${hexToRgba(c1, 0.58)} 0deg 18deg, ${hexToRgba(c2, 0.58)} 18deg 36deg, ${hexToRgba(c3, 0.58)} 36deg 54deg, ${hexToRgba(c4, 0.58)} 54deg 72deg, ${hexToRgba(c5, 0.58)} 72deg 90deg)`,
+      );
+    } else if (i % 3 === 1) {
+      broadLayers.push(
+        `conic-gradient(from ${angle}deg at 46% 54%, ${hexToRgba(c1, 0.52)} 0deg, ${hexToRgba(c2, 0.5)} 84deg, ${hexToRgba(c3, 0.54)} 164deg, ${hexToRgba(c4, 0.5)} 244deg, ${hexToRgba(c5, 0.56)} 360deg)`,
       );
     } else {
-      const alpha = i === 1 ? 0.98 : 0.52;
       broadLayers.push(
-        `linear-gradient(${Math.floor(seeded(seed, 450 + i) * 360)}deg, ${c1}${Math.round(alpha * 255)
-          .toString(16)
-          .padStart(2, "0")} 0%, ${c2}${Math.round(alpha * 255)
-          .toString(16)
-          .padStart(2, "0")} 52%, ${c3}${Math.round(alpha * 255)
-          .toString(16)
-          .padStart(2, "0")} 100%)`,
+        `linear-gradient(${angle}deg, ${hexToRgba(c2, 0.46)} 0%, ${hexToRgba(c4, 0.52)} 38%, ${hexToRgba(c1, 0.48)} 72%, ${hexToRgba(c3, 0.56)} 100%)`,
       );
     }
 
@@ -118,26 +143,35 @@ export function paintBackdropStyle(seed: number): CSSProperties {
     broadPositions.push(`${px}px ${py}px`);
   }
 
-  for (let i = 0; i < 16; i += 1) {
-    const color = colorAt(seed, 600 + i);
-    const x = Math.floor(10 + seeded(seed, 650 + i) * 80);
-    const y = Math.floor(10 + seeded(seed, 700 + i) * 80);
-    const radius = Math.floor(10 + seeded(seed, 750 + i) * 16);
-    const fade = radius + Math.floor(3 + seeded(seed, 800 + i) * 6);
-    const size = [92, 108, 124, 140][i % 4];
+  for (let i = 0; i < 22; i += 1) {
+    const color = backdropColorAt(seed, 600 + i);
+    const x = Math.floor(8 + seeded(seed, 650 + i) * 84);
+    const y = Math.floor(8 + seeded(seed, 700 + i) * 84);
+    const radius = Math.floor(12 + seeded(seed, 750 + i) * 17);
+    const fade = radius + Math.floor(6 + seeded(seed, 800 + i) * 9);
+    const size = [128, 152, 176, 200][i % 4];
     const px = Math.floor(seeded(seed, 840 + i) * size);
     const py = Math.floor(seeded(seed, 880 + i) * size);
+    const alpha = 0.92 + seeded(seed, 920 + i) * 0.08;
 
-    microLayers.push(`radial-gradient(circle at ${x}% ${y}%, ${color} 0 ${radius}px, rgba(0,0,0,0) ${fade}px)`);
+    microLayers.push(
+      `radial-gradient(circle at ${x}% ${y}%, ${hexToRgba(color, alpha)} 0px, ${hexToRgba(color, alpha)} ${radius}px, rgba(0,0,0,0) ${fade}px)`,
+    );
     microSizes.push(`${size}px ${size}px`);
     microPositions.push(`${px}px ${py}px`);
   }
 
+  const microBlend = new Array(microLayers.length).fill("screen");
+  const broadBlend = new Array(broadLayers.length).fill("normal");
+
   return {
+    backgroundColor: backdropColorAt(seed, 1337),
     backgroundImage: [...microLayers, ...broadLayers].join(", "),
     backgroundSize: [...microSizes, ...broadSizes].join(", "),
     backgroundPosition: [...microPositions, ...broadPositions].join(", "),
+    backgroundBlendMode: [...microBlend, ...broadBlend].join(", "),
     backgroundRepeat: "repeat",
+    filter: "saturate(1.35) contrast(1.18)",
     opacity: 1,
   };
 }
@@ -494,19 +528,19 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
           <div
             className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height,background-color,border-color,box-shadow,opacity] duration-200 ${
               cursorMode === "text"
-                ? "home-cursor-inner--text"
+                ? "home-cursor-core--text"
                 : cursorMode === "bg"
-                  ? "home-cursor-inner--bg"
-                  : "home-cursor-inner--idle"
+                  ? "home-cursor-core--bg"
+                  : "home-cursor-core--idle"
             }`}
           />
           <div
             className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height,box-shadow,opacity] duration-200 ${
               cursorMode === "text"
-                ? "home-cursor-glow--text"
+                ? "home-cursor-halo--text"
                 : cursorMode === "bg"
-                  ? "home-cursor-glow--bg"
-                  : "home-cursor-glow--idle"
+                  ? "home-cursor-halo--bg"
+                  : "home-cursor-halo--idle"
             }`}
           />
         </div>
@@ -524,8 +558,8 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
             }}
           >
             <div className={`${titleFontClassName} leading-[0.84] tracking-[0.02em]`}>
-              <p className="text-[clamp(1.6rem,3vw,3rem)]">{renderPaintedText("The", 101)}</p>
-              <p className="mt-2 text-[clamp(4.8rem,9vw,9rem)]">{renderPaintedText("Chloeverse", 270)}</p>
+              <p className="text-[clamp(1.8rem,3.6vw,3.2rem)]">{renderPaintedText("The", 101)}</p>
+              <p className="mt-2 text-[clamp(5.5rem,10.6vw,10.2rem)]">{renderPaintedText("Chloeverse", 270)}</p>
             </div>
 
             <div
@@ -536,16 +570,16 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
               }`}
             >
               <div className={`${titleFontClassName} leading-[0.84] tracking-[0.02em]`}>
-                <p className="text-[clamp(1.6rem,3vw,3rem)]">{renderPlainText("The", 401)}</p>
-                <p className="mt-2 text-[clamp(4.8rem,9vw,9rem)]">{renderPlainText("Chloeverse", 570)}</p>
+                <p className="text-[clamp(1.8rem,3.6vw,3.2rem)]">{renderPlainText("The", 401)}</p>
+                <p className="mt-2 text-[clamp(5.5rem,10.6vw,10.2rem)]">{renderPlainText("Chloeverse", 570)}</p>
               </div>
             </div>
           </div>
 
-          <div className="mt-10 h-14">
+          <div className="mt-10 h-16">
             <div
               ref={taglineHitRef}
-              className={`${monoFontClassName} relative inline-block text-[clamp(0.95rem,1.85vw,1.2rem)] tracking-[0.13em] text-white`}
+              className={`${monoFontClassName} relative inline-block text-[clamp(1.06rem,2vw,1.36rem)] tracking-[0.15em] text-white`}
             >
               <p className="whitespace-pre">
                 {typedText}
@@ -568,8 +602,8 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
           </div>
 
           <p
-            className={`${monoFontClassName} mt-16 text-[11px] uppercase tracking-[0.38em] text-white/58 ${
-              prefersReducedMotion ? "" : "animate-pulse"
+            className={`${monoFontClassName} mt-16 text-[12px] uppercase tracking-[0.44em] text-white/74 ${
+              prefersReducedMotion ? "" : "home-blink"
             }`}
           >
             scroll for portals
