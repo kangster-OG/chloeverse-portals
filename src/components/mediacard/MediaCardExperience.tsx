@@ -128,7 +128,12 @@ export function MediaCardExperience() {
 
         <header className={styles.sceneHeader}>
           <h1>MEDIA CARD</h1>
-          <p>Interactive market focus map</p>
+          <a href="https://chloeverse.io" className={styles.sceneHeaderLink}>
+            <span className={styles.sceneHeaderLinkArrow} aria-hidden="true">
+              &larr;
+            </span>
+            <span>Return to the Chloeverse</span>
+          </a>
         </header>
 
         <div className={styles.menuDock}>

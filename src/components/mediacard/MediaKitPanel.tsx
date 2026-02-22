@@ -1,28 +1,12 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { motion } from "framer-motion";
 
 import type { PanelId } from "./focusPresets";
 import styles from "./mediacard.module.css";
 
 export type MediaPanelKey = PanelId;
-
-const CONTACT_INFO = [
-  "LA, NYC, USA",
-  "ugcbychloekang@gmail.com",
-  "www.singleoriginstudios.com",
-  "@imchloekang",
-];
-
-function ContactHeader() {
-  return (
-    <div className={styles.contactHeader}>
-      {CONTACT_INFO.map((item) => (
-        <span key={item}>{item}</span>
-      ))}
-    </div>
-  );
-}
 
 function AudiencePanel() {
   const countries = ["United States", "Canada", "Australia", "South Korea"];
@@ -46,10 +30,10 @@ function AudiencePanel() {
 
 function MetricsPanel() {
   const metrics = [
-    "147K Instagram Followers",
-    "160K TikTok Followers",
-    "12M Monthly Views",
-    "12% Engagement Rate",
+    { label: "Instagram", value: "147K", descriptor: "Followers" },
+    { label: "TikTok", value: "160K", descriptor: "Followers" },
+    { label: "Views", value: "12M", descriptor: "Monthly Views" },
+    { label: "Engagement", value: "12%", descriptor: "Engagement Rate" },
   ];
   return (
     <>
@@ -57,11 +41,12 @@ function MetricsPanel() {
         <h2 className={styles.panelTitle}>Metrics</h2>
         <p className={styles.panelSubtitle}>Current platform footprint</p>
       </header>
-      <ContactHeader />
       <div className={styles.metricsGrid}>
         {metrics.map((metric) => (
-          <div key={metric} className={styles.metricTile}>
-            {metric}
+          <div key={`${metric.label}-${metric.value}`} className={styles.metricTile}>
+            <span className={styles.metricEyebrow}>{metric.label}</span>
+            <strong className={styles.metricValue}>{metric.value}</strong>
+            <span className={styles.metricCaption}>{metric.descriptor}</span>
           </div>
         ))}
       </div>
@@ -101,10 +86,10 @@ function ServicesPanel() {
 
 function CollabsPanel() {
   const partners = [
-    { name: "Adobe", src: "/mediacard/logos/adobe.svg" },
-    { name: "Adidas", src: "/mediacard/logos/adidas.svg" },
-    { name: "Estee Lauder", src: "/mediacard/logos/esteelauder.svg" },
-    { name: "OpenAI", src: "/mediacard/logos/openai.svg" },
+    { name: "Adobe", src: "/mediacard/logos/adobe.svg", accent: "255 0 0" },
+    { name: "Adidas", src: "/mediacard/logos/adidas.svg", accent: "125 249 255" },
+    { name: "Estee Lauder", src: "/mediacard/logos/esteelauder.svg", accent: "185 154 247" },
+    { name: "OpenAI", src: "/mediacard/logos/openai.svg", accent: "125 249 255" },
   ];
   return (
     <>
@@ -114,8 +99,12 @@ function CollabsPanel() {
       </header>
       <div className={styles.logoGrid}>
         {partners.map((partner) => (
-          <div key={partner.name} className={styles.logoTile}>
-            <img src={partner.src} alt={`${partner.name} logo`} className={styles.logoMark} />
+          <div
+            key={partner.name}
+            className={styles.logoTile}
+            style={{ "--logo-accent": partner.accent } as CSSProperties}
+          >
+            <img src={partner.src} alt={`${partner.name} logo`} className={styles.logoMark} loading="lazy" />
             <span className={styles.logoWordmark}>{partner.name}</span>
           </div>
         ))}
@@ -171,3 +160,4 @@ export function MediaKitPanel({
     </motion.aside>
   );
 }
+

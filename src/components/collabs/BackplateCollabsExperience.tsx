@@ -112,11 +112,27 @@ function useElementSize(ref: RefObject<HTMLElement | null>) {
   return size;
 }
 
+function getCoverRect(viewportW: number, viewportH: number, imgAspect = 16 / 9) {
+  if (viewportW <= 0 || viewportH <= 0) {
+    return { x: 0, y: 0, w: viewportW, h: viewportH };
+  }
+
+  const viewportAspect = viewportW / viewportH;
+
+  if (viewportAspect > imgAspect) {
+    const w = viewportW;
+    const h = w / imgAspect;
+    return { x: 0, y: (viewportH - h) * 0.5, w, h };
+  }
+
+  const h = viewportH;
+  const w = h * imgAspect;
+  return { x: (viewportW - w) * 0.5, y: 0, w, h };
+}
+
 function desiredPlateForView(view: View): PlateKey {
-  if (view === "reel") return "reel";
-  if (view === "program") return "program";
-  if (view === "transitionToReel") return "program";
-  if (view === "transitionToProgram") return "lobby";
+  if (view === "reel" || view === "transitionToReel") return "reel";
+  if (view === "program" || view === "transitionToProgram") return "program";
   return "lobby";
 }
 
@@ -130,15 +146,6 @@ function resolvePlate(
   plate: PlateKey,
   status: PlateStatusMap,
 ): { requested: PlateKey; effective: PlateKey; src: string; fellBack: boolean } {
-  if (plate !== "lobby" && status[plate] === "error") {
-    return {
-      requested: plate,
-      effective: "lobby",
-      src: PLATES.lobby,
-      fellBack: true,
-    };
-  }
-
   return {
     requested: plate,
     effective: plate,
@@ -225,15 +232,15 @@ export function BackplateCollabsExperience() {
   const prefersReducedMotion = usePrefersReducedMotion();
   const searchParams = useSearchParams();
   const debug = searchParams.get("debug") === "1";
-  const isDev = process.env.NODE_ENV !== "production";
+  const showMasks = searchParams.get("mask") === "1";
 
   const stageRef = useRef<HTMLDivElement>(null);
-  const pushTimeoutRef = useRef<number | null>(null);
-  const crossfadeTimeoutRef = useRef<number | null>(null);
+  const timeoutsRef = useRef<number[]>([]);
+  const tokenRef = useRef(0);
   const { width: stageWidth, height: stageHeight } = useElementSize(stageRef);
 
   const [view, setView] = useState<View>("lobby");
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [hoveredLobbyIndex, setHoveredLobbyIndex] = useState<number | null>(null);
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const [modalReel, setModalReel] = useState<CollabsReel | null>(null);
@@ -245,20 +252,126 @@ export function BackplateCollabsExperience() {
   const [depthAvailable, setDepthAvailable] = useState(true);
   const [committedPlate, setCommittedPlate] = useState<PlateKey>("lobby");
   const [fadingPlate, setFadingPlate] = useState<PlateKey | null>(null);
+  const [isCrossfading, setIsCrossfading] = useState(false);
   const [lineupRunKey, setLineupRunKey] = useState(0);
 
   const motionPointer = prefersReducedMotion ? { x: 0, y: 0 } : pointer;
   const pushMs = prefersReducedMotion ? 0 : TIMING.pushMs;
   const crossfadeMs = prefersReducedMotion ? 0 : TIMING.crossfadeMs;
+  const coverRect = useMemo(
+    () => getCoverRect(stageWidth, stageHeight, 16 / 9),
+    [stageHeight, stageWidth],
+  );
+  const archFocusPx = useMemo(
+    () => ({
+      x: coverRect.x + coverRect.w * (ARCH_FOCUS.x / 100),
+      y: coverRect.y + coverRect.h * (ARCH_FOCUS.y / 100),
+    }),
+    [coverRect],
+  );
 
-  const selectedReel = reels[selectedIndex] ?? reels[0] ?? null;
+  const selectedReel =
+    selectedIndex === null ? null : (reels[selectedIndex] ?? null);
   const desiredPlate = desiredPlateForView(view);
   const committedResolved = resolvePlate(committedPlate, plateStatus);
   const fadingResolved = fadingPlate ? resolvePlate(fadingPlate, plateStatus) : null;
-  const isCrossfading =
+  const showCrossfade =
+    isCrossfading &&
     Boolean(fadingResolved) &&
     (fadingResolved.src !== committedResolved.src ||
       fadingResolved.effective !== committedResolved.effective);
+
+  const clearAll = () => {
+    timeoutsRef.current.forEach((id) => window.clearTimeout(id));
+    timeoutsRef.current = [];
+  };
+
+  const bumpToken = () => {
+    tokenRef.current += 1;
+    return tokenRef.current;
+  };
+
+  const isToken = (token: number) => tokenRef.current === token;
+
+  const schedule = (callback: () => void, ms: number) => {
+    const id = window.setTimeout(() => {
+      timeoutsRef.current = timeoutsRef.current.filter((current) => current !== id);
+      callback();
+    }, ms);
+    timeoutsRef.current.push(id);
+  };
+
+  const commitPlateForView = (nextView: View) => {
+    setCommittedPlate(desiredPlateForView(nextView));
+    setFadingPlate(null);
+    setIsCrossfading(false);
+  };
+
+  const startPlateCrossfade = (targetPlate: PlateKey, token: number) => {
+    if (prefersReducedMotion || crossfadeMs === 0) {
+      setCommittedPlate(targetPlate);
+      setFadingPlate(null);
+      setIsCrossfading(false);
+      return;
+    }
+
+    setFadingPlate(targetPlate);
+    setIsCrossfading(true);
+    schedule(() => {
+      if (!isToken(token)) return;
+      setCommittedPlate(targetPlate);
+      setFadingPlate(null);
+      setIsCrossfading(false);
+    }, crossfadeMs);
+  };
+
+  const resetToLobby = () => {
+    clearAll();
+    bumpToken();
+    setCommittedPlate("lobby");
+    setFadingPlate(null);
+    setIsCrossfading(false);
+    setView("lobby");
+    setSelectedIndex(null);
+    setHoveredLobbyIndex(null);
+    setPointer({ x: 0, y: 0 });
+  };
+
+  const resetToProgram = () => {
+    clearAll();
+    bumpToken();
+    setCommittedPlate("program");
+    setFadingPlate(null);
+    setIsCrossfading(false);
+    setView("program");
+    setHoveredLobbyIndex(null);
+    setPointer({ x: 0, y: 0 });
+  };
+
+  const beginTransition = (
+    transitionView: Extract<View, "transitionToProgram" | "transitionToReel">,
+    finalView: Extract<View, "program" | "reel">,
+    index: number,
+  ) => {
+    clearAll();
+    const token = bumpToken();
+
+    setSelectedIndex(index);
+
+    if (prefersReducedMotion) {
+      commitPlateForView(finalView);
+      setView(finalView);
+      return;
+    }
+
+    setView(transitionView);
+    startPlateCrossfade(desiredPlateForView(transitionView), token);
+
+    schedule(() => {
+      if (!isToken(token)) return;
+      setView(finalView);
+    }, TIMING.pushMs);
+  };
 
   useEffect(() => {
     const keys: PlateKey[] = ["lobby", "program", "reel"];
@@ -291,87 +404,27 @@ export function BackplateCollabsExperience() {
   }, []);
 
   useEffect(() => {
-    if (pushTimeoutRef.current !== null) {
-      window.clearTimeout(pushTimeoutRef.current);
-      pushTimeoutRef.current = null;
-    }
-
-    if (view === "transitionToProgram") {
-      if (prefersReducedMotion) {
-        setView("program");
-        return;
-      }
-      pushTimeoutRef.current = window.setTimeout(() => {
-        setView("program");
-      }, TIMING.pushMs);
-    }
-
-    if (view === "transitionToReel") {
-      if (prefersReducedMotion) {
-        setView("reel");
-        return;
-      }
-      pushTimeoutRef.current = window.setTimeout(() => {
-        setView("reel");
-      }, TIMING.pushMs);
-    }
-
-    return () => {
-      if (pushTimeoutRef.current !== null) {
-        window.clearTimeout(pushTimeoutRef.current);
-        pushTimeoutRef.current = null;
-      }
-    };
-  }, [prefersReducedMotion, view]);
-
-  useEffect(() => {
     if (view === "program") {
       setLineupRunKey((value) => value + 1);
     }
   }, [view]);
 
   useEffect(() => {
-    if (crossfadeTimeoutRef.current !== null) {
-      window.clearTimeout(crossfadeTimeoutRef.current);
-      crossfadeTimeoutRef.current = null;
-    }
-
-    if (desiredPlate === committedPlate) {
-      setFadingPlate(null);
-      return;
-    }
-
-    if (prefersReducedMotion || crossfadeMs === 0) {
-      setFadingPlate(null);
-      setCommittedPlate(desiredPlate);
-      return;
-    }
-
-    setFadingPlate((current) => (current === desiredPlate ? current : desiredPlate));
-
-    crossfadeTimeoutRef.current = window.setTimeout(() => {
-      setCommittedPlate(desiredPlate);
-      setFadingPlate(null);
-    }, crossfadeMs);
-
     return () => {
-      if (crossfadeTimeoutRef.current !== null) {
-        window.clearTimeout(crossfadeTimeoutRef.current);
-        crossfadeTimeoutRef.current = null;
-      }
-    };
-  }, [committedPlate, crossfadeMs, desiredPlate, prefersReducedMotion]);
-
-  useEffect(() => {
-    return () => {
-      if (pushTimeoutRef.current !== null) {
-        window.clearTimeout(pushTimeoutRef.current);
-      }
-      if (crossfadeTimeoutRef.current !== null) {
-        window.clearTimeout(crossfadeTimeoutRef.current);
-      }
+      clearAll();
     };
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (modalReel) return;
+      resetToLobby();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [modalReel]);
 
   useEffect(() => {
     if (hoveredLobbyIndex === null) return;
@@ -401,26 +454,25 @@ export function BackplateCollabsExperience() {
 
   const startProgram = (index: number) => {
     startTransition(() => {
-      setSelectedIndex(index);
-      setView(prefersReducedMotion ? "program" : "transitionToProgram");
+      beginTransition("transitionToProgram", "program", index);
     });
   };
 
   const startReel = (index: number) => {
     startTransition(() => {
-      setSelectedIndex(index);
-      setView(prefersReducedMotion ? "reel" : "transitionToReel");
+      beginTransition("transitionToReel", "reel", index);
     });
   };
 
   const returnToProgram = () => {
-    startTransition(() => setView("program"));
+    startTransition(() => {
+      resetToProgram();
+    });
   };
 
   const returnToLobby = () => {
     startTransition(() => {
-      setView("lobby");
-      setHoveredLobbyIndex(null);
+      resetToLobby();
     });
   };
 
@@ -430,10 +482,10 @@ export function BackplateCollabsExperience() {
   };
 
   const pushScale = scaleForView(view);
-  const pushTransform = `translate(-${ARCH_FOCUS.x}%, -${ARCH_FOCUS.y}%) scale(${pushScale}) translate(${ARCH_FOCUS.x}%, ${ARCH_FOCUS.y}%)`;
-  const parallaxTransform = prefersReducedMotion
-    ? "translate3d(0px, 0px, 0px) rotateX(0deg) rotateY(0deg)"
-    : `translate3d(${motionPointer.x * 4}px, ${motionPointer.y * 2}px, 0px) rotateX(${-motionPointer.y * 1.3}deg) rotateY(${motionPointer.x * 1.7}deg)`;
+  const pushOriginX = stageWidth > 0 ? (archFocusPx.x / stageWidth) * 100 : ARCH_FOCUS.x;
+  const pushOriginY = stageHeight > 0 ? (archFocusPx.y / stageHeight) * 100 : ARCH_FOCUS.y;
+  const pushTransform = `translate(-${pushOriginX}%, -${pushOriginY}%) scale(${pushScale}) translate(${pushOriginX}%, ${pushOriginY}%)`;
+  const parallaxTransform = "translate3d(0px, 0px, 0px) rotateX(0deg) rotateY(0deg)";
 
   const stageVars = useMemo(
     () =>
@@ -447,11 +499,17 @@ export function BackplateCollabsExperience() {
   const titleVisible = view === "program";
   const lineupVisible = view === "program";
   const reelVisible = view === "reel";
-  const lobbyVisible = view === "lobby";
+  const lobbyHitboxesVisible = view === "lobby" || view === "transitionToProgram";
 
-  const failedPlateFallbacks = (["program", "reel"] as const).filter(
-    (key) => plateStatus[key] === "error",
-  );
+  const missingPlateBadge =
+    desiredPlate !== "lobby" && plateStatus[desiredPlate] === "error"
+      ? `Missing ${desiredPlate} plate`
+      : null;
+  const showProgramMasks =
+    (view === "transitionToProgram" || view === "program") && plateStatus.program === "error";
+  const showReelMasks =
+    (view === "transitionToReel" || view === "reel") && plateStatus.reel === "error";
+  const showMaskFallback = showMasks && (showProgramMasks || showReelMasks);
 
   const markPlateLoad = (plate: PlateKey) => {
     setPlateStatus((prev) => (prev[plate] === "ok" ? prev : { ...prev, [plate]: "ok" }));
@@ -483,7 +541,7 @@ export function BackplateCollabsExperience() {
           <div className={styles.parallaxLayer} style={{ transform: parallaxTransform }}>
             <div className={styles.plateLayer} aria-hidden="true">
               <div
-                className={`${styles.plateSlot} ${isCrossfading ? styles.fadeOut : styles.opaque}`}
+                className={`${styles.plateSlot} ${showCrossfade ? styles.fadeOut : styles.opaque}`}
               >
                 <PlateSurface
                   plate={committedResolved.effective}
@@ -502,7 +560,7 @@ export function BackplateCollabsExperience() {
 
               {fadingResolved ? (
                 <div
-                  className={`${styles.plateSlot} ${isCrossfading ? styles.fadeIn : styles.transparent}`}
+                  className={`${styles.plateSlot} ${showCrossfade ? styles.fadeIn : styles.transparent}`}
                 >
                   <PlateSurface
                     plate={fadingResolved.effective}
@@ -521,12 +579,19 @@ export function BackplateCollabsExperience() {
               ) : null}
             </div>
 
+            {showMaskFallback ? (
+              <div className={styles.maskFallbackLayer} aria-hidden="true">
+                <div className={styles.maskFallbackPanel} style={{ left: "2%", top: "34%", width: "22%", height: "57%" }} />
+                <div className={styles.maskFallbackPanel} style={{ left: "25%", top: "43%", width: "17%", height: "44%" }} />
+                <div className={styles.maskFallbackPanel} style={{ left: "55%", top: "43%", width: "17%", height: "44%" }} />
+                <div className={styles.maskFallbackPanel} style={{ left: "76%", top: "34%", width: "22%", height: "57%" }} />
+              </div>
+            ) : null}
+
             <div className={styles.interactiveLayer}>
-              <div
-                className={`${styles.lobbyHotspots} ${lobbyVisible ? styles.visibleLayer : ""}`}
-                aria-hidden={!lobbyVisible}
-              >
-                {reels.map((reel, index) => {
+              {lobbyHitboxesVisible ? (
+                <div className={`${styles.lobbyHotspots} ${styles.visibleLayer}`} aria-hidden={false}>
+                  {reels.map((reel, index) => {
                   const placement = LOBBY_PLACEMENTS[index];
                   if (!placement) return null;
 
@@ -542,10 +607,10 @@ export function BackplateCollabsExperience() {
                       key={reel.id}
                       className={styles.lobbyHotspotSlot}
                       style={{
-                        left: `${placement.left}%`,
-                        top: `${placement.top}%`,
-                        width: `${placement.w}%`,
-                        height: `${placement.h}%`,
+                        left: `${coverRect.x + (coverRect.w * placement.left) / 100}px`,
+                        top: `${coverRect.y + (coverRect.h * placement.top) / 100}px`,
+                        width: `${(coverRect.w * placement.w) / 100}px`,
+                        height: `${(coverRect.h * placement.h) / 100}px`,
                         transform: `translate3d(${tx}px, ${ty}px, ${placement.z * 14}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${scale})`,
                       }}
                     >
@@ -554,7 +619,6 @@ export function BackplateCollabsExperience() {
                         className={`${styles.lobbyHotspotButton} ${
                           hovered ? styles.isHotspotHovered : ""
                         }`}
-                        style={{ backgroundImage: `url(${reel.posterSrc})` }}
                         onMouseEnter={() => setHoveredLobbyIndex(index)}
                         onMouseLeave={() =>
                           setHoveredLobbyIndex((current) => (current === index ? null : current))
@@ -565,13 +629,12 @@ export function BackplateCollabsExperience() {
                         }
                         onClick={() => startProgram(index)}
                         aria-label={`Open program room from ${reel.title}`}
-                      >
-                        <span className={styles.hotspotGlow} />
-                      </button>
+                      />
                     </div>
                   );
-                })}
-              </div>
+                  })}
+                </div>
+              ) : null}
 
               <div
                 className={`${styles.programTitle} ${titleVisible ? styles.visibleLayer : ""}`}
@@ -590,13 +653,6 @@ export function BackplateCollabsExperience() {
               >
                 <div className={styles.programLineupHeader}>
                   <p className={styles.programKicker}>Program Room</p>
-                  <button
-                    type="button"
-                    className={styles.ghostButton}
-                    onClick={returnToLobby}
-                  >
-                    RETURN TO LOBBY
-                  </button>
                 </div>
 
                 <div key={lineupRunKey} className={styles.programLineup}>
@@ -652,20 +708,6 @@ export function BackplateCollabsExperience() {
                         >
                           PLAY REEL
                         </button>
-                        <button
-                          type="button"
-                          onClick={returnToProgram}
-                          className={styles.ghostButton}
-                        >
-                          RETURN TO PROGRAM
-                        </button>
-                        <button
-                          type="button"
-                          onClick={returnToLobby}
-                          className={styles.ghostButton}
-                        >
-                          RETURN TO LOBBY
-                        </button>
                       </div>
                       {!selectedReel.videoSrc ? (
                         <p className={styles.reelHeroHint}>
@@ -696,9 +738,9 @@ export function BackplateCollabsExperience() {
           </div>
         ) : null}
 
-        {isDev && failedPlateFallbacks.length > 0 ? (
+        {missingPlateBadge ? (
           <div className={styles.devBadge}>
-            Plate fallback: {failedPlateFallbacks.join(", ")} -&gt; lobby
+            {missingPlateBadge}
           </div>
         ) : null}
 
@@ -709,24 +751,51 @@ export function BackplateCollabsExperience() {
               style={{ left: `${ARCH_FOCUS.x}%`, top: `${ARCH_FOCUS.y}%` }}
               aria-hidden="true"
             />
+            <div
+              className={styles.debugCoverRect}
+              style={{
+                left: `${coverRect.x}px`,
+                top: `${coverRect.y}px`,
+                width: `${coverRect.w}px`,
+                height: `${coverRect.h}px`,
+              }}
+              aria-hidden="true"
+            />
             <div className={styles.debugHud}>
               <div>view: {view}</div>
               <div>selectedIndex: {selectedIndex}</div>
               <div>
-                currentPlate: {committedResolved.requested}
-                {committedResolved.fellBack ? ` -> ${committedResolved.effective}` : ""}
+                committedPlateSrc: {committedResolved.src}
               </div>
               <div>
-                nextPlate:{" "}
-                {fadingResolved
-                  ? `${fadingResolved.requested}${
-                      fadingResolved.fellBack ? ` -> ${fadingResolved.effective}` : ""
-                    }`
-                  : "-"}
+                fadingPlate:{" "}
+                {fadingResolved ? fadingResolved.src : "-"}
               </div>
+              <div>token: {tokenRef.current}</div>
               <div>depth: {depthAvailable ? "on" : "off"}</div>
             </div>
           </>
+        ) : null}
+      </div>
+
+      <div className={styles.fixedControlsOverlay}>
+        {view === "program" || view === "reel" ? (
+          <div className={styles.returnRail}>
+            {view === "reel" ? (
+              <>
+                <button type="button" className={styles.returnButton} onClick={returnToProgram}>
+                  RETURN TO PROGRAM
+                </button>
+                <button type="button" className={styles.returnButton} onClick={returnToLobby}>
+                  RETURN TO LOBBY
+                </button>
+              </>
+            ) : (
+              <button type="button" className={styles.returnButton} onClick={returnToLobby}>
+                RETURN TO LOBBY
+              </button>
+            )}
+          </div>
         ) : null}
       </div>
 
@@ -738,4 +807,3 @@ export function BackplateCollabsExperience() {
     </main>
   );
 }
-

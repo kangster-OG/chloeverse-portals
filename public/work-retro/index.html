@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-chloe-theme="dark">
   <head>
     <meta charset="utf-8" />
     <title>Ed Hinrichsen – Personal Website</title>
@@ -24,7 +24,7 @@
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
-    <meta name="theme-color" content="#f6d4b1" />
+    <meta name="theme-color" content="#0F1115" />
 
     <meta property="og:title" content="Ed Hinrichsen – Personal Website" />
     <meta property="og:type" content="website" />
@@ -35,7 +35,7 @@
       content="Chloe  Creator, Founder, Creative strategist, Growth Marketer."
     />
     <link rel="manifest" href="/work-retro/manifest.json" />
-      <style>
+                              <style id="chloe-overrides">
       .chloe-job-label {
         display: block;
         width: 640px;
@@ -43,6 +43,99 @@
         margin-left: auto;
         margin-right: auto;
         box-sizing: border-box;
+      }
+      .chloe-date { font-size: 32px; line-height: 1.1; margin: 0; padding: 0; }
+
+      :root[data-chloe-theme="dark"] {
+        --chloe-bg: #0F1115;
+        --chloe-fg: #E8E3DA;
+        --chloe-rule: rgba(232,227,218,0.25);
+        --chloe-box-bg: #E8E3DA;
+        --chloe-box-fg: #15181E;
+      }
+
+      :root[data-chloe-theme="dark"] html,
+      :root[data-chloe-theme="dark"] body {
+        background: var(--chloe-bg) !important;
+      }
+
+      :root[data-chloe-theme="dark"] body,
+      :root[data-chloe-theme="dark"] main {
+        color: var(--chloe-fg) !important;
+      }
+
+      /* Invert boxed pixel labels (Hi!/Projects + job title bars) */
+      :root[data-chloe-theme="dark"] main h1,
+      :root[data-chloe-theme="dark"] main h2 {
+        background: var(--chloe-box-bg) !important;
+        color: var(--chloe-box-fg) !important;
+      }
+
+      /* Meta/description text */
+      :root[data-chloe-theme="dark"] .chloe-meta,
+      :root[data-chloe-theme="dark"] .chloe-meta div {
+        color: var(--chloe-fg) !important;
+      }
+
+      /* Dividers */
+      :root[data-chloe-theme="dark"] main hr {
+        border: 0 !important;
+        border-top: 2px solid var(--chloe-rule) !important;
+        opacity: 1 !important;
+      }
+
+      :root[data-chloe-theme="dark"]{
+        --chloe-bg:#0F1115;
+        --chloe-fg:#E8E3DA;
+        --chloe-rule:rgba(232,227,218,0.22);
+        --chloe-box-bg:#DDD6CC;
+        --chloe-box-fg:#1A1E24;
+      }
+
+      /* Force ALL ancestors/wrappers to true charcoal */
+      :root[data-chloe-theme="dark"] body,
+      :root[data-chloe-theme="dark"] #root,
+      :root[data-chloe-theme="dark"] main {
+        background: var(--chloe-bg) !important;
+      }
+
+      /* Disable/dim the big hero background image overlay behind text (causes brown/mud) */
+      :root[data-chloe-theme="dark"] main img,
+      :root[data-chloe-theme="dark"] main picture,
+      :root[data-chloe-theme="dark"] main video {
+        opacity: 1;
+      }
+
+      /* Target the background hero image specifically (most pages use an <img> with bg / "bg-" in src or a large absolute image) */
+      :root[data-chloe-theme="dark"] img[src*="bg"],
+      :root[data-chloe-theme="dark"] img[alt*="bg"],
+      :root[data-chloe-theme="dark"] img[src*="background"]{
+        opacity: 0.06 !important;
+        filter: saturate(0) brightness(0.7) !important;
+      }
+
+      /* Also catch common "background image" containers by id/class if present */
+      :root[data-chloe-theme="dark"] [class*="bg"],
+      :root[data-chloe-theme="dark"] [id*="bg"]{
+        background-image: none !important;
+      }
+
+      /* Label bars + headings */
+      :root[data-chloe-theme="dark"] main h1,
+      :root[data-chloe-theme="dark"] main h2 {
+        background: var(--chloe-box-bg) !important;
+        color: var(--chloe-box-fg) !important;
+      }
+
+      /* Ensure meta/description stay warm off-white */
+      :root[data-chloe-theme="dark"] .chloe-meta,
+      :root[data-chloe-theme="dark"] .chloe-meta div {
+        color: var(--chloe-fg) !important;
+      }
+
+      /* Divider lines */
+      :root[data-chloe-theme="dark"] main hr {
+        border-top: 2px solid var(--chloe-rule) !important;
       }
     </style>
     <script type="module" crossorigin src="/work-retro/assets/index-DzcMdYz6.js"></script>
@@ -138,85 +231,87 @@
 <hr />
 
 <h2 class="chloe-job-label">Stealth Startup - Founder</h2>
-<h3 style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Feb 2026 - Present</h3>
-<ul style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;"><li>Remote</li></ul>
-<p style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">More news soon.</p>
+<div class="chloe-meta" style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
+  <div class="chloe-date">Feb 2026 - Present</div>
+  <div>Remote</div>
+  <div>More news soon.</div>
+</div>
 
 <hr />
 
 <h2 class="chloe-job-label">Adobe - AI Search</h2>
-<h3 style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Jan 2026 - Present</h3>
-<ul style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
-  <li>Los Angeles Metropolitan Area  Remote</li>
-  <li>Contract</li>
-</ul>
-<p style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Search optimization for LLM training &amp; retrieval. Not via an organization on campus.</p>
+<div class="chloe-meta" style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
+  <div class="chloe-date">Jan 2026 - Present</div>
+  <div>Los Angeles Metropolitan Area  Remote</div>
+  <div>Contract</div>
+  <div>Search optimization for LLM training &amp; retrieval. Not via an organization on campus.</div>
+</div>
 
 <hr />
 
 <h2 class="chloe-job-label">Instagram - Creator</h2>
-<h3 style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Jul 2025 - Present</h3>
-<ul style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
-  <li>Los Angeles, California, United States  Hybrid</li>
-  <li>Self-employed</li>
-</ul>
-<p style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
+<div class="chloe-meta" style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
+  <div class="chloe-date">Jul 2025 - Present</div>
+  <div>Los Angeles, California, United States  Hybrid</div>
+  <div>Self-employed</div>
+  <div>
 300K+ followers<br/>
 250M views<br/>
 Grew IG from 0 to 140k+ in 3 months<br/>
 Viral series accumulated 200M views &amp; attention from major news outlets<br/>
-Worked with Adidas, Adobe, Estée Lauder, OpenAI, Hera, etc.
-</p>
-
-<hr />
-
-<h2 class="chloe-job-label">Outsmart - Product Marketing</h2>
-<h3 style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Sep 2025 - Dec 2025</h3>
-<ul style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
-  <li>Los Angeles, California, United States  Hybrid</li>
-  <li>Contract</li>
-</ul>
-<p style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Product and growth directly under ex-CMO @ Duolingo, $38M raised, backed by DST Global, Lightspeed, Khosla Ventures, execs from OpenAI &amp; Quora.</p>
-
-<hr />
-
-<h2 class="chloe-job-label">Stealth AI Startup - Head of Growth</h2>
-<h3 style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Jun 2025 - Sep 2025</h3>
-<ul style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
-  <li>San Francisco, California, United States  On-site</li>
-  <li>Full-time</li>
-</ul>
-<p style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Product and growth for B2C fashion tech, backed by execs from Shopify and Pinterest.</p>
-
-<hr />
-
-<h2 class="chloe-job-label">Soluna - Product Marketing Intern</h2>
-<h3 style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Oct 2024 - Jun 2025</h3>
-<ul style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
-  <li>Los Angeles, California, United States  Remote</li>
-  <li>Internship</li>
-</ul>
-<p style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Streamlined Solunas GTM, drove 179% increase in revenue in US market.</p>
-
-<hr />
-
-<h2 class="chloe-job-label">Headspace - Digital Marketing Intern</h2>
-<h3 style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">May 2022 - Sep 2023</h3>
-<ul style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
-  <li>Los Angeles, California, United States  Remote</li>
-  <li>Internship</li>
-</ul>
-<p style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Tripled Headspaces social media presence in one year, youngest employee to earn an extended contract.</p>
+Worked with Adidas, Adobe, Est??e Lauder, OpenAI, Hera, etc.
+</div>
+</div>
 
 <hr />
 
 <h2 class="chloe-job-label">Single Origin Studio - CEO</h2>
-<h3 style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Jun 2023 - Jan 2026</h3>
-<ul style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
-  <li>Los Angeles, California, United States  Remote</li>
-  <li>Self-employed</li>
-</ul>
-<p style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">Marketing consulting | Previous experience with YC backed startups | Full in house marketing with UGC team management | Scaled brands from 0 to 50k+ users in 2 months | Generated 6 figures of revenue | Worked with pre-seed and early stage</p>
+<div class="chloe-meta" style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
+  <div class="chloe-date">Jun 2023 - Jan 2026</div>
+  <div>Los Angeles, California, United States  Remote</div>
+  <div>Self-employed</div>
+  <div>Marketing consulting | Previous experience with YC backed startups | Full in house marketing with UGC team management | Scaled brands from 0 to 50k+ users in 2 months | Generated 6 figures of revenue | Worked with pre-seed and early stage</div>
+</div>
+
+<hr />
+
+<h2 class="chloe-job-label">Outsmart - Product Marketing</h2>
+<div class="chloe-meta" style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
+  <div class="chloe-date">Sep 2025 - Dec 2025</div>
+  <div>Los Angeles, California, United States  Hybrid</div>
+  <div>Contract</div>
+  <div>Product and growth directly under ex-CMO @ Duolingo, $38M raised, backed by DST Global, Lightspeed, Khosla Ventures, execs from OpenAI &amp; Quora.</div>
+</div>
+
+<hr />
+
+<h2 class="chloe-job-label">Stealth AI Startup - Head of Growth</h2>
+<div class="chloe-meta" style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
+  <div class="chloe-date">Jun 2025 - Sep 2025</div>
+  <div>San Francisco, California, United States  On-site</div>
+  <div>Full-time</div>
+  <div>Product and growth for B2C fashion tech, backed by execs from Shopify and Pinterest.</div>
+</div>
+
+<hr />
+
+<h2 class="chloe-job-label">Soluna - Product Marketing Intern</h2>
+<div class="chloe-meta" style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
+  <div class="chloe-date">Oct 2024 - Jun 2025</div>
+  <div>Los Angeles, California, United States  Remote</div>
+  <div>Internship</div>
+  <div>Streamlined Solunas GTM, drove 179% increase in revenue in US market.</div>
+</div>
+
+<hr />
+
+<h2 class="chloe-job-label">Headspace - Digital Marketing Intern</h2>
+<div class="chloe-meta" style="margin:0 auto;width:640px;max-width:calc(100% - 32px);text-align:left;">
+  <div class="chloe-date">May 2022 - Sep 2023</div>
+  <div>Los Angeles, California, United States  Remote</div>
+  <div>Internship</div>
+  <div>Tripled Headspaces social media presence in one year, youngest employee to earn an extended contract.</div>
+</div>
 
 <hr />
 </main>

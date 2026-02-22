@@ -51,6 +51,8 @@ function fail(msg) {
   throw new Error(`PATCH_FAILED: ${msg}`);
 }
 
+const CHLOE_THEME = (process.env.CHL_OE_THEME || "dark").toLowerCase();
+
 function main() {
   const retroDir = resolveRetroDir();
   const prefix = "[work:retro:apply-chloe]";
@@ -145,6 +147,13 @@ Marketing consulting | Previous experience with YC backed startups | Full in hou
   const indexPath = path.join(retroDir, "index.html");
   let html = fs.readFileSync(indexPath, "utf8");
 
+  // Theme toggle on the root html element (default dark).
+  html = html.replace(/<html\b([^>]*)>/i, (_match, attrs) => {
+    let nextAttrs = attrs.replace(/\sdata-chloe-theme=(["']).*?\1/i, "");
+    const themeValue = CHLOE_THEME === "dark" ? "dark" : "light";
+    return `<html${nextAttrs} data-chloe-theme="${themeValue}">`;
+  });
+
   // Replace old Ed meta descriptions in <head>.
   html = html.replace(
     /(<meta\b[^>]*\bcontent=")([^"]*My name is Ed Hinrichsen[^"]*)(")/gi,
@@ -162,11 +171,15 @@ Marketing consulting | Previous experience with YC backed startups | Full in hou
   html = html.replace(/https:\/\/edh\.dev\/?/gi, "/work-retro/");
   html = html.replace(/edh\.dev/gi, "chloeverse.local");
 
-  // Normalize project label widths across all injected job titles.
-  if (!html.includes(".chloe-job-label")) {
-    const headPatched = html.replace(
-      /<\/head>/i,
-      `    <style>
+  if (CHLOE_THEME === "dark") {
+    html = html.replace(
+      /(<meta\b[^>]*name=["']theme-color["'][^>]*content=["'])([^"']*)(["'][^>]*>)/i,
+      `$1#0F1115$3`
+    );
+  }
+
+  // Normalize project label widths across all injected job titles and restore large date style.
+  const chloeOverridesCss = `    <style id="chloe-overrides">
       .chloe-job-label {
         display: block;
         width: 640px;
@@ -175,9 +188,130 @@ Marketing consulting | Previous experience with YC backed startups | Full in hou
         margin-right: auto;
         box-sizing: border-box;
       }
+      .chloe-date { font-size: 32px; line-height: 1.1; margin: 0; padding: 0; }
+
+      :root[data-chloe-theme="dark"] {
+        --chloe-bg: #0F1115;
+        --chloe-fg: #E8E3DA;
+        --chloe-rule: rgba(232,227,218,0.25);
+        --chloe-box-bg: #E8E3DA;
+        --chloe-box-fg: #15181E;
+      }
+
+      :root[data-chloe-theme="dark"] html,
+      :root[data-chloe-theme="dark"] body {
+        background: var(--chloe-bg) !important;
+      }
+
+      :root[data-chloe-theme="dark"] body,
+      :root[data-chloe-theme="dark"] main {
+        color: var(--chloe-fg) !important;
+      }
+
+      /* Invert boxed pixel labels (Hi!/Projects + job title bars) */
+      :root[data-chloe-theme="dark"] main h1,
+      :root[data-chloe-theme="dark"] main h2 {
+        background: var(--chloe-box-bg) !important;
+        color: var(--chloe-box-fg) !important;
+      }
+
+      /* Meta/description text */
+      :root[data-chloe-theme="dark"] .chloe-meta,
+      :root[data-chloe-theme="dark"] .chloe-meta div {
+        color: var(--chloe-fg) !important;
+      }
+
+      /* Dividers */
+      :root[data-chloe-theme="dark"] main hr {
+        border: 0 !important;
+        border-top: 2px solid var(--chloe-rule) !important;
+        opacity: 1 !important;
+      }
+
+      :root[data-chloe-theme="dark"]{
+        --chloe-bg:#0F1115;
+        --chloe-fg:#E8E3DA;
+        --chloe-rule:rgba(232,227,218,0.22);
+        --chloe-box-bg:#DDD6CC;
+        --chloe-box-fg:#1A1E24;
+      }
+
+      @keyframes chloeMuddyFade {
+        0%   { opacity: 0.28; filter: saturate(0.15) brightness(0.85); }
+        55%  { opacity: 0.20; filter: saturate(0.10) brightness(0.78); }
+        100% { opacity: 0.06; filter: saturate(0) brightness(0.70); }
+      }
+
+      /* Force ALL ancestors/wrappers to true charcoal */
+      :root[data-chloe-theme="dark"] body,
+      :root[data-chloe-theme="dark"] #root,
+      :root[data-chloe-theme="dark"] main {
+        background: var(--chloe-bg) !important;
+      }
+
+      /* Disable/dim the big hero background image overlay behind text (causes brown/mud) */
+      :root[data-chloe-theme="dark"] main img,
+      :root[data-chloe-theme="dark"] main picture,
+      :root[data-chloe-theme="dark"] main video {
+        opacity: 1;
+      }
+
+      /* Target the background hero image specifically (most pages use an <img> with bg / "bg-" in src or a large absolute image) */
+      :root[data-chloe-theme="dark"] img[src*="bg"],
+      :root[data-chloe-theme="dark"] img[alt*="bg"],
+      :root[data-chloe-theme="dark"] img[src*="background"]{
+        opacity: 0.06 !important;
+        filter: saturate(0) brightness(0.7) !important;
+        animation: chloeMuddyFade 900ms ease-out 1;
+      }
+
+      /* Also catch common "background image" containers by id/class if present */
+      :root[data-chloe-theme="dark"] [class*="bg"],
+      :root[data-chloe-theme="dark"] [id*="bg"]{
+        animation: chloeMuddyFade 900ms ease-out 1;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        :root[data-chloe-theme="dark"] img[src*="bg"],
+        :root[data-chloe-theme="dark"] img[src*="background"],
+        :root[data-chloe-theme="dark"] img[alt*="bg"]{
+          animation: none !important;
+          opacity: 0.06 !important;
+          filter: saturate(0) brightness(0.70) !important;
+        }
+      }
+
+      /* Label bars + headings */
+      :root[data-chloe-theme="dark"] main h1,
+      :root[data-chloe-theme="dark"] main h2 {
+        background: var(--chloe-box-bg) !important;
+        color: var(--chloe-box-fg) !important;
+      }
+
+      /* Ensure meta/description stay warm off-white */
+      :root[data-chloe-theme="dark"] .chloe-meta,
+      :root[data-chloe-theme="dark"] .chloe-meta div {
+        color: var(--chloe-fg) !important;
+      }
+
+      /* Divider lines */
+      :root[data-chloe-theme="dark"] main hr {
+        border-top: 2px solid var(--chloe-rule) !important;
+      }
     </style>
-  </head>`
+`;
+  if (/<style\b[^>]*id=["']chloe-overrides["'][^>]*>[\s\S]*?<\/style>/i.test(html)) {
+    html = html.replace(
+      /<style\b[^>]*id=["']chloe-overrides["'][^>]*>[\s\S]*?<\/style>/i,
+      chloeOverridesCss.trimEnd()
     );
+  } else if (html.includes(".chloe-job-label")) {
+    html = html.replace(
+      /<style>\s*\.chloe-job-label[\s\S]*?<\/style>/i,
+      chloeOverridesCss.trimEnd()
+    );
+  } else {
+    const headPatched = html.replace(/<\/head>/i, `${chloeOverridesCss}  </head>`);
     if (headPatched === html) fail("HEAD_CLOSE_NOT_FOUND");
     html = headPatched;
   }
@@ -245,85 +379,87 @@ Marketing consulting | Previous experience with YC backed startups | Full in hou
 <hr />
 
 <h2 class="chloe-job-label">Stealth Startup - Founder</h2>
-<h3 ${META}>Feb 2026 - Present</h3>
-<ul ${META}><li>Remote</li></ul>
-<p ${META}>More news soon.</p>
+<div class="chloe-meta" ${META}>
+  <div class="chloe-date">Feb 2026 - Present</div>
+  <div>Remote</div>
+  <div>More news soon.</div>
+</div>
 
 <hr />
 
 <h2 class="chloe-job-label">Adobe - AI Search</h2>
-<h3 ${META}>Jan 2026 - Present</h3>
-<ul ${META}>
-  <li>Los Angeles Metropolitan Area  Remote</li>
-  <li>Contract</li>
-</ul>
-<p ${META}>Search optimization for LLM training &amp; retrieval. Not via an organization on campus.</p>
+<div class="chloe-meta" ${META}>
+  <div class="chloe-date">Jan 2026 - Present</div>
+  <div>Los Angeles Metropolitan Area  Remote</div>
+  <div>Contract</div>
+  <div>Search optimization for LLM training &amp; retrieval. Not via an organization on campus.</div>
+</div>
 
 <hr />
 
 <h2 class="chloe-job-label">Instagram - Creator</h2>
-<h3 ${META}>Jul 2025 - Present</h3>
-<ul ${META}>
-  <li>Los Angeles, California, United States  Hybrid</li>
-  <li>Self-employed</li>
-</ul>
-<p ${META}>
+<div class="chloe-meta" ${META}>
+  <div class="chloe-date">Jul 2025 - Present</div>
+  <div>Los Angeles, California, United States  Hybrid</div>
+  <div>Self-employed</div>
+  <div>
 300K+ followers<br/>
 250M views<br/>
 Grew IG from 0 to 140k+ in 3 months<br/>
 Viral series accumulated 200M views &amp; attention from major news outlets<br/>
-Worked with Adidas, Adobe, Estée Lauder, OpenAI, Hera, etc.
-</p>
-
-<hr />
-
-<h2 class="chloe-job-label">Outsmart - Product Marketing</h2>
-<h3 ${META}>Sep 2025 - Dec 2025</h3>
-<ul ${META}>
-  <li>Los Angeles, California, United States  Hybrid</li>
-  <li>Contract</li>
-</ul>
-<p ${META}>Product and growth directly under ex-CMO @ Duolingo, $38M raised, backed by DST Global, Lightspeed, Khosla Ventures, execs from OpenAI &amp; Quora.</p>
-
-<hr />
-
-<h2 class="chloe-job-label">Stealth AI Startup - Head of Growth</h2>
-<h3 ${META}>Jun 2025 - Sep 2025</h3>
-<ul ${META}>
-  <li>San Francisco, California, United States  On-site</li>
-  <li>Full-time</li>
-</ul>
-<p ${META}>Product and growth for B2C fashion tech, backed by execs from Shopify and Pinterest.</p>
-
-<hr />
-
-<h2 class="chloe-job-label">Soluna - Product Marketing Intern</h2>
-<h3 ${META}>Oct 2024 - Jun 2025</h3>
-<ul ${META}>
-  <li>Los Angeles, California, United States  Remote</li>
-  <li>Internship</li>
-</ul>
-<p ${META}>Streamlined Solunas GTM, drove 179% increase in revenue in US market.</p>
-
-<hr />
-
-<h2 class="chloe-job-label">Headspace - Digital Marketing Intern</h2>
-<h3 ${META}>May 2022 - Sep 2023</h3>
-<ul ${META}>
-  <li>Los Angeles, California, United States  Remote</li>
-  <li>Internship</li>
-</ul>
-<p ${META}>Tripled Headspaces social media presence in one year, youngest employee to earn an extended contract.</p>
+Worked with Adidas, Adobe, Est??e Lauder, OpenAI, Hera, etc.
+</div>
+</div>
 
 <hr />
 
 <h2 class="chloe-job-label">Single Origin Studio - CEO</h2>
-<h3 ${META}>Jun 2023 - Jan 2026</h3>
-<ul ${META}>
-  <li>Los Angeles, California, United States  Remote</li>
-  <li>Self-employed</li>
-</ul>
-<p ${META}>Marketing consulting | Previous experience with YC backed startups | Full in house marketing with UGC team management | Scaled brands from 0 to 50k+ users in 2 months | Generated 6 figures of revenue | Worked with pre-seed and early stage</p>
+<div class="chloe-meta" ${META}>
+  <div class="chloe-date">Jun 2023 - Jan 2026</div>
+  <div>Los Angeles, California, United States  Remote</div>
+  <div>Self-employed</div>
+  <div>Marketing consulting | Previous experience with YC backed startups | Full in house marketing with UGC team management | Scaled brands from 0 to 50k+ users in 2 months | Generated 6 figures of revenue | Worked with pre-seed and early stage</div>
+</div>
+
+<hr />
+
+<h2 class="chloe-job-label">Outsmart - Product Marketing</h2>
+<div class="chloe-meta" ${META}>
+  <div class="chloe-date">Sep 2025 - Dec 2025</div>
+  <div>Los Angeles, California, United States  Hybrid</div>
+  <div>Contract</div>
+  <div>Product and growth directly under ex-CMO @ Duolingo, $38M raised, backed by DST Global, Lightspeed, Khosla Ventures, execs from OpenAI &amp; Quora.</div>
+</div>
+
+<hr />
+
+<h2 class="chloe-job-label">Stealth AI Startup - Head of Growth</h2>
+<div class="chloe-meta" ${META}>
+  <div class="chloe-date">Jun 2025 - Sep 2025</div>
+  <div>San Francisco, California, United States  On-site</div>
+  <div>Full-time</div>
+  <div>Product and growth for B2C fashion tech, backed by execs from Shopify and Pinterest.</div>
+</div>
+
+<hr />
+
+<h2 class="chloe-job-label">Soluna - Product Marketing Intern</h2>
+<div class="chloe-meta" ${META}>
+  <div class="chloe-date">Oct 2024 - Jun 2025</div>
+  <div>Los Angeles, California, United States  Remote</div>
+  <div>Internship</div>
+  <div>Streamlined Solunas GTM, drove 179% increase in revenue in US market.</div>
+</div>
+
+<hr />
+
+<h2 class="chloe-job-label">Headspace - Digital Marketing Intern</h2>
+<div class="chloe-meta" ${META}>
+  <div class="chloe-date">May 2022 - Sep 2023</div>
+  <div>Los Angeles, California, United States  Remote</div>
+  <div>Internship</div>
+  <div>Tripled Headspaces social media presence in one year, youngest employee to earn an extended contract.</div>
+</div>
 
 <hr />
 `;
@@ -353,7 +489,23 @@ Worked with Adidas, Adobe, Estée Lauder, OpenAI, Hera, etc.
   if (!html.includes("Adobe - AI Search")) fail("ADOBE_PROJECT_MISSING");
   if (!html.includes("Instagram - Creator")) fail("INSTAGRAM_PROJECT_MISSING");
   if (!html.includes("Outsmart - Product Marketing")) fail("OUTSMART_PROJECT_MISSING");
+  if (!html.includes('class="chloe-date"')) fail("CHLOE_DATE_CLASS_MISSING");
+  const instagramIdx = html.indexOf("Instagram - Creator");
+  const singleOriginIdx = html.indexOf("Single Origin Studio - CEO");
+  const outsmartIdx = html.indexOf("Outsmart - Product Marketing");
+  if (instagramIdx === -1 || singleOriginIdx === -1 || outsmartIdx === -1) {
+    fail("PROJECT_ORDER_MARKERS_MISSING");
+  }
+  if (!(instagramIdx < singleOriginIdx && singleOriginIdx < outsmartIdx)) {
+    fail("SINGLE_ORIGIN_ORDER_INCORRECT");
+  }
   if (/<h1\b[^>]*>\s*contact\s*<\/h1>/i.test(html)) fail("CONTACT_SECTION_STILL_PRESENT");
+  if (CHLOE_THEME === "dark") {
+    if (!html.includes('data-chloe-theme="dark"')) fail("DARK_THEME_ATTR_MISSING");
+    if (!html.includes("--chloe-bg: #0F1115")) fail("DARK_THEME_CSS_MISSING");
+    if (!html.includes("--chloe-box-bg:#DDD6CC")) fail("DARK_THEME_BOX_BG_MISSING");
+    if (!html.includes('img[src*="bg"]')) fail("DARK_THEME_BG_IMG_SELECTOR_MISSING");
+  }
 
   fs.writeFileSync(indexPath, html, "utf8");
   console.log(`${prefix} DONE (scroll Projects replaced).`);
