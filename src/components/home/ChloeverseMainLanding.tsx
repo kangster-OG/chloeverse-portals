@@ -17,10 +17,12 @@ type ChloeverseMainLandingProps = {
 };
 
 type SpotTarget = "title" | "tagline" | null;
-type HoverRegion = "title" | "tagline" | "bg" | "none";
+type HoverRegion = "bg" | "title" | "small";
 type CursorMode = "idle" | "text" | "bg";
-type PortalPhase = "idle" | "entering" | "ready";
+type CssVars = CSSProperties & Record<`--${string}`, string>;
 
+const TITLE_TOP = "The";
+const TITLE_MAIN = "Chloeverse";
 const TAGLINE = "where storytelling meets tomorrow";
 const MENU_LINKS = [
   { href: "/projects", label: "PROJECTS" },
@@ -31,186 +33,244 @@ const MENU_LINKS = [
 ] as const;
 
 const SPOTLIGHT_RADIUS = 70;
-const BACKDROP_SPOTLIGHT_RADIUS = 34;
-const RAINBOW_COLORS = ["#ff4ea8", "#ff8a3d", "#ffd646", "#8aff5c", "#4ce4ff", "#6f8dff", "#da6dff"];
-const BACKDROP_COLORS = [
-  "#FF2D95",
-  "#FF3D00",
-  "#FFB300",
-  "#FFF44F",
-  "#00E676",
-  "#00E5FF",
-  "#2979FF",
-  "#7C4DFF",
-  "#E040FB",
-] as const;
+const CURSOR_LARGE_SIZE = 56;
+const CURSOR_MEDIUM_SIZE = CURSOR_LARGE_SIZE - 14;
+const CURSOR_SMALL_SIZE = CURSOR_LARGE_SIZE - 24;
+const BG_REVEAL_RADIUS = (CURSOR_LARGE_SIZE / 2) - 6;
+const CURSOR_HALO_LARGE_SIZE = 92;
+const CURSOR_HALO_MEDIUM_SIZE = CURSOR_HALO_LARGE_SIZE - 14;
+const CURSOR_HALO_SMALL_SIZE = CURSOR_HALO_LARGE_SIZE - 24;
+const POINTER_LERP = 0.16;
+const MASK_LERP = 0.2;
+const RAINBOW_COLORS = ["#ff4ea8", "#ff8a3d", "#ffd646", "#8aff5c", "#4ce4ff", "#6f8dff", "#da6dff"] as const;
 
-function seeded(seed: number, offset: number): number {
-  const value = Math.sin(seed * 78.233 + offset * 39.425) * 43758.5453;
-  return value - Math.floor(value);
-}
-
-function colorAt(seed: number, offset: number): string {
-  const index = Math.floor(seeded(seed, offset) * RAINBOW_COLORS.length) % RAINBOW_COLORS.length;
-  return RAINBOW_COLORS[index];
-}
-
-function backdropColorAt(seed: number, offset: number): string {
-  const index = Math.floor(seeded(seed, offset) * BACKDROP_COLORS.length) % BACKDROP_COLORS.length;
-  return BACKDROP_COLORS[index];
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const clean = hex.replace("#", "");
-  const full = clean.length === 3 ? clean.split("").map((char) => `${char}${char}`).join("") : clean;
-  const r = Number.parseInt(full.slice(0, 2), 16);
-  const g = Number.parseInt(full.slice(2, 4), 16);
-  const b = Number.parseInt(full.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-export function paintStyle(seed: number): CSSProperties {
-  const c1 = colorAt(seed, 1);
-  const c2 = colorAt(seed, 2);
-  const c3 = colorAt(seed, 3);
-  const c4 = colorAt(seed, 4);
-  const c5 = colorAt(seed, 5);
-
-  const p1x = 16 + seeded(seed, 11) * 68;
-  const p1y = 18 + seeded(seed, 12) * 64;
-  const p2x = 14 + seeded(seed, 13) * 72;
-  const p2y = 14 + seeded(seed, 14) * 70;
-  const p3x = 18 + seeded(seed, 15) * 64;
-  const p3y = 20 + seeded(seed, 16) * 66;
-  const p4x = 12 + seeded(seed, 17) * 74;
-  const p4y = 10 + seeded(seed, 18) * 76;
-  const angle = Math.floor(seeded(seed, 19) * 360);
-
-  const backgroundImage = [
-    `radial-gradient(circle at ${p1x}% ${p1y}%, ${c1} 0%, ${c1} 27%, transparent 62%)`,
-    `radial-gradient(circle at ${p2x}% ${p2y}%, ${c2} 0%, ${c2} 24%, transparent 58%)`,
-    `radial-gradient(circle at ${p3x}% ${p3y}%, ${c3} 0%, ${c3} 26%, transparent 60%)`,
-    `radial-gradient(circle at ${p4x}% ${p4y}%, ${c4} 0%, ${c4} 22%, transparent 52%)`,
-    `conic-gradient(from ${angle}deg at 52% 50%, ${c5}, ${c1}, ${c2}, ${c3}, ${c5})`,
-  ].join(", ");
-
-  return {
-    backgroundImage,
-    backgroundBlendMode: "screen,screen,screen,screen,normal",
-    backgroundClip: "text",
-    WebkitBackgroundClip: "text",
-    color: "transparent",
-    WebkitTextFillColor: "transparent",
-    WebkitTextStroke: "0.6px rgba(255,255,255,0.22)",
-    textShadow: "0 0 10px rgba(255,255,255,0.16), 0 0 26px rgba(255,255,255,0.08)",
+function mulberry32(a: number) {
+  return function rand() {
+    let t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-export function paintBackdropStyle(seed: number): CSSProperties {
-  const broadLayers: string[] = [];
-  const broadSizes: string[] = [];
-  const broadPositions: string[] = [];
-  const microLayers: string[] = [];
-  const microSizes: string[] = [];
-  const microPositions: string[] = [];
-
-  for (let i = 0; i < 12; i += 1) {
-    const c1 = backdropColorAt(seed, 300 + i * 5);
-    const c2 = backdropColorAt(seed, 301 + i * 5);
-    const c3 = backdropColorAt(seed, 302 + i * 5);
-    const c4 = backdropColorAt(seed, 303 + i * 5);
-    const c5 = backdropColorAt(seed, 304 + i * 5);
-    const angle = Math.floor(seeded(seed, 350 + i) * 360);
-    const size = [160, 200, 240][i % 3];
-    const px = Math.floor(seeded(seed, 390 + i) * size);
-    const py = Math.floor(seeded(seed, 430 + i) * size);
-
-    if (i % 3 === 0) {
-      broadLayers.push(
-        `repeating-conic-gradient(from ${angle}deg at 50% 50%, ${hexToRgba(c1, 0.58)} 0deg 18deg, ${hexToRgba(c2, 0.58)} 18deg 36deg, ${hexToRgba(c3, 0.58)} 36deg 54deg, ${hexToRgba(c4, 0.58)} 54deg 72deg, ${hexToRgba(c5, 0.58)} 72deg 90deg)`,
-      );
-    } else if (i % 3 === 1) {
-      broadLayers.push(
-        `conic-gradient(from ${angle}deg at 46% 54%, ${hexToRgba(c1, 0.52)} 0deg, ${hexToRgba(c2, 0.5)} 84deg, ${hexToRgba(c3, 0.54)} 164deg, ${hexToRgba(c4, 0.5)} 244deg, ${hexToRgba(c5, 0.56)} 360deg)`,
-      );
-    } else {
-      broadLayers.push(
-        `linear-gradient(${angle}deg, ${hexToRgba(c2, 0.46)} 0%, ${hexToRgba(c4, 0.52)} 38%, ${hexToRgba(c1, 0.48)} 72%, ${hexToRgba(c3, 0.56)} 100%)`,
-      );
-    }
-
-    broadSizes.push(`${size}px ${size}px`);
-    broadPositions.push(`${px}px ${py}px`);
-  }
-
-  for (let i = 0; i < 22; i += 1) {
-    const color = backdropColorAt(seed, 600 + i);
-    const x = Math.floor(8 + seeded(seed, 650 + i) * 84);
-    const y = Math.floor(8 + seeded(seed, 700 + i) * 84);
-    const radius = Math.floor(12 + seeded(seed, 750 + i) * 17);
-    const fade = radius + Math.floor(6 + seeded(seed, 800 + i) * 9);
-    const size = [128, 152, 176, 200][i % 4];
-    const px = Math.floor(seeded(seed, 840 + i) * size);
-    const py = Math.floor(seeded(seed, 880 + i) * size);
-    const alpha = 0.92 + seeded(seed, 920 + i) * 0.08;
-
-    microLayers.push(
-      `radial-gradient(circle at ${x}% ${y}%, ${hexToRgba(color, alpha)} 0px, ${hexToRgba(color, alpha)} ${radius}px, rgba(0,0,0,0) ${fade}px)`,
-    );
-    microSizes.push(`${size}px ${size}px`);
-    microPositions.push(`${px}px ${py}px`);
-  }
-
-  const microBlend = new Array(microLayers.length).fill("screen");
-  const broadBlend = new Array(broadLayers.length).fill("normal");
-
-  return {
-    backgroundColor: backdropColorAt(seed, 1337),
-    backgroundImage: [...microLayers, ...broadLayers].join(", "),
-    backgroundSize: [...microSizes, ...broadSizes].join(", "),
-    backgroundPosition: [...microPositions, ...broadPositions].join(", "),
-    backgroundBlendMode: [...microBlend, ...broadBlend].join(", "),
-    backgroundRepeat: "repeat",
-    filter: "saturate(1.35) contrast(1.18)",
-    opacity: 1,
-  };
-}
-
-function setMaskPosition(node: HTMLElement | null, x: number, y: number): void {
-  if (!node) {
-    return;
-  }
-  node.style.setProperty("--mx", `${x}px`);
-  node.style.setProperty("--my", `${y}px`);
-  node.style.setProperty("--r", `${SPOTLIGHT_RADIUS}px`);
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function pointInRect(x: number, y: number, rect: DOMRect): boolean {
-  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = hex.replace("#", "");
+  const value = normalized.length === 3
+    ? normalized.split("").map((char) => char + char).join("")
+    : normalized;
+  const int = Number.parseInt(value, 16);
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function rainbowColor(r: number): string {
+  const index = Math.floor(r * RAINBOW_COLORS.length) % RAINBOW_COLORS.length;
+  return RAINBOW_COLORS[index] ?? RAINBOW_COLORS[0];
+}
+
+function paintStyle(seed: number): CSSProperties {
+  const rnd = mulberry32(seed >>> 0);
+
+  const c1 = rainbowColor(rnd());
+  const c2 = rainbowColor(rnd());
+  const c3 = rainbowColor(rnd());
+  const c4 = rainbowColor(rnd());
+  const c5 = rainbowColor(rnd());
+
+  const p1x = 12 + rnd() * 76;
+  const p1y = 14 + rnd() * 72;
+  const p2x = 14 + rnd() * 72;
+  const p2y = 16 + rnd() * 68;
+  const p3x = 10 + rnd() * 80;
+  const p3y = 22 + rnd() * 60;
+  const p4x = 16 + rnd() * 68;
+  const p4y = 8 + rnd() * 78;
+  const angle = Math.floor(rnd() * 360);
+
+  return {
+    backgroundImage: [
+      `radial-gradient(circle at ${p1x}% ${p1y}%, ${c1} 0%, ${c1} 24%, transparent 58%)`,
+      `radial-gradient(circle at ${p2x}% ${p2y}%, ${c2} 0%, ${c2} 26%, transparent 62%)`,
+      `radial-gradient(circle at ${p3x}% ${p3y}%, ${c3} 0%, ${c3} 22%, transparent 60%)`,
+      `radial-gradient(circle at ${p4x}% ${p4y}%, ${c4} 0%, ${c4} 20%, transparent 56%)`,
+      `linear-gradient(${angle}deg, ${hexToRgba(c5, 0.94)} 0%, ${hexToRgba(c1, 0.92)} 50%, ${hexToRgba(c3, 0.94)} 100%)`,
+    ].join(", "),
+    backgroundSize: "100% 100%",
+    backgroundRepeat: "no-repeat",
+    backgroundClip: "text",
+    WebkitBackgroundClip: "text",
+    color: "transparent",
+    WebkitTextFillColor: "transparent",
+    WebkitTextStroke: "0.7px rgba(255,255,255,0.08)",
+    textShadow:
+      "0 0 1px rgba(255,255,255,0.12), 0 0 12px rgba(255,255,255,0.06), 0 6px 22px rgba(0,0,0,0.35)",
+  };
+}
+
+function paintBackdropStyle(seed: number): CSSProperties {
+  const rnd = mulberry32((seed ^ 0x9e3779b9) >>> 0);
+  const layers: string[] = [];
+  const fieldCount = 12;
+  const microCount = 92;
+
+  for (let i = 0; i < fieldCount; i += 1) {
+    const x = 6 + rnd() * 88;
+    const y = 6 + rnd() * 88;
+    const spread = 42 + rnd() * 34;
+    const color = rainbowColor(rnd());
+    const alpha = 0.22 + rnd() * 0.13;
+    layers.push(
+      `radial-gradient(circle ${spread.toFixed(2)}% at ${x.toFixed(2)}% ${y.toFixed(2)}%, ${hexToRgba(color, alpha)} 0%, ${hexToRgba(color, Math.max(0.08, alpha - 0.12))} 56%, rgba(0,0,0,0) 100%)`,
+    );
+  }
+
+  for (let i = 0; i < microCount; i += 1) {
+    const x = rnd() * 100;
+    const y = rnd() * 100;
+    const radius = 10 + rnd() * 20;
+    const feather = 8 + rnd() * 10;
+    const alpha = 0.75 + rnd() * 0.2;
+    const colorA = rainbowColor(rnd());
+    const colorB = rainbowColor(rnd());
+
+    layers.push(
+      `radial-gradient(circle at ${x.toFixed(2)}% ${y.toFixed(2)}%, ${hexToRgba(colorA, alpha)} 0px, ${hexToRgba(colorA, alpha)} ${radius.toFixed(2)}px, ${hexToRgba(colorB, Math.max(0.62, alpha - 0.22))} ${(radius + feather * 0.55).toFixed(2)}px, rgba(0,0,0,0) ${(radius + feather).toFixed(2)}px)`,
+    );
+  }
+
+  return {
+    backgroundImage: layers.join(", "),
+    backgroundRepeat: "no-repeat",
+    filter: "saturate(1.1) contrast(1.05)",
+    opacity: 1,
+  };
+}
+
+function paintCursorFillStyle(seed: number): CSSProperties {
+  const rnd = mulberry32((seed ^ 0xa5a5a5a5) >>> 0);
+  const chunkLayers: string[] = [];
+  const microLayers: string[] = [];
+  const baseLayers: string[] = [];
+  const paletteSize = RAINBOW_COLORS.length;
+  const colorOffset = Math.floor(rnd() * paletteSize);
+
+  const wrapDistance = (a: number, b: number) => {
+    const diff = Math.abs(a - b);
+    return Math.min(diff, paletteSize - diff);
+  };
+
+  const pickFarIndex = (used: number[], minGap: number) => {
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const candidate = Math.floor(rnd() * paletteSize);
+      if (used.every((index) => wrapDistance(index, candidate) >= minGap)) {
+        return candidate;
+      }
+    }
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const candidate = Math.floor(rnd() * paletteSize);
+      if (used.every((index) => wrapDistance(index, candidate) >= Math.max(2, minGap - 1))) {
+        return candidate;
+      }
+    }
+    return (used[used.length - 1] + 3) % paletteSize;
+  };
+
+  for (let i = 0; i < 6; i += 1) {
+    const x = 14 + rnd() * 72;
+    const y = 14 + rnd() * 72;
+    const i1 = Math.floor(rnd() * paletteSize);
+    const i2 = pickFarIndex([i1], 3);
+    const i3 = pickFarIndex([i1, i2], 3);
+    const c1 = RAINBOW_COLORS[i1] ?? RAINBOW_COLORS[0];
+    const c2 = RAINBOW_COLORS[i2] ?? RAINBOW_COLORS[0];
+    const c3 = RAINBOW_COLORS[i3] ?? RAINBOW_COLORS[0];
+    baseLayers.push(
+      `radial-gradient(circle at ${x.toFixed(2)}% ${y.toFixed(2)}%, ${hexToRgba(c1, 1)} 0%, ${hexToRgba(c1, 1)} 28%, ${hexToRgba(c2, 1)} 62%, ${hexToRgba(c3, 1)} 100%)`,
+    );
+  }
+
+  for (let i = 0; i < 52; i += 1) {
+    const x = rnd() * 100;
+    const y = rnd() * 100;
+    const color = RAINBOW_COLORS[(i + colorOffset) % RAINBOW_COLORS.length] ?? RAINBOW_COLORS[0];
+    const radius = 14 + rnd() * 20;
+    chunkLayers.push(
+      `radial-gradient(circle at ${x.toFixed(2)}% ${y.toFixed(2)}%, ${hexToRgba(color, 0.95)} 0px, ${hexToRgba(color, 0.95)} ${radius.toFixed(2)}px, rgba(0,0,0,0) ${(radius + 3).toFixed(2)}px)`,
+    );
+  }
+
+  for (let i = 0; i < 144; i += 1) {
+    const x = rnd() * 100;
+    const y = rnd() * 100;
+    const color = RAINBOW_COLORS[(i + colorOffset + 3) % RAINBOW_COLORS.length] ?? RAINBOW_COLORS[0];
+    const radius = 6 + rnd() * 10;
+    microLayers.push(
+      `radial-gradient(circle at ${x.toFixed(2)}% ${y.toFixed(2)}%, ${hexToRgba(color, 0.9)} 0px, ${hexToRgba(color, 0.9)} ${radius.toFixed(2)}px, rgba(0,0,0,0) ${(radius + 10).toFixed(2)}px)`,
+    );
+  }
+
+  return {
+    backgroundImage: [...microLayers, ...chunkLayers, ...baseLayers].join(", "),
+    backgroundRepeat: "repeat",
+    backgroundSize: "360px 360px",
+    filter: "saturate(1.15) contrast(1.1)",
+  };
 }
 
 function typingDelay(char: string): number {
   let ms = 55;
   if (char === " ") {
     ms += 120;
-  }
-  if (/[.,!?;:]/.test(char)) {
+  } else if (/[.,!?;:]/.test(char)) {
     ms += 220;
   }
   return ms;
 }
 
-export default function ChloeverseMainLanding({ titleFontClassName, monoFontClassName }: ChloeverseMainLandingProps) {
+function setMaskPosition(element: HTMLElement | null, x: number, y: number, radiusPx = SPOTLIGHT_RADIUS): void {
+  if (!element) {
+    return;
+  }
+  element.style.setProperty("--mx", `${x}px`);
+  element.style.setProperty("--my", `${y}px`);
+  element.style.setProperty("--r", `${radiusPx}px`);
+}
+
+function updateMaskTarget(
+  clientX: number,
+  clientY: number,
+  host: HTMLElement | null,
+  targetRef: MutableRefObject<{ x: number; y: number }>,
+): void {
+  if (!host) {
+    return;
+  }
+  const rect = host.getBoundingClientRect();
+  targetRef.current = {
+    x: clamp(clientX - rect.left, 0, rect.width),
+    y: clamp(clientY - rect.top, 0, rect.height),
+  };
+}
+
+export default function ChloeverseMainLanding({
+  titleFontClassName,
+  monoFontClassName,
+}: ChloeverseMainLandingProps) {
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const cursorFillRef = useRef<HTMLDivElement>(null);
   const bgRainbowRef = useRef<HTMLDivElement>(null);
   const titleHitRef = useRef<HTMLDivElement>(null);
   const titleOverlayRef = useRef<HTMLDivElement>(null);
   const taglineHitRef = useRef<HTMLDivElement>(null);
-  const taglineOverlayRef = useRef<HTMLParagraphElement>(null);
-  const cursorRef = useRef<HTMLDivElement>(null);
+  const taglineOverlayRef = useRef<HTMLDivElement>(null);
+  const menuHitRef = useRef<HTMLElement>(null);
+  const scrollHintRef = useRef<HTMLParagraphElement>(null);
 
   const pointerTargetRef = useRef({ x: 0, y: 0 });
   const pointerCurrentRef = useRef({ x: 0, y: 0 });
@@ -218,10 +278,8 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
   const titleMaskCurrentRef = useRef({ x: 0, y: 0 });
   const taglineMaskTargetRef = useRef({ x: 0, y: 0 });
   const taglineMaskCurrentRef = useRef({ x: 0, y: 0 });
-  const bgRadiusTargetRef = useRef(0);
   const bgRadiusCurrentRef = useRef(0);
-  const hoverRegionRef = useRef<HoverRegion>("none");
-  const portalTriggeredRef = useRef(false);
+  const sawFinePointerRef = useRef(false);
 
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isFinePointer, setIsFinePointer] = useState(false);
@@ -229,42 +287,97 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
   const [typedText, setTypedText] = useState("");
   const [typingDone, setTypingDone] = useState(false);
   const [activeSpotTarget, setActiveSpotTarget] = useState<SpotTarget>(null);
+  const [hoverRegion, setHoverRegion] = useState<HoverRegion>("bg");
   const [hasPointer, setHasPointer] = useState(false);
   const [cursorMode, setCursorMode] = useState<CursorMode>("idle");
-  const [portalPhase, setPortalPhase] = useState<PortalPhase>("idle");
+  const [menuVisible, setMenuVisible] = useState(false);
 
-  const backdropPaint = useMemo(() => paintBackdropStyle(933), []);
+  const backdropPaint = useMemo(() => paintBackdropStyle(1337), []);
+  const cursorBgPaint = useMemo(() => paintCursorFillStyle(1337), []);
+  const bgMaskStyle = useMemo<CssVars>(
+    () => ({
+      ...backdropPaint,
+      "--bgx": "50vw",
+      "--bgy": "50vh",
+      "--bgr": "0px",
+      WebkitMaskImage:
+        "radial-gradient(circle var(--bgr) at var(--bgx) var(--bgy), rgba(0,0,0,1) 0%, rgba(0,0,0,1) 94%, rgba(0,0,0,0) 100%)",
+      maskImage:
+        "radial-gradient(circle var(--bgr) at var(--bgx) var(--bgy), rgba(0,0,0,1) 0%, rgba(0,0,0,1) 94%, rgba(0,0,0,0) 100%)",
+      WebkitMaskRepeat: "no-repeat",
+      maskRepeat: "no-repeat",
+      willChange: "mask-image, -webkit-mask-image",
+    }),
+    [backdropPaint],
+  );
+  const textMaskStyle = useMemo<CssVars>(
+    () => ({
+      "--mx": "50%",
+      "--my": "50%",
+      "--r": `${SPOTLIGHT_RADIUS}px`,
+    }),
+    [],
+  );
+
+  const titleTransition = prefersReducedMotion
+    ? "none"
+    : "opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1)";
+  const menuTransition = prefersReducedMotion
+    ? "none"
+    : "opacity 650ms cubic-bezier(0.16, 1, 0.3, 1), transform 650ms cubic-bezier(0.16, 1, 0.3, 1)";
+
+  const syncPointerModeFromType = (pointerType: string | undefined) => {
+    if (pointerType === "mouse" || pointerType === "pen") {
+      sawFinePointerRef.current = true;
+      if (!isFinePointer) {
+        setIsFinePointer(true);
+      }
+      return true;
+    }
+    if (pointerType === "touch") {
+      if (isFinePointer) {
+        setIsFinePointer(false);
+      }
+      setHasPointer(false);
+      setActiveSpotTarget(null);
+      setHoverRegion("bg");
+      setCursorMode("idle");
+      return false;
+    }
+    return isFinePointer;
+  };
 
   useEffect(() => {
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const finePointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
 
     const syncMotion = () => setPrefersReducedMotion(reducedMotionQuery.matches);
-    const syncPointer = () => {
+    const syncPointerHint = () => {
       const fine = finePointerQuery.matches;
-      setIsFinePointer(fine);
-      if (!fine) {
-        hoverRegionRef.current = "none";
-        bgRadiusTargetRef.current = 0;
-        bgRadiusCurrentRef.current = 0;
-        setActiveSpotTarget(null);
-        setCursorMode("idle");
-        setHasPointer(false);
-        if (bgRainbowRef.current) {
-          bgRainbowRef.current.style.setProperty("--bgr", "0px");
-        }
+      if (fine) {
+        setIsFinePointer(true);
+        return;
       }
+      if (sawFinePointerRef.current) {
+        return;
+      }
+      setIsFinePointer(false);
+      setHasPointer(false);
+      setActiveSpotTarget(null);
+      setHoverRegion("bg");
+      setCursorMode("idle");
+      bgRadiusCurrentRef.current = 0;
+      bgRainbowRef.current?.style.setProperty("--bgr", "0px");
     };
 
     syncMotion();
-    syncPointer();
+    syncPointerHint();
 
     reducedMotionQuery.addEventListener("change", syncMotion);
-    finePointerQuery.addEventListener("change", syncPointer);
-
+    finePointerQuery.addEventListener("change", syncPointerHint);
     return () => {
       reducedMotionQuery.removeEventListener("change", syncMotion);
-      finePointerQuery.removeEventListener("change", syncPointer);
+      finePointerQuery.removeEventListener("change", syncPointerHint);
     };
   }, []);
 
@@ -272,64 +385,58 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
     const syncCenters = () => {
       const titleRect = titleHitRef.current?.getBoundingClientRect();
       if (titleRect) {
-        const centered = { x: titleRect.width * 0.5, y: titleRect.height * 0.5 };
-        titleMaskTargetRef.current = centered;
-        titleMaskCurrentRef.current = centered;
-        setMaskPosition(titleOverlayRef.current, centered.x, centered.y);
+        const center = { x: titleRect.width * 0.5, y: titleRect.height * 0.5 };
+        titleMaskTargetRef.current = center;
+        titleMaskCurrentRef.current = center;
+        setMaskPosition(titleOverlayRef.current, center.x, center.y);
       }
 
       const taglineRect = taglineHitRef.current?.getBoundingClientRect();
       if (taglineRect) {
-        const centered = { x: taglineRect.width * 0.5, y: taglineRect.height * 0.5 };
-        taglineMaskTargetRef.current = centered;
-        taglineMaskCurrentRef.current = centered;
-        setMaskPosition(taglineOverlayRef.current, centered.x, centered.y);
+        const center = { x: taglineRect.width * 0.5, y: taglineRect.height * 0.5 };
+        taglineMaskTargetRef.current = center;
+        taglineMaskCurrentRef.current = center;
+        setMaskPosition(taglineOverlayRef.current, center.x, center.y);
       }
     };
 
     syncCenters();
     window.addEventListener("resize", syncCenters);
     return () => window.removeEventListener("resize", syncCenters);
-  }, []);
+  }, [typedText]);
 
   useEffect(() => {
+    setTitleEntered(prefersReducedMotion);
+    setTypedText(prefersReducedMotion ? TAGLINE : "");
+    setTypingDone(prefersReducedMotion);
+
+    if (prefersReducedMotion) {
+      return;
+    }
+
     let titleTimer = 0;
-    let stepTimer = 0;
     let startTimer = 0;
+    let stepTimer = 0;
+    let index = 0;
 
-    const kickoffTimer = window.setTimeout(() => {
-      if (prefersReducedMotion) {
-        setTitleEntered(true);
-        setTypedText(TAGLINE);
-        setTypingDone(true);
-        return;
-      }
+    titleTimer = window.setTimeout(() => {
+      setTitleEntered(true);
+    }, 40);
 
-      setTitleEntered(false);
-      setTypedText("");
-      setTypingDone(false);
-
-      titleTimer = window.setTimeout(() => {
-        setTitleEntered(true);
-      }, 32);
-
-      startTimer = window.setTimeout(() => {
-        let index = 0;
-        const tick = () => {
-          index += 1;
-          setTypedText(TAGLINE.slice(0, index));
-          if (index >= TAGLINE.length) {
-            setTypingDone(true);
-            return;
-          }
-          stepTimer = window.setTimeout(tick, typingDelay(TAGLINE[index - 1]));
-        };
-        tick();
-      }, 1000);
-    }, 0);
+    startTimer = window.setTimeout(() => {
+      const tick = () => {
+        index += 1;
+        setTypedText(TAGLINE.slice(0, index));
+        if (index >= TAGLINE.length) {
+          setTypingDone(true);
+          return;
+        }
+        stepTimer = window.setTimeout(tick, typingDelay(TAGLINE[index] ?? ""));
+      };
+      tick();
+    }, 1000);
 
     return () => {
-      window.clearTimeout(kickoffTimer);
       window.clearTimeout(titleTimer);
       window.clearTimeout(startTimer);
       window.clearTimeout(stepTimer);
@@ -337,19 +444,28 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
   }, [prefersReducedMotion]);
 
   useEffect(() => {
-    if (!isFinePointer) {
-      if (bgRainbowRef.current) {
-        bgRainbowRef.current.style.setProperty("--bgr", "0px");
-      }
-      return;
-    }
+    const onScroll = () => {
+      setMenuVisible(window.scrollY > 24);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
+  useEffect(() => {
     let frame = 0;
-    const pointerLerp = prefersReducedMotion ? 1 : 0.16;
-    const maskLerp = prefersReducedMotion ? 1 : 0.2;
-    const bgLerp = prefersReducedMotion ? 1 : 0.25;
+    const pointerLerp = prefersReducedMotion ? 1 : POINTER_LERP;
+    const maskLerp = prefersReducedMotion ? 1 : MASK_LERP;
 
     const animate = () => {
+      if (!isFinePointer) {
+        bgRadiusCurrentRef.current = 0;
+        bgRainbowRef.current?.style.setProperty("--bgr", "0px");
+        cursorRef.current?.style.setProperty("--fillOpacity", "0");
+        cursorRef.current?.style.setProperty("--fillInset", "6px");
+        return;
+      }
+
       const pointerTarget = pointerTargetRef.current;
       const pointerCurrent = pointerCurrentRef.current;
       pointerCurrent.x += (pointerTarget.x - pointerCurrent.x) * pointerLerp;
@@ -371,13 +487,31 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
       taglineCurrent.y += (taglineTarget.y - taglineCurrent.y) * maskLerp;
       setMaskPosition(taglineOverlayRef.current, taglineCurrent.x, taglineCurrent.y);
 
-      bgRadiusTargetRef.current = hoverRegionRef.current === "bg" ? BACKDROP_SPOTLIGHT_RADIUS : 0;
-      bgRadiusCurrentRef.current += (bgRadiusTargetRef.current - bgRadiusCurrentRef.current) * bgLerp;
+      const bgTarget = (isFinePointer && hasPointer && hoverRegion === "bg") ? BG_REVEAL_RADIUS : 0;
+      if (prefersReducedMotion) {
+        bgRadiusCurrentRef.current = bgTarget;
+      } else {
+        bgRadiusCurrentRef.current += (bgTarget - bgRadiusCurrentRef.current) * 0.2;
+      }
 
       if (bgRainbowRef.current) {
         bgRainbowRef.current.style.setProperty("--bgx", `${pointerCurrent.x}px`);
         bgRainbowRef.current.style.setProperty("--bgy", `${pointerCurrent.y}px`);
         bgRainbowRef.current.style.setProperty("--bgr", `${Math.max(0, bgRadiusCurrentRef.current)}px`);
+      }
+      if (cursorRef.current) {
+        const showCursorBg = isFinePointer && hoverRegion === "bg";
+        cursorRef.current.style.setProperty("--fillOpacity", showCursorBg ? "1" : "0");
+        cursorRef.current.style.setProperty("--fillInset", showCursorBg ? "1px" : "6px");
+      }
+      if (cursorFillRef.current) {
+        const showCursorBg = isFinePointer && hoverRegion === "bg";
+        if (showCursorBg) {
+          const tile = 420;
+          const ox = ((-pointerCurrent.x * 0.7) % tile + tile) % tile;
+          const oy = ((-pointerCurrent.y * 0.7) % tile + tile) % tile;
+          cursorFillRef.current.style.backgroundPosition = `${ox}px ${oy}px`;
+        }
       }
 
       frame = window.requestAnimationFrame(animate);
@@ -385,270 +519,307 @@ export default function ChloeverseMainLanding({ titleFontClassName, monoFontClas
 
     frame = window.requestAnimationFrame(animate);
     return () => window.cancelAnimationFrame(frame);
-  }, [isFinePointer, prefersReducedMotion]);
+  }, [activeSpotTarget, hasPointer, hoverRegion, isFinePointer, prefersReducedMotion]);
 
-  useEffect(() => {
-    if (portalTriggeredRef.current) {
-      return;
-    }
-
-    const onScroll = () => {
-      if (portalTriggeredRef.current || window.scrollY <= 24) {
-        return;
-      }
-      portalTriggeredRef.current = true;
-      setPortalPhase("entering");
-      window.removeEventListener("scroll", onScroll);
-    };
-
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    if (portalPhase !== "entering") {
-      return;
-    }
-    const timer = window.setTimeout(
-      () => {
-        setPortalPhase("ready");
-      },
-      prefersReducedMotion ? 0 : 900,
-    );
-    return () => window.clearTimeout(timer);
-  }, [portalPhase, prefersReducedMotion]);
-
-  const updateMaskTarget = (
-    clientX: number,
-    clientY: number,
-    host: HTMLElement | null,
-    targetRef: MutableRefObject<{ x: number; y: number }>,
-  ) => {
-    if (!host) {
-      return;
-    }
-    const rect = host.getBoundingClientRect();
-    targetRef.current = {
-      x: clamp(clientX - rect.left, 0, rect.width),
-      y: clamp(clientY - rect.top, 0, rect.height),
-    };
-  };
-
-  const applyRegion = (region: HoverRegion) => {
-    if (region === hoverRegionRef.current) {
-      return;
-    }
-
-    hoverRegionRef.current = region;
-    if (region === "title" || region === "tagline") {
-      setActiveSpotTarget(region);
+  const applyRegion = (region: HoverRegion, spotTarget: SpotTarget) => {
+    setHoverRegion(region);
+    if (spotTarget) {
+      setActiveSpotTarget(spotTarget);
       setCursorMode("text");
       return;
     }
-    if (region === "bg") {
-      setActiveSpotTarget(null);
-      setCursorMode("bg");
+    setActiveSpotTarget(null);
+    setCursorMode("bg");
+  };
+
+  const onRootPointerEnter = (event: PointerEvent<HTMLElement>) => {
+    const fine = syncPointerModeFromType(event.pointerType);
+    if (!fine) {
       return;
     }
-    setActiveSpotTarget(null);
-    setCursorMode("idle");
+    pointerTargetRef.current = { x: event.clientX, y: event.clientY };
+    if (!hasPointer) {
+      pointerCurrentRef.current = { x: event.clientX, y: event.clientY };
+    }
+    setHasPointer(true);
+    setHoverRegion("bg");
+    setCursorMode("bg");
   };
 
   const onRootPointerMove = (event: PointerEvent<HTMLElement>) => {
-    if (!isFinePointer) {
+    const fine = syncPointerModeFromType(event.pointerType);
+    if (!fine) {
       return;
     }
 
-    const clientX = event.clientX;
-    const clientY = event.clientY;
-    pointerTargetRef.current = { x: clientX, y: clientY };
-
-    const titleRect = titleHitRef.current?.getBoundingClientRect();
-    const taglineRect = taglineHitRef.current?.getBoundingClientRect();
-
-    if (titleRect && pointInRect(clientX, clientY, titleRect)) {
-      updateMaskTarget(clientX, clientY, titleHitRef.current, titleMaskTargetRef);
-      applyRegion("title");
-    } else if (taglineRect && pointInRect(clientX, clientY, taglineRect)) {
-      updateMaskTarget(clientX, clientY, taglineHitRef.current, taglineMaskTargetRef);
-      applyRegion("tagline");
-    } else {
-      applyRegion("bg");
+    const x = event.clientX;
+    const y = event.clientY;
+    pointerTargetRef.current = { x, y };
+    if (!hasPointer) {
+      pointerCurrentRef.current = { x, y };
     }
 
+    const inRect = (rect: DOMRect | undefined) => !!rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    const titleRect = titleHitRef.current?.getBoundingClientRect();
+    const taglineRect = taglineHitRef.current?.getBoundingClientRect();
+    const menuRect = menuVisible ? menuHitRef.current?.getBoundingClientRect() : undefined;
+    const scrollRect = scrollHintRef.current?.getBoundingClientRect();
+    const isTitle = inRect(titleRect);
+    const isTagline = inRect(taglineRect);
+    const isMenu = inRect(menuRect);
+    const isScrollHint = inRect(scrollRect);
+
+    const region: HoverRegion = isTitle
+      ? "title"
+      : (isTagline || isMenu || isScrollHint)
+          ? "small"
+          : "bg";
+    const spotTarget: SpotTarget = isTitle ? "title" : isTagline ? "tagline" : null;
+
+    if (spotTarget === "title") {
+      updateMaskTarget(x, y, titleHitRef.current, titleMaskTargetRef);
+    } else if (spotTarget === "tagline") {
+      updateMaskTarget(x, y, taglineHitRef.current, taglineMaskTargetRef);
+    }
+
+    applyRegion(region, spotTarget);
     setHasPointer(true);
   };
 
-  const renderPaintedText = (text: string, seedStart: number) =>
-    Array.from(text).map((char, index) => {
-      if (char === " ") {
-        return (
-          <span key={`${seedStart}-${index}`} aria-hidden>
-            &nbsp;
-          </span>
-        );
-      }
-      return (
-        <span key={`${seedStart}-${index}`} style={paintStyle(seedStart + index * 17)}>
-          {char}
-        </span>
-      );
-    });
+  const onRootPointerLeave = () => {
+    setHasPointer(false);
+    setActiveSpotTarget(null);
+    setHoverRegion("bg");
+    setCursorMode("idle");
+    bgRadiusCurrentRef.current = 0;
+    bgRainbowRef.current?.style.setProperty("--bgr", "0px");
+  };
 
-  const renderPlainText = (text: string, seedStart: number) =>
+  const renderPaintedText = (text: string, seedStart: number) =>
     Array.from(text).map((char, index) => (
-      <span key={`${seedStart}-${index}`} className="text-white [text-shadow:0_0_12px_rgba(255,255,255,0.2)]">
+      <span
+        key={`${seedStart}-${index}`}
+        style={paintStyle(seedStart + index * 37)}
+        className="inline-block"
+      >
         {char === " " ? "\u00A0" : char}
       </span>
     ));
 
-  const heroTransition = prefersReducedMotion
-    ? "none"
-    : "opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1)";
+  const renderPlainText = (text: string, seedStart: number) =>
+    Array.from(text).map((char, index) => (
+      <span
+        key={`${seedStart}-${index}`}
+        className="inline-block text-white [text-shadow:0_0_14px_rgba(255,255,255,0.13)]"
+      >
+        {char === " " ? "\u00A0" : char}
+      </span>
+    ));
+
+  const cursorSize = !hasPointer
+    ? 10
+    : hoverRegion === "bg"
+      ? CURSOR_LARGE_SIZE
+      : hoverRegion === "title"
+        ? CURSOR_MEDIUM_SIZE
+        : CURSOR_SMALL_SIZE;
+  const cursorHaloSize = !hasPointer
+    ? 16
+    : hoverRegion === "bg"
+      ? CURSOR_HALO_LARGE_SIZE
+      : hoverRegion === "title"
+        ? CURSOR_HALO_MEDIUM_SIZE
+        : CURSOR_HALO_SMALL_SIZE;
+
+  const cursorCoreClass =
+    cursorMode === "text"
+      ? "border-white/90 bg-white/10 shadow-[0_0_18px_rgba(255,255,255,0.35)]"
+      : cursorMode === "bg"
+        ? "border-white/60 bg-white/[0.03] shadow-[0_0_24px_rgba(255,255,255,0.16),inset_0_0_0_1px_rgba(255,255,255,0.07)]"
+        : "border-white/50 bg-white/90 shadow-[0_0_12px_rgba(255,255,255,0.2)]";
+
+  const cursorHaloClass =
+    cursorMode === "text"
+      ? "opacity-45 shadow-[0_0_28px_rgba(255,255,255,0.22)]"
+      : cursorMode === "bg"
+        ? "opacity-50 shadow-[0_0_24px_rgba(255,255,255,0.12),0_0_44px_rgba(255,255,255,0.08)]"
+        : "opacity-40 shadow-[0_0_16px_rgba(255,255,255,0.14)]";
+  const showBgRainbow = isFinePointer && hoverRegion === "bg";
 
   return (
     <main
+      onPointerEnter={onRootPointerEnter}
       onPointerMove={onRootPointerMove}
-      onPointerLeave={() => {
-        applyRegion("none");
-        bgRadiusTargetRef.current = 0;
-        setHasPointer(false);
-      }}
+      onPointerLeave={onRootPointerLeave}
       className={`relative min-h-[240vh] overflow-x-clip bg-black text-white ${isFinePointer ? "chv-home-cursorless" : ""}`}
     >
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 chv-vignette" />
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 chv-filmgrain" />
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-[1]">
-        <div ref={bgRainbowRef} className="absolute inset-0 home-bg-rainbow home-spotlight-mask-bg" style={backdropPaint} />
+      <div aria-hidden className="absolute inset-0 z-0 bg-black" />
+
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-10">
+        <div ref={bgRainbowRef} className="absolute inset-0" style={bgMaskStyle} />
       </div>
 
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-20 chv-vignette" />
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-20 chv-filmgrain" />
+
       {isFinePointer ? (
-        <div ref={cursorRef} aria-hidden className="pointer-events-none fixed left-0 top-0 z-50" style={{ opacity: hasPointer ? 1 : 0 }}>
+        <div
+          ref={cursorRef}
+          aria-hidden
+          className="pointer-events-none fixed left-0 top-0 z-50 transition-opacity duration-200"
+          style={{
+            opacity: hasPointer ? 1 : 0,
+            "--fillInset": "6px",
+            "--fillOpacity": "0",
+            "--fillBaseSize": `${cursorSize}px`,
+          } as CssVars}
+        >
           <div
-            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height,background-color,border-color,box-shadow,opacity] duration-200 ${
-              cursorMode === "text"
-                ? "home-cursor-core--text"
-                : cursorMode === "bg"
-                  ? "home-cursor-core--bg"
-                  : "home-cursor-core--idle"
-            }`}
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ${cursorHaloClass}`}
+            style={{ width: `${cursorHaloSize}px`, height: `${cursorHaloSize}px` }}
           />
           <div
-            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height,box-shadow,opacity] duration-200 ${
-              cursorMode === "text"
-                ? "home-cursor-halo--text"
-                : cursorMode === "bg"
-                  ? "home-cursor-halo--bg"
-                  : "home-cursor-halo--idle"
-            }`}
+            ref={cursorFillRef}
+            aria-hidden
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              width: "calc(var(--fillBaseSize) - (var(--fillInset) * 2))",
+              height: "calc(var(--fillBaseSize) - (var(--fillInset) * 2))",
+              ...cursorBgPaint,
+              opacity: "var(--fillOpacity)",
+              transition: "opacity 120ms ease",
+            }}
+          />
+          <div
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border transition-all duration-200 ${cursorCoreClass}`}
+            style={{
+              width: `${cursorSize}px`,
+              height: `${cursorSize}px`,
+              backgroundColor: showBgRainbow ? "transparent" : undefined,
+            }}
           />
         </div>
       ) : null}
 
-      <section className="sticky top-0 z-10 flex min-h-screen items-center justify-center px-6">
-        <div className="relative flex w-full max-w-6xl flex-col items-center text-center">
-          <div
-            ref={titleHitRef}
-            className="relative inline-block select-none"
-            style={{
-              opacity: titleEntered ? 1 : 0,
-              transform: titleEntered ? "translateY(0)" : "translateY(10px)",
-              transition: heroTransition,
-            }}
-          >
-            <div className={`${titleFontClassName} leading-[0.84] tracking-[0.02em]`}>
-              <p className="text-[clamp(1.8rem,3.6vw,3.2rem)]">{renderPaintedText("The", 101)}</p>
-              <p className="mt-2 text-[clamp(5.5rem,10.6vw,10.2rem)]">{renderPaintedText("Chloeverse", 270)}</p>
-            </div>
-
+      <div className="relative z-30">
+        <section className="sticky top-0 flex min-h-screen items-center justify-center px-6">
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-center text-center">
             <div
-              ref={titleOverlayRef}
-              aria-hidden
-              className={`pointer-events-none absolute inset-0 chv-spotlight-mask transition-opacity duration-200 ${
-                isFinePointer && activeSpotTarget === "title" ? "opacity-100" : "opacity-0"
-              }`}
+              ref={titleHitRef}
+              className="relative inline-flex w-auto flex-col flex-nowrap items-center whitespace-nowrap overflow-visible px-6 select-none"
+              style={{
+                opacity: titleEntered ? 1 : 0,
+                transform: titleEntered ? "translateY(0px)" : "translateY(100px)",
+                transition: titleTransition,
+              }}
             >
-              <div className={`${titleFontClassName} leading-[0.84] tracking-[0.02em]`}>
-                <p className="text-[clamp(1.8rem,3.6vw,3.2rem)]">{renderPlainText("The", 401)}</p>
-                <p className="mt-2 text-[clamp(5.5rem,10.6vw,10.2rem)]">{renderPlainText("Chloeverse", 570)}</p>
+              <div className={`${titleFontClassName} overflow-visible leading-[0.84] tracking-[0.02em]`}>
+                <div className="text-[clamp(1.6rem,4vw,2.85rem)]">{renderPaintedText(TITLE_TOP, 101)}</div>
+                <div className="-mt-1 inline-flex flex-nowrap whitespace-nowrap overflow-visible text-[clamp(3.5rem,13vw,12rem)]">
+                  {renderPaintedText(TITLE_MAIN, 701)}
+                </div>
+              </div>
+
+              <div
+                ref={titleOverlayRef}
+                aria-hidden
+                className={`pointer-events-none absolute inset-0 overflow-visible chv-spotlight-mask transition-opacity duration-200 ${
+                  isFinePointer && activeSpotTarget === "title" ? "opacity-100" : "opacity-0"
+                }`}
+                style={textMaskStyle}
+              >
+                <div className={`${titleFontClassName} overflow-visible leading-[0.84] tracking-[0.02em]`}>
+                  <div className="text-[clamp(1.6rem,4vw,2.85rem)]">{renderPlainText(TITLE_TOP, 1001)}</div>
+                  <div className="-mt-1 inline-flex flex-nowrap whitespace-nowrap overflow-visible text-[clamp(3.5rem,13vw,12rem)]">
+                    {renderPlainText(TITLE_MAIN, 1601)}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-10 h-16">
             <div
               ref={taglineHitRef}
-              className={`${monoFontClassName} relative inline-block text-[clamp(1.06rem,2vw,1.36rem)] tracking-[0.15em] text-white`}
+              className={`${monoFontClassName} relative mt-7 inline-block select-none text-[clamp(1rem,2vw,1.35rem)] tracking-[0.15em] text-white`}
             >
-              <p className="whitespace-pre">
-                {typedText}
-                <span aria-hidden className={`chv-type-cursor ${typingDone ? "chv-type-cursor-done" : ""}`}>
+              <div className="relative">
+                <span className="whitespace-pre-wrap text-white/95 [text-shadow:0_0_18px_rgba(255,255,255,0.12)]">
+                  {typedText}
+                </span>
+                <span
+                  aria-hidden
+                  className={typingDone ? "chv-type-cursor chv-type-cursor-done" : "chv-type-cursor"}
+                >
                   |
                 </span>
-              </p>
+              </div>
 
-              <p
+              <div
                 ref={taglineOverlayRef}
                 aria-hidden
-                className={`pointer-events-none absolute inset-0 whitespace-pre chv-spotlight-mask transition-opacity duration-200 ${
+                className={`pointer-events-none absolute inset-0 chv-spotlight-mask transition-opacity duration-150 ${
                   isFinePointer && activeSpotTarget === "tagline" ? "opacity-100" : "opacity-0"
                 }`}
+                style={textMaskStyle}
               >
-                {renderPaintedText(typedText, 800)}
-                <span className={`chv-type-cursor ${typingDone ? "chv-type-cursor-done" : ""}`}>|</span>
-              </p>
+                <span className="whitespace-pre-wrap">
+                  {renderPaintedText(typedText, 2301)}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <p
-            className={`${monoFontClassName} mt-16 text-[12px] uppercase tracking-[0.44em] text-white/74 ${
-              prefersReducedMotion ? "" : "home-blink"
-            }`}
-          >
-            scroll for portals
-          </p>
-        </div>
-      </section>
-
-      <section className="relative z-20 h-[140vh] px-6 pt-[55vh] pb-24">
-        <div className="sticky top-[18px] flex w-full justify-center">
-          {portalPhase === "entering" ? (
             <p
-              className={`${monoFontClassName} rounded-full border border-white/14 bg-black/35 px-5 py-2 text-[0.78rem] tracking-[0.22em] text-white/85 backdrop-blur-sm ${
-                prefersReducedMotion ? "" : "home-blink"
-              }`}
+              ref={scrollHintRef}
+              className={`${monoFontClassName} mt-14 text-[11px] uppercase tracking-[0.42em] text-white/52`}
+              style={{
+                opacity: titleEntered ? 1 : 0,
+                transform: titleEntered ? "translateY(0px)" : "translateY(24px)",
+                transition: titleTransition,
+                transitionDelay: prefersReducedMotion ? "0ms" : "120ms",
+              }}
             >
-              ENTERING MAIN PORTAL
+              scroll for portals
             </p>
-          ) : null}
+          </div>
+        </section>
 
-          {portalPhase === "ready" ? (
+        <section className="relative h-[140vh] px-6 pt-[56vh] pb-24">
+          <div className="sticky top-6 flex w-full justify-center">
             <nav
-              aria-label="Primary navigation"
-              className={`${monoFontClassName} inline-flex items-center gap-6 rounded-full border border-white/12 bg-black/30 px-6 py-3 text-[0.72rem] tracking-[0.24em] text-white/76 backdrop-blur-md sm:gap-8`}
+              ref={menuHitRef}
+              aria-label="Primary"
+              className={`flex flex-wrap items-center justify-center gap-3 sm:gap-4 ${
+                menuVisible ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
+              }`}
+              style={{ transition: menuTransition }}
             >
-              {MENU_LINKS.map((link) => (
+              {MENU_LINKS.map((link, index) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="group relative whitespace-nowrap transition-colors duration-300 hover:text-white focus-visible:text-white"
+                  className={`${monoFontClassName} group relative inline-flex items-center overflow-hidden rounded-full border border-white/12 bg-black/35 px-5 py-2 text-[0.74rem] tracking-[0.22em] text-white/78 backdrop-blur-md transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60`}
+                  style={{
+                    transitionDelay: menuVisible && !prefersReducedMotion ? `${index * 55}ms` : "0ms",
+                  }}
                 >
-                  <span>{link.label}</span>
+                  <span className="relative z-10">{link.label}</span>
                   <span
                     aria-hidden
-                    className="pointer-events-none absolute -bottom-1 left-0 h-px w-full origin-left scale-x-0 opacity-85 transition-transform duration-300 group-hover:scale-x-100 group-focus-visible:scale-x-100"
+                    className="pointer-events-none absolute inset-x-3 bottom-[6px] h-px bg-gradient-to-r from-[#ff4ea8] via-[#ffd646] to-[#4ce4ff] opacity-0 transition-opacity duration-200 group-hover:opacity-70 group-focus-visible:opacity-70"
+                  />
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
                     style={{
-                      backgroundImage:
-                        "linear-gradient(90deg, rgba(255,82,173,0.95) 0%, rgba(255,213,74,0.95) 30%, rgba(76,228,255,0.95) 62%, rgba(143,255,94,0.95) 100%)",
+                      background:
+                        "linear-gradient(135deg, rgba(255,78,168,0.07), rgba(255,214,70,0.04) 45%, rgba(76,228,255,0.07))",
                     }}
                   />
                 </Link>
               ))}
             </nav>
-          ) : null}
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

@@ -1,30 +1,20 @@
-Pixel Rocket Contact Page (Cinematic Diorama) Patch v3
+Pixel Rocket Contact — Fix v4 (matches cinematic diorama spec)
 
-What this patch does (matches the spec you pasted):
-- Full pixel diorama animation at internal 320x180 scaled up with nearest-neighbor.
-- Scene flow:
-  0) Launch pad with Earth horizon + countdown + smoke + rocket bob
-  1) Lift-off + atmosphere darken
-  2) Flyby montage: 1s per planet (Mercury->Pluto), distinct planet ramps + details + labels
-  3) Pluto crash wobble/bonk + smoke trail
-  4) Sparkly puff explosion (ring + starbursts + glitter) + subtle shake
-  5) Contact card pop + interactive pixel UI (your card image), hover highlights, Open/Copy + socials
-- Premium polish: subtle vignette via canvas + clean HUD.
-- Sound pack: whoosh/beeps/boom + hover/click; toggle in HUD.
-
-Assets included:
-public/contact/pixelrocket/
-- launch_clean3.png
-- flyby_clean.png
-- explosion_clean.png
-- explosion_clean2.png
-- explosion_clean3.png
-- card_clean2.png
+This patch fixes the issues seen in your recording:
+- Removes the "random picture slideshow" look: no vertical jupiter panel backgrounds.
+- Removes any possibility of the contact card appearing at time 0.
+- Launch pad is now a true diorama (sky gradient + parallax clouds + Earth horizon + launch pad).
+- Lift-off scene transitions to space (darken + stronger thruster + smoke trail).
+- Planet montage is fully procedural with distinct planet ramps/details (1s per planet) + label pop.
+- Pluto crash wobble + smoke + "uh oh." text.
+- Explosion is a sparkly puff animation (ring + starbursts + falling glitter) + light shake.
+- Contact card is a clean, premium "pixel UI" HTML card with the REAL email + links (no chloe@example.com).
+- Sound toggle + skip/replay preserved.
 
 Apply (CMD):
-1) Extract this zip into your repo root (same folder as package.json)
+1) Extract into repo root
 2) Run:
-   .\apply_contact_pixel_rocket_cinematic_v3.cmd
+   .\apply_contact_pixel_rocket_fix_v4.cmd
 3) Restart:
    taskkill /f /im node.exe
    rmdir /s /q .next

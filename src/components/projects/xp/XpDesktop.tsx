@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactElement, useEffect, useRef, useState } from "react";
 
 type XpDesktopProps = {
   onOpen: () => void;
@@ -72,20 +72,256 @@ function Windows7Logo({ className }: { className?: string }) {
   );
 }
 
+type DesktopApp = {
+  id: string;
+  label: string;
+  tileClass: string;
+  Icon: () => ReactElement;
+};
+
+type DesktopAppLayout = {
+  id: DesktopApp["id"];
+  x: number;
+  y: number;
+};
+
+const DESKTOP_APPS: DesktopApp[] = [
+  {
+    id: "instagram",
+    label: "Instagram",
+    tileClass:
+      "bg-[linear-gradient(135deg,#f9d86a_0%,#f77737_32%,#d62976_60%,#962fbf_85%,#4f5bd5_100%)]",
+    Icon: () => (
+      <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="white" strokeWidth="1.8">
+        <rect x="4.6" y="4.6" width="14.8" height="14.8" rx="4.2" />
+        <circle cx="12" cy="12" r="3.9" />
+        <circle cx="16.9" cy="7.3" r="1.15" fill="white" stroke="none" />
+      </svg>
+    ),
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    tileClass: "bg-[radial-gradient(circle_at_30%_25%,#222_0%,#0b0b0b_55%,#000_100%)]",
+    Icon: () => (
+      <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
+        <path d="M14 6.2c1.1 1.7 2.6 2.7 4.6 2.9v2.6c-2.1-.1-3.7-.8-4.6-1.6v5.2c0 2.6-2.1 4.7-4.7 4.7-2.6 0-4.7-2.1-4.7-4.7 0-2.6 2.1-4.7 4.7-4.7.3 0 .7 0 1 .1v2.7c-.3-.1-.6-.2-1-.2-1.1 0-2 .9-2 2.1 0 1.1.9 2.1 2.1 2.1 1.1 0 2.1-.9 2.1-2.1V4.5h2.5z" fill="#ffffff" opacity="0.92" />
+        <path d="M13.3 6.1v11.1c0 2.2-1.8 4-4 4-1.7 0-3.2-1.1-3.8-2.6.7 1 1.8 1.6 3.1 1.6 2.2 0 4-1.8 4-4V5.5c.2.2.5.4.7.6z" fill="#22e6ff" opacity="0.75" />
+        <path d="M12.6 6.6v10.6c0 1.8-1.5 3.3-3.3 3.3-1.1 0-2.1-.6-2.7-1.4.6.5 1.3.8 2.1.8 1.8 0 3.3-1.5 3.3-3.3V6.1c.2.2.4.4.6.5z" fill="#ff3b7c" opacity="0.65" />
+      </svg>
+    ),
+  },
+  {
+    id: "youtubestudio",
+    label: "YouTube Studio",
+    tileClass: "bg-[radial-gradient(circle_at_35%_30%,#ff6b6b_0%,#e11d48_45%,#7f0a22_100%)]",
+    Icon: () => (
+      <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
+        <path
+          d="M12 7.2l3.3 1.9v3.8L12 14.8 8.7 12.9V9.1L12 7.2z"
+          fill="#fff"
+          opacity="0.92"
+        />
+        <path
+          d="M20.2 12c0 1.1-.3 2.2-.9 3.1l1.1 1.6-2 2-1.6-1.1c-.9.6-2 .9-3.1.9s-2.2-.3-3.1-.9l-1.6 1.1-2-2 1.1-1.6c-.6-.9-.9-2-.9-3.1s.3-2.2.9-3.1L6.9 7.3l2-2 1.6 1.1c.9-.6 2-.9 3.1-.9s2.2.3 3.1.9l1.6-1.1 2 2-1.1 1.6c.6.9.9 2 .9 3.1z"
+          fill="#fff"
+          opacity="0.22"
+        />
+        <path d="M11 10.2l4 1.8-4 1.8v-3.6z" fill="#0b0b0b" opacity="0.75" />
+      </svg>
+    ),
+  },
+  {
+    id: "capcut",
+    label: "CapCut",
+    tileClass: "bg-[linear-gradient(135deg,#1a1a1a_0%,#0b0b0b_55%,#000_100%)]",
+    Icon: () => (
+      <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 7h14l-4.5 5L19 17H5l4.5-5L5 7z" />
+        <path d="M9 9l6 6" />
+        <path d="M15 9l-6 6" />
+      </svg>
+    ),
+  },
+  {
+    id: "canva",
+    label: "Canva",
+    tileClass: "bg-[linear-gradient(135deg,#5cf6ff_0%,#2d77ff_42%,#7c3aed_100%)]",
+    Icon: () => (
+      <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
+        <path
+          d="M16.9 9.2c-.5-2.2-2.4-3.7-4.8-3.7-2.9 0-5.1 2.2-5.1 6.3 0 4 2 6.2 5 6.2 2.4 0 4.1-1.4 4.8-3.6l-2.6-.8c-.3 1.2-1 2-2.2 2-1.7 0-2.5-1.6-2.5-3.8 0-2.2.9-3.9 2.5-3.9 1.2 0 1.9.8 2.2 2l2.7-.7z"
+          fill="#fff"
+          opacity="0.92"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: "notion",
+    label: "Notion",
+    tileClass: "bg-white",
+    Icon: () => (
+      <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
+        <rect x="5" y="4.8" width="14" height="14.4" rx="2" fill="#fff" stroke="#0b0b0b" strokeWidth="1.8" />
+        <path d="M9 16V8.2l6 7.8V8" stroke="#0b0b0b" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "gmail",
+    label: "Gmail",
+    tileClass: "bg-white",
+    Icon: () => (
+      <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
+        <path d="M5.5 8.2V18.2" stroke="#1f2937" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M18.5 8.2V18.2" stroke="#1f2937" strokeWidth="1.8" strokeLinecap="round" />
+        <path
+          d="M6 7.8l6 5 6-5"
+          stroke="#ea4335"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M6 8l6 5 6-5"
+          stroke="#34a853"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.65"
+        />
+        <path
+          d="M6 18h12"
+          stroke="#1f2937"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          opacity="0.55"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: "figma",
+    label: "Figma",
+    tileClass: "bg-white",
+    Icon: () => (
+      <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
+        <path d="M12 4.8a3.1 3.1 0 0 1 0 6.2H9.2A3.1 3.1 0 0 1 9.2 4.8H12z" fill="#f24e1e" />
+        <path d="M12 11a3.1 3.1 0 0 1 0 6.2H9.2A3.1 3.1 0 0 1 9.2 11H12z" fill="#a259ff" />
+        <path d="M12 17.2a3.1 3.1 0 1 1-3.1 3.1V17.2H12z" fill="#0acf83" />
+        <path d="M12 4.8h2.8a3.1 3.1 0 0 1 0 6.2H12V4.8z" fill="#ff7262" />
+        <path d="M12 11h2.8a3.1 3.1 0 0 1 0 6.2H12V11z" fill="#1abcfe" />
+      </svg>
+    ),
+  },
+];
+
+const DESKTOP_LAYOUT: DesktopAppLayout[] = [
+  { id: "instagram", x: 0, y: 0 },
+  { id: "tiktok", x: 120, y: 0 },
+  { id: "capcut", x: 0, y: 120 },
+  { id: "youtubestudio", x: 120, y: 120 },
+  { id: "canva", x: 0, y: 240 },
+  { id: "notion", x: 120, y: 240 },
+  { id: "gmail", x: 0, y: 360 },
+  { id: "figma", x: 120, y: 360 },
+];
+
+function DoubleClickHint() {
+  return (
+    <div className="pointer-events-none absolute left-[-132px] top-[10px]">
+      <div className="relative rounded border border-black bg-[#f7e7a6] px-2 py-1 font-mono text-[10px] tracking-widest text-black shadow-[2px_2px_0_rgba(0,0,0,0.55)]">
+        <span>
+          DOUBLE CLICK
+        </span>
+        <svg
+          width="28"
+          height="22"
+          viewBox="0 0 28 22"
+          className="absolute -right-[26px] top-[10px]"
+          aria-hidden="true"
+        >
+          <path d="M0 10h12V7l16 4-16 4v-3H0z" fill="#0b0b0b" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+type DesktopIconTileProps = {
+  app: DesktopApp;
+  selected: boolean;
+  onClick: () => void;
+  onDoubleClick?: () => void;
+  showHint?: boolean;
+};
+
+function DesktopIconTile({
+  app,
+  selected,
+  onClick,
+  onDoubleClick,
+  showHint = false,
+}: DesktopIconTileProps) {
+  const Icon = app.Icon;
+
+  return (
+    <div className="relative w-[96px]">
+      {showHint ? <DoubleClickHint /> : null}
+      <button
+        type="button"
+        aria-label={`${app.label} desktop app icon`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onClick();
+        }}
+        onDoubleClick={
+          onDoubleClick
+            ? (event) => {
+                event.stopPropagation();
+                onDoubleClick();
+              }
+            : undefined
+        }
+        className={`group relative flex w-[96px] flex-col items-center rounded-md px-2 py-2 text-white transition ${
+          selected
+            ? "bg-white/15 ring-1 ring-white/55 shadow-[0_10px_22px_rgba(0,0,0,0.25)]"
+            : "hover:bg-white/10"
+        }`}
+      >
+        <span
+          className={`relative grid h-12 w-12 place-items-center rounded-[14px] ${app.tileClass} shadow-[0_10px_22px_rgba(0,0,0,0.35)]`}
+        >
+          <Icon />
+        </span>
+        <span className="mt-2 max-w-[88px] overflow-hidden text-center text-[11px] font-medium text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [line-height:1.2] [text-shadow:0_1px_4px_rgba(0,0,0,0.65)]">
+          {app.label}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function XpDesktop({ onOpen }: XpDesktopProps) {
-  const [showIcon, setShowIcon] = useState(false);
-  const [selected, setSelected] = useState(false);
+  const [showApps, setShowApps] = useState(false);
+  const [showIg, setShowIg] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [clock, setClock] = useState("--:--");
   const openTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const iconTimer = window.setTimeout(() => setShowIcon(true), 2000);
+    // Reveal the desktop icons together after the initial beat.
+    const coreTimer = window.setTimeout(() => setShowApps(true), 2000);
+    const igTimer = window.setTimeout(() => setShowIg(true), 2000);
+
     const firstClockTick = window.setTimeout(() => setClock(formatClockTime()), 0);
     const clockTimer = window.setInterval(() => setClock(formatClockTime()), 60000);
 
     return () => {
-      window.clearTimeout(iconTimer);
+      window.clearTimeout(coreTimer);
+      window.clearTimeout(igTimer);
       window.clearTimeout(firstClockTick);
       window.clearInterval(clockTimer);
       if (openTimerRef.current) {
@@ -105,116 +341,53 @@ export function XpDesktop({ onOpen }: XpDesktopProps) {
       className={`relative h-screen w-full overflow-hidden supports-[height:100svh]:h-[100svh] ${
         opening ? "scale-[1.03] opacity-0 blur-[2px]" : "scale-100 opacity-100"
       } transition-all duration-300 ease-out`}
-      onClick={() => setSelected(false)}
+      onClick={() => setSelectedId(null)}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_46%,#2f8de8_0%,#1467d4_32%,#0a3f9c_62%,#072967_100%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(255,255,255,0.2),rgba(255,255,255,0)_34%),radial-gradient(circle_at_80%_22%,rgba(255,255,255,0.16),rgba(255,255,255,0)_38%),radial-gradient(circle_at_72%_72%,rgba(164,217,255,0.14),rgba(255,255,255,0)_30%),radial-gradient(circle_at_35%_72%,rgba(80,175,255,0.2),rgba(255,255,255,0)_32%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0)_40%,rgba(0,0,0,0.34)_100%)]" />
+      <img
+        src="/projects/kingdom-screensaver-smooth.png"
+        alt=""
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        style={{ imageRendering: "auto", filter: "contrast(1.04) saturate(1.03)" }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.01] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(90deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 6px), repeating-linear-gradient(0deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 6px)",
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.00)_35%,rgba(0,0,0,0.42)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-black/10" />
 
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        viewBox="0 0 1440 900"
-        preserveAspectRatio="none"
+      <div
+        className="absolute right-[56px] top-[40px] bottom-14 z-30 w-[300px] pb-16"
+        onClick={(event) => event.stopPropagation()}
       >
-        <defs>
-          <filter id="win7-swoosh-glow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="2.6" />
-          </filter>
-          <linearGradient id="win7-swoosh-gradient" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.2" />
-            <stop offset="45%" stopColor="#ffffff" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.12" />
-          </linearGradient>
-        </defs>
-        <g fill="none" stroke="url(#win7-swoosh-gradient)" strokeLinecap="round" filter="url(#win7-swoosh-glow)">
-          <path d="M -30 790 C 220 680, 430 560, 760 520" strokeWidth="2.1" opacity="0.66" />
-          <path d="M -40 770 C 200 650, 470 560, 810 535" strokeWidth="1.7" opacity="0.45" />
-          <path d="M -28 745 C 240 640, 485 545, 850 520" strokeWidth="2.5" opacity="0.52" />
-          <path d="M 10 730 C 245 610, 500 510, 900 495" strokeWidth="1.9" opacity="0.6" />
-          <path d="M 24 708 C 260 585, 538 495, 940 474" strokeWidth="1.5" opacity="0.55" />
-          <path d="M 48 682 C 300 568, 572 472, 980 455" strokeWidth="2.3" opacity="0.58" />
-          <path d="M 72 660 C 320 548, 608 452, 1030 438" strokeWidth="1.8" opacity="0.42" />
-          <path d="M 98 638 C 350 524, 640 432, 1075 424" strokeWidth="2.2" opacity="0.5" />
-          <path d="M 128 612 C 382 500, 674 415, 1110 410" strokeWidth="1.6" opacity="0.38" />
-          <path d="M 160 592 C 410 478, 698 398, 1146 398" strokeWidth="2" opacity="0.44" />
-          <path d="M 196 566 C 446 458, 744 380, 1186 386" strokeWidth="1.5" opacity="0.35" />
-          <path d="M 232 544 C 476 438, 776 360, 1218 374" strokeWidth="1.9" opacity="0.4" />
-          <path d="M 272 520 C 508 416, 808 344, 1258 360" strokeWidth="1.4" opacity="0.33" />
-          <path d="M 310 496 C 544 398, 842 326, 1294 348" strokeWidth="1.7" opacity="0.34" />
-          <path d="M 346 476 C 578 380, 870 312, 1320 340" strokeWidth="1.5" opacity="0.29" />
-          <path d="M 380 458 C 606 364, 896 296, 1350 332" strokeWidth="1.3" opacity="0.25" />
-          <path d="M 416 438 C 636 348, 922 284, 1380 320" strokeWidth="1.6" opacity="0.24" />
-          <path d="M 444 420 C 658 334, 942 272, 1410 312" strokeWidth="1.4" opacity="0.21" />
-          <path d="M 474 404 C 684 320, 968 258, 1436 300" strokeWidth="1.3" opacity="0.2" />
-          <path d="M 500 388 C 706 306, 988 248, 1456 292" strokeWidth="1.2" opacity="0.2" />
-          <path d="M 526 372 C 730 292, 1010 236, 1474 284" strokeWidth="1.2" opacity="0.18" />
-          <path d="M 548 360 C 748 284, 1024 228, 1488 278" strokeWidth="1.1" opacity="0.17" />
-          <path d="M 572 348 C 768 272, 1046 216, 1506 268" strokeWidth="1.1" opacity="0.16" />
-          <path d="M 594 334 C 788 260, 1068 206, 1520 258" strokeWidth="1" opacity="0.15" />
-        </g>
-      </svg>
+        <div className="relative h-full w-full">
+          {DESKTOP_LAYOUT.map((entry) => {
+            const app = DESKTOP_APPS.find((desktopApp) => desktopApp.id === entry.id);
+            if (!app) return null;
 
-      <div className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
-        <div className="pointer-events-none translate-x-[28px] translate-y-[10px]">
-          <Windows7Logo className="w-[420px] max-w-[78vw]" />
-        </div>
+            if (entry.id === "instagram" && !showIg) return null;
+            if (entry.id !== "instagram" && !showApps) return null;
 
-        {showIcon ? (
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 translate-x-[-140px] translate-y-[-110px] animate-[fade-in_280ms_ease-out]">
-            <div className="relative">
-              <div className="pointer-events-none absolute -top-28 left-1/2 -translate-x-1/2 text-center">
-                <div
-                  className="inline-flex items-center rounded-none border-2 border-[#1a1a1a] bg-[#fff1a8] px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-[#1c1c1c] shadow-[4px_4px_0_#0b0b0b66]"
-                  style={{ fontFamily: "\"Courier New\", ui-monospace, monospace" }}
-                >
-                  double click
-                </div>
-                <svg
-                  className="mx-auto mt-2 h-12 w-12 rotate-[20deg]"
-                  viewBox="0 0 16 16"
-                  shapeRendering="crispEdges"
-                >
-                  <rect x="0" y="0" width="2" height="2" fill="#111" />
-                  <rect x="2" y="2" width="2" height="2" fill="#111" />
-                  <rect x="4" y="4" width="2" height="2" fill="#111" />
-                  <rect x="6" y="6" width="2" height="2" fill="#111" />
-                  <rect x="8" y="8" width="2" height="2" fill="#111" />
-                  <rect x="10" y="10" width="2" height="2" fill="#111" />
-                  <rect x="12" y="12" width="2" height="2" fill="#111" />
-                  <rect x="10" y="12" width="2" height="2" fill="#111" />
-                  <rect x="12" y="10" width="2" height="2" fill="#111" />
-                  <rect x="8" y="12" width="2" height="2" fill="#111" />
-                  <rect x="12" y="8" width="2" height="2" fill="#111" />
-                </svg>
-              </div>
-
-              <button
-                type="button"
-                aria-label="Instagram desktop app icon"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setSelected(true);
-                }}
-                onDoubleClick={(event) => {
-                  event.stopPropagation();
-                  handleDoubleClick();
-                }}
-                className={`relative flex flex-col items-center gap-2 rounded-xl px-4 py-3 text-white transition ${
-                  selected ? "bg-[#2f6ac844] ring-2 ring-white/75" : "hover:bg-white/10"
-                }`}
+            return (
+              <div
+                key={entry.id}
+                className="absolute"
+                style={{ left: `${entry.x}px`, top: `${entry.y}px` }}
               >
-                <span className="relative grid h-16 w-16 place-items-center rounded-2xl bg-[linear-gradient(135deg,#f9d86a_0%,#f77737_32%,#d62976_60%,#962fbf_85%,#4f5bd5_100%)] shadow-[0_10px_24px_rgba(0,0,0,0.35)]">
-                  <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="white" strokeWidth="1.8">
-                    <rect x="4.6" y="4.6" width="14.8" height="14.8" rx="4.2" />
-                    <circle cx="12" cy="12" r="3.9" />
-                    <circle cx="16.9" cy="7.3" r="1.15" fill="white" stroke="none" />
-                  </svg>
-                </span>
-                <span className="text-sm font-medium text-white [text-shadow:0_2px_6px_rgba(0,0,0,0.65)]">Instagram</span>
-              </button>
-            </div>
-          </div>
-        ) : null}
+                <DesktopIconTile
+                  app={app}
+                  selected={selectedId === app.id}
+                  onClick={() => setSelectedId(app.id)}
+                  onDoubleClick={app.id === "instagram" ? handleDoubleClick : undefined}
+                  showHint={app.id === "instagram" && showIg}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 z-30 h-12 border-t border-white/35 bg-black/30 backdrop-blur-[12px] shadow-[0_-1px_0_rgba(255,255,255,0.35),0_-14px_50px_rgba(0,0,0,0.35)]">
@@ -243,3 +416,4 @@ export function XpDesktop({ onOpen }: XpDesktopProps) {
     </main>
   );
 }
+

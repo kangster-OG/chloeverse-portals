@@ -7,19 +7,22 @@ function exists(p) {
   return fs.existsSync(p);
 }
 
-function run(cwd, cmd, args) {
+function run(cwd, cmd, args, extraEnv) {
   const executable = process.platform === "win32" && cmd === "npm" ? "npm.cmd" : cmd;
   const isWindowsCmdFile = process.platform === "win32" && executable.toLowerCase().endsWith(".cmd");
+  const env = extraEnv ? { ...process.env, ...extraEnv } : process.env;
   const result = isWindowsCmdFile
     ? spawnSync("cmd.exe", ["/d", "/s", "/c", executable, ...args], {
         cwd,
         stdio: "inherit",
         shell: false,
+        env,
       })
     : spawnSync(executable, args, {
         cwd,
         stdio: "inherit",
         shell: false,
+        env,
       });
 
   if (result.error) {
@@ -28,6 +31,27 @@ function run(cwd, cmd, args) {
 
   if (result.status !== 0) {
     throw new Error(`Command failed (${result.status}): ${executable} ${args.join(" ")}`);
+  }
+}
+
+function verifySyncedIndex(indexPath) {
+  if (!exists(indexPath)) {
+    throw new Error(`Synced index not found: ${indexPath}`);
+  }
+
+  const html = fs.readFileSync(indexPath, "utf8");
+  const forbidden = ["My name is Ed", "Edward Hinrichsen", "Page Buddy", "edh.dev"];
+  for (const needle of forbidden) {
+    if (html.includes(needle)) {
+      throw new Error(`Synced index contains forbidden content: ${needle}`);
+    }
+  }
+
+  const required = ["Hi!", "Stealth Startup", "Adobe", "Instagram", "Outsmart"];
+  for (const needle of required) {
+    if (!html.includes(needle)) {
+      throw new Error(`Synced index missing required content: ${needle}`);
+    }
   }
 }
 
@@ -65,6 +89,11 @@ function main() {
   }
 
   console.log(`[work:retro:sync] Using retro repo: ${retroDir}`);
+  console.log("[work:retro:sync] Applying Chloe retro patch...");
+  run(repoRoot, "node", [path.join("scripts", "apply_work_retro_chloe.cjs")], {
+    RETRO_WORK_SRC: retroDir,
+  });
+
   console.log("[work:retro:sync] Installing dependencies...");
   run(retroDir, "npm", ["install"]);
 
@@ -83,6 +112,28 @@ function main() {
   }
   fs.mkdirSync(path.dirname(targetDir), { recursive: true });
   fs.cpSync(distDir, targetDir, { recursive: true });
+
+  const retroPublic = path.join(retroDir, "public");
+  const staticEntries = ["models", "textures", "fonts", "images", "icon", "manifest.json"];
+  for (const entry of staticEntries) {
+    const src = path.join(retroPublic, entry);
+    if (!exists(src)) {
+      continue;
+    }
+
+    const dest = path.join(targetDir, entry);
+    const srcStat = fs.statSync(src);
+    if (srcStat.isDirectory()) {
+      fs.cpSync(src, dest, { recursive: true });
+    } else {
+      fs.cpSync(src, dest);
+    }
+    console.log(`[work:retro:sync] Copied static asset: ${entry}`);
+  }
+
+  const syncedIndex = path.join(targetDir, "index.html");
+  verifySyncedIndex(syncedIndex);
+  console.log("[work:retro:sync] Verified synced index content guards.");
 
   console.log("[work:retro:sync] Success.");
   console.log(`[work:retro:sync] Copied: ${distDir}`);

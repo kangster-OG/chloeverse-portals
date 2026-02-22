@@ -6,6 +6,7 @@
     "dev": "next dev --turbo",
     "dev:webpack": "next dev",
     "build": "next build",
+    "work:retro:apply-chloe": "node scripts/apply_work_retro_chloe.cjs",
     "work:retro:sync": "node scripts/sync_work_retro.cjs",
     "start": "next start",
     "lint": "eslint"

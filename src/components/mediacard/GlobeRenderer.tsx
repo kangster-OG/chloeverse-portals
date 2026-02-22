@@ -136,7 +136,12 @@ const FRONT = new THREE.Vector3(0, 0, 1);
 const GLOBE_RADIUS = 1;
 const DPR_CAP = 2;
 const EARTH_MASK_URL = "/mediacard/earth_mask.png";
-const MEDIACARD_BUILD_TAG = "mediacard_market_regionhover_nopatches_v2";
+const MEDIACARD_BUILD_TAG = "mediacard_ghost_underlay_v2";
+const UNDERLAY_ENABLE = true;
+const UNDERLAY_COLOR = 0x26285c;
+const UNDERLAY_ALPHA = 0.10;
+const UNDERLAY_RADIAL_SCALE = 0.994;
+const UNDERLAY_POINTSIZE_MULT = 1.17;
 
 const MARKET_NONE_ID = 0;
 const MARKET_ID = {
@@ -224,10 +229,159 @@ const hash2 = (a: number, b: number, seed = 0) => {
   return n - Math.floor(n);
 };
 
+type LonLatPoly = ReadonlyArray<readonly [number, number]>;
+type CountryPoly = ReadonlyArray<LonLatPoly>;
+
+const COUNTRY_POLY_US: CountryPoly = [
+  [
+    [-125.0, 24.0],
+    [-124.0, 32.0],
+    [-117.0, 34.0],
+    [-114.0, 32.0],
+    [-109.0, 31.0],
+    [-103.0, 29.0],
+    [-96.0, 26.0],
+    [-89.0, 29.0],
+    [-82.0, 25.0],
+    [-80.0, 31.0],
+    [-75.0, 39.0],
+    [-67.0, 45.0],
+    [-82.0, 48.0],
+    [-97.0, 49.0],
+    [-111.0, 49.0],
+    [-124.0, 46.0],
+    [-125.0, 24.0],
+  ],
+  [
+    [-169.0, 53.0],
+    [-164.0, 57.0],
+    [-160.0, 60.0],
+    [-154.0, 62.0],
+    [-148.0, 70.0],
+    [-139.0, 69.0],
+    [-133.0, 58.0],
+    [-143.0, 54.0],
+    [-154.0, 55.0],
+    [-162.0, 54.0],
+    [-169.0, 53.0],
+  ],
+  [
+    [-161.0, 18.0],
+    [-155.0, 18.0],
+    [-154.0, 22.0],
+    [-161.0, 22.0],
+    [-161.0, 18.0],
+  ],
+];
+
+const COUNTRY_POLY_CA: CountryPoly = [
+  [
+    [-141.0, 60.0],
+    [-141.0, 69.0],
+    [-132.0, 72.0],
+    [-120.0, 75.0],
+    [-104.0, 81.0],
+    [-84.0, 82.0],
+    [-62.0, 77.0],
+    [-52.0, 70.0],
+    [-57.0, 52.0],
+    [-63.0, 46.0],
+    [-74.0, 45.0],
+    [-83.0, 48.0],
+    [-95.0, 49.0],
+    [-110.0, 49.0],
+    [-124.0, 49.0],
+    [-135.0, 54.0],
+    [-141.0, 60.0],
+  ],
+];
+
+const COUNTRY_POLY_AU: CountryPoly = [
+  [
+    [112.0, -44.0],
+    [114.0, -20.0],
+    [122.0, -11.0],
+    [136.0, -12.0],
+    [142.0, -10.0],
+    [153.0, -28.0],
+    [150.0, -39.0],
+    [142.0, -44.0],
+    [132.0, -43.0],
+    [122.0, -35.0],
+    [114.0, -35.0],
+    [112.0, -44.0],
+  ],
+  [
+    [144.0, -44.0],
+    [147.0, -40.0],
+    [149.0, -42.0],
+    [147.0, -44.0],
+    [144.0, -44.0],
+  ],
+];
+
+const COUNTRY_POLY_KR: CountryPoly = [
+  [
+    [125.7, 33.0],
+    [126.5, 35.0],
+    [128.0, 38.8],
+    [129.7, 38.7],
+    [129.6, 35.0],
+    [127.7, 34.0],
+    [126.2, 33.2],
+    [125.7, 33.0],
+  ],
+];
+
+function wrapLon180(lonDeg: number) {
+  return ((lonDeg + 540) % 360) - 180;
+}
+
+function pointInPoly(lonDeg: number, latDeg: number, poly: LonLatPoly) {
+  if (poly.length < 3) return false;
+  const x = wrapLon180(lonDeg);
+  const y = clamp(latDeg, -90, 90);
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
+    const xi = poly[i][0];
+    const yi = poly[i][1];
+    const xj = poly[j][0];
+    const yj = poly[j][1];
+    const spansY = yi > y !== yj > y;
+    if (!spansY) continue;
+    const t = (y - yi) / (yj - yi);
+    const xAtY = xi + (xj - xi) * t;
+    if (x < xAtY) inside = !inside;
+  }
+  return inside;
+}
+
+function marketIdForLonLat(latDeg: number, lonDeg: number) {
+  const lonWrapped = wrapLon180(lonDeg);
+  if (COUNTRY_POLY_US.some((poly) => pointInPoly(lonWrapped, latDeg, poly))) return MARKET_ID.us;
+  if (COUNTRY_POLY_CA.some((poly) => pointInPoly(lonWrapped, latDeg, poly))) return MARKET_ID.ca;
+  if (COUNTRY_POLY_AU.some((poly) => pointInPoly(lonWrapped, latDeg, poly))) return MARKET_ID.au;
+  if (COUNTRY_POLY_KR.some((poly) => pointInPoly(lonWrapped, latDeg, poly))) return MARKET_ID.kr;
+  return MARKET_NONE_ID;
+}
+
 function latLonToUnit(latDeg: number, lonDeg: number, lonOffsetDeg = 0) {
   const lat = THREE.MathUtils.degToRad(latDeg);
   const lon = THREE.MathUtils.degToRad(normalizeLon(lonDeg + lonOffsetDeg));
   return new THREE.Vector3(Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)).normalize();
+}
+
+function unitToLatLonDeg(unit: { x: number; y: number; z: number }, lonOffsetDeg = 0) {
+  const nx = Number.isFinite(unit.x) ? unit.x : 0;
+  const ny = Number.isFinite(unit.y) ? unit.y : 0;
+  const nz = Number.isFinite(unit.z) ? unit.z : 1;
+  const len = Math.hypot(nx, ny, nz) || 1;
+  const x = nx / len;
+  const y = ny / len;
+  const z = nz / len;
+  const lonDeg = wrapLon180(THREE.MathUtils.radToDeg(Math.atan2(x, z)) - lonOffsetDeg);
+  const latDeg = THREE.MathUtils.radToDeg(Math.asin(clamp(y, -1, 1)));
+  return { lonDeg, latDeg };
 }
 
 function quatToFront(unit: THREE.Vector3) {
@@ -267,7 +421,7 @@ type DotBuffers = {
   hot: Float32Array;
   phases: Float32Array;
   marketId: Float32Array;
-  marketW: Float32Array;
+  marketMask: Float32Array;
 };
 
 type MaskChannel = "r" | "g" | "b" | "a" | "lum";
@@ -285,7 +439,7 @@ function createEmptyDots(): DotBuffers {
     hot: new Float32Array(0),
     phases: new Float32Array(0),
     marketId: new Float32Array(0),
-    marketW: new Float32Array(0),
+    marketMask: new Float32Array(0),
   };
 }
 
@@ -704,18 +858,13 @@ function createDotsFromMask(
   const hot = new Float32Array(targetCount);
   const phases = new Float32Array(targetCount);
   const marketId = new Float32Array(targetCount);
-  const marketW = new Float32Array(targetCount);
+  const marketMask = new Float32Array(targetCount);
 
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   const sigmaRad = THREE.MathUtils.degToRad(TUNE.HOTSPOT_SIGMA_DEG);
   const sigma2 = Math.max(0.000001, sigmaRad * sigmaRad);
   const lonOffsetU = lonOffsetDeg / 360;
   const hotspotCenters = HOTSPOT_CITIES.map((city) => latLonToUnit(city.lat, city.lon, lonOffsetDeg));
-  const marketCenters = MARKETS.map((market) => ({
-    id: market.id,
-    center: latLonToUnit(market.latDeg, market.lonDeg, lonOffsetDeg),
-    hitCos: Math.cos(THREE.MathUtils.degToRad(market.hitRadiusDeg)),
-  }));
 
   let accepted = 0;
   for (let i = 0; i < candidateCount && accepted < targetCount; i += 1) {
@@ -742,24 +891,18 @@ function createDotsFromMask(
       if (gaussian > rawHot) rawHot = gaussian;
     }
     const hotPeak = smoothstep(TUNE.HOTSPOT_EDGE0, TUNE.HOTSPOT_EDGE1, rawHot);
-    let bestMarketId = MARKET_NONE_ID;
-    let bestMarketW = 0;
-    for (const region of marketCenters) {
-      const mDot = clamp(x * region.center.x + y * region.center.y + z * region.center.z, -1, 1);
-      const weight = smoothstep(region.hitCos, 1, mDot);
-      if (weight > bestMarketW) {
-        bestMarketW = weight;
-        bestMarketId = region.id;
-      }
-    }
+    const unit = { x, y, z };
+    const { lonDeg, latDeg } = unitToLatLonDeg(unit, lonOffsetDeg);
+    const taggedMarketId = marketIdForLonLat(latDeg, lonDeg);
+    const taggedMarketMask = taggedMarketId === MARKET_NONE_ID ? 0 : 1;
 
     positions[accepted * 3] = x * GLOBE_RADIUS;
     positions[accepted * 3 + 1] = y * GLOBE_RADIUS;
     positions[accepted * 3 + 2] = z * GLOBE_RADIUS;
     hot[accepted] = hotPeak;
     phases[accepted] = hash2(i, accepted, 9.17);
-    marketId[accepted] = bestMarketId;
-    marketW[accepted] = bestMarketW;
+    marketId[accepted] = taggedMarketId;
+    marketMask[accepted] = taggedMarketMask;
     accepted += 1;
   }
 
@@ -768,7 +911,7 @@ function createDotsFromMask(
     hot: hot.slice(0, accepted),
     phases: phases.slice(0, accepted),
     marketId: marketId.slice(0, accepted),
-    marketW: marketW.slice(0, accepted),
+    marketMask: marketMask.slice(0, accepted),
   };
 }
 
@@ -781,7 +924,7 @@ function capDotBuffers(dots: DotBuffers, maxPoints: number): DotBuffers {
   const hot = new Float32Array(cappedCount);
   const phases = new Float32Array(cappedCount);
   const marketId = new Float32Array(cappedCount);
-  const marketW = new Float32Array(cappedCount);
+  const marketMask = new Float32Array(cappedCount);
   let dst = 0;
   for (let src = 0; src < count && dst < cappedCount; src += stride) {
     positions[dst * 3] = dots.positions[src * 3];
@@ -790,7 +933,7 @@ function capDotBuffers(dots: DotBuffers, maxPoints: number): DotBuffers {
     hot[dst] = dots.hot[src];
     phases[dst] = dots.phases[src];
     marketId[dst] = dots.marketId[src];
-    marketW[dst] = dots.marketW[src];
+    marketMask[dst] = dots.marketMask[src];
     dst += 1;
   }
   return {
@@ -798,7 +941,7 @@ function capDotBuffers(dots: DotBuffers, maxPoints: number): DotBuffers {
     hot: hot.slice(0, dst),
     phases: phases.slice(0, dst),
     marketId: marketId.slice(0, dst),
-    marketW: marketW.slice(0, dst),
+    marketMask: marketMask.slice(0, dst),
   };
 }
 
@@ -967,6 +1110,9 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
     console.info("[MediaCard Globe]", MEDIACARD_BUILD_TAG);
     console.log("[mediacard] BUILD", MEDIACARD_BUILD_TAG);
     console.log("[mediacard] marketPatchKILL active");
+    const debugMarketsEnabled =
+      typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debugMarkets") === "1";
+    let debugBaseDotsOnly = false;
     let maskImg: HTMLImageElement | null = null;
     let debugMaskTexture: THREE.Texture | null = null;
     let maskCalibration: MaskCalibration = {
@@ -1004,12 +1150,11 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       hot: dots.hot.slice(),
       phases: dots.phases.slice(),
       marketId: dots.marketId.slice(),
-      marketW: dots.marketW.slice(),
+      marketMask: dots.marketMask.slice(),
     });
     const marketRuntime = MARKETS.map((market) => ({
       ...market,
       center: latLonToUnit(market.latDeg, market.lonDeg, MEDIACARD_TUNING.LON_OFFSET_DEG),
-      hitCos: Math.cos(THREE.MathUtils.degToRad(market.hitRadiusDeg)),
     }));
     const marketStrengths = new THREE.Vector4(0, 0, 0, 0);
     const setMarketStrength = (marketId: number, value: number) => {
@@ -1338,6 +1483,8 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       geo.setAttribute("position", new THREE.Float32BufferAttribute(dots.positions, 3));
       geo.setAttribute("aHot", new THREE.Float32BufferAttribute(dots.hot, 1));
       geo.setAttribute("aPhase", new THREE.Float32BufferAttribute(dots.phases, 1));
+      geo.setAttribute("aMarketId", new THREE.Float32BufferAttribute(dots.marketId, 1));
+      geo.setAttribute("aMarketMask", new THREE.Float32BufferAttribute(dots.marketMask, 1));
       geo.computeBoundingSphere();
     };
     const applyMarketOverlayBuffers = (dots: DotBuffers) => {
@@ -1349,11 +1496,10 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       const positions = new Float32Array(overlayCount * 3);
       const phases = new Float32Array(overlayCount);
       const marketId = new Float32Array(overlayCount);
-      const marketW = new Float32Array(overlayCount);
+      const marketMask = new Float32Array(overlayCount);
       let dst = 0;
       for (let src = 0; src < count; src += 1) {
         const id = dots.marketId[src];
-        const weight = dots.marketW[src];
         if (id <= 0.5) continue;
         const src3 = src * 3;
         const dst3 = dst * 3;
@@ -1362,13 +1508,13 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         positions[dst3 + 2] = dots.positions[src3 + 2];
         phases[dst] = dots.phases[src];
         marketId[dst] = id;
-        marketW[dst] = 1.0;
+        marketMask[dst] = dots.marketMask[src];
         dst += 1;
       }
       marketOverlayGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
       marketOverlayGeo.setAttribute("aPhase", new THREE.Float32BufferAttribute(phases, 1));
       marketOverlayGeo.setAttribute("aMarketId", new THREE.Float32BufferAttribute(marketId, 1));
-      marketOverlayGeo.setAttribute("aMarketW", new THREE.Float32BufferAttribute(marketW, 1));
+      marketOverlayGeo.setAttribute("aMarketMask", new THREE.Float32BufferAttribute(marketMask, 1));
       marketOverlayGeo.computeBoundingSphere();
       console.log("[mediacard] overlayDots", overlayCount);
     };
@@ -1393,6 +1539,9 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uReveal: { value: 0 },
       uBase: { value: new THREE.Color(MEDIACARD_TUNING.DOT_COLOR_BASE) },
       uViolet: { value: new THREE.Color(MEDIACARD_TUNING.DOT_COLOR_SECONDARY) },
+      uHoverMarket: { value: hoverMarketIdRef.current },
+      uActiveMarket: { value: activeMarketIdRef.current },
+      uDebugBaseOnly: { value: 0 },
     };
     const glowUniforms = {
       uPointPx: { value: TUNE.POINT_PX * 1.35 },
@@ -1406,6 +1555,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uReveal: { value: 0 },
       uBase: { value: new THREE.Color(MEDIACARD_TUNING.DOT_COLOR_BASE) },
       uViolet: { value: new THREE.Color(MEDIACARD_TUNING.DOT_COLOR_SECONDARY) },
+      uDebugBaseOnly: { value: 0 },
     };
     const marketOverlayUniforms = {
       uPointPx: { value: TUNE.POINT_PX },
@@ -1414,11 +1564,23 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uHoverMarket: { value: hoverMarketIdRef.current },
       uActiveMarket: { value: activeMarketIdRef.current },
     };
+    const underlayUniforms = {
+      uPointPx: uniforms.uPointPx,
+      uDpr: uniforms.uDpr,
+      uBeadNear: uniforms.uBeadNear,
+      uBeadFar: uniforms.uBeadFar,
+      uBeadBoost: uniforms.uBeadBoost,
+      uReveal: uniforms.uReveal,
+      uColor: { value: new THREE.Color(UNDERLAY_COLOR) },
+      uAlpha: { value: UNDERLAY_ALPHA },
+    };
 
     const vertexShader = `
       precision highp float;
       attribute float aHot;
       attribute float aPhase;
+      attribute float aMarketId;
+      attribute float aMarketMask;
       uniform float uPointPx;
       uniform float uDpr;
       uniform float uBeadNear;
@@ -1431,9 +1593,13 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       varying vec3 vWorldN;
       varying vec3 vWorldPos;
       varying float vVar;
+      varying float vMarketId;
+      varying float vMarketMask;
       void main() {
         vHot = aHot;
         vPhase = aPhase;
+        vMarketId = aMarketId;
+        vMarketMask = aMarketMask;
         vec3 unit = normalize(position);
         vReveal = clamp(0.5 - asin(clamp(unit.y, -1.0, 1.0)) / 3.14159265359, 0.0, 1.0);
         vec3 worldPos = (modelMatrix * vec4(position, 1.0)).xyz;
@@ -1462,12 +1628,17 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       varying vec3 vWorldN;
       varying vec3 vWorldPos;
       varying float vVar;
+      varying float vMarketId;
+      varying float vMarketMask;
       uniform float uTime;
       uniform float uReveal;
       uniform vec3 uBase;
       uniform vec3 uViolet;
       uniform vec3 uKeyDirWorld;
       uniform float uCineStrength;
+      uniform float uHoverMarket;
+      uniform float uActiveMarket;
+      uniform float uDebugBaseOnly;
       void main() {
         if (vReveal > uReveal) discard;
         vec2 p = gl_PointCoord * 2.0 - 1.0;
@@ -1484,23 +1655,21 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         float spec = pow(clamp(dot(n, beadH), 0.0, 1.0), 80.0);
         float rim = pow(1.0 - n.z, 2.2);
 
-        float hotRaw = vHot;
-        float hotPeaks = smoothstep(0.78, 0.96, hotRaw);
-        hotPeaks = pow(hotPeaks, 1.6);
-        float hotMix = clamp(hotPeaks, 0.0, 1.0);
         float var = mix(0.985, 1.015, vVar);
         spec *= var;
-        float pulse = 0.92 + 0.08 * sin(uTime * 0.55 + vPhase * 6.2831);
-        spec *= mix(1.0, pulse, hotMix);
 
         vec3 amber = uBase * vec3(0.90, 0.76, 0.50);
         vec3 albedo = amber;
         vec3 color = albedo * (0.62 + 0.55 * diff)
                    + vec3(1.0) * (0.28 * spec)
                    + albedo * (0.10 * rim);
-        vec3 hotspotHue = mix(uViolet * vec3(0.84, 0.66, 1.02), vec3(0.55, 0.32, 0.92), 0.82);
-        vec3 hotspotTint = mix(vec3(1.0), hotspotHue, 0.52);
-        color = mix(color, color * hotspotTint, hotMix);
+        if (uDebugBaseOnly < 0.5) {
+          float isHover = step(0.5, 1.0 - abs(vMarketId - uHoverMarket));
+          float isActive = step(0.5, 1.0 - abs(vMarketId - uActiveMarket));
+          float marketOn = max(isHover, isActive) * step(0.5, vMarketMask);
+          vec3 highlightColor = vec3(0.70, 0.55, 1.00);
+          color = mix(color, mix(color, highlightColor, 0.65), marketOn);
+        }
         float r = sqrt(r2);
         float coreMask = 1.0 - smoothstep(0.0, 0.24, r);
         float haloMask = (1.0 - smoothstep(0.28, 0.55, r)) * 0.18;
@@ -1532,8 +1701,10 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uniform vec3 uViolet;
       uniform vec3 uKeyDirWorld;
       uniform float uCineStrength;
+      uniform float uDebugBaseOnly;
       void main() {
         if (vReveal > uReveal) discard;
+        if (uDebugBaseOnly > 0.5) discard;
         vec2 p = gl_PointCoord * 2.0 - 1.0;
         float r = length(p);
         if (r > 1.15) discard;
@@ -1556,22 +1727,22 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       precision highp float;
       attribute float aPhase;
       attribute float aMarketId;
-      attribute float aMarketW;
+      attribute float aMarketMask;
       uniform float uPointPx;
       uniform float uDpr;
       uniform float uHoverMarket;
       uniform float uActiveMarket;
       varying float vMarketId;
-      varying float vMarketW;
+      varying float vMarketMask;
       varying float vReveal;
       void main() {
         vec3 unit = normalize(position);
         vMarketId = aMarketId;
-        vMarketW = aMarketW;
+        vMarketMask = aMarketMask;
         vReveal = clamp(0.5 - asin(clamp(unit.y, -1.0, 1.0)) / 3.14159265359, 0.0, 1.0);
         float isHover = step(0.5, 1.0 - abs(aMarketId - uHoverMarket));
         float isActive = step(0.5, 1.0 - abs(aMarketId - uActiveMarket));
-        float w = clamp(isHover + isActive, 0.0, 1.0);
+        float w = clamp((isHover + isActive) * aMarketMask, 0.0, 1.0);
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = clamp(uPointPx, ${MEDIACARD_TUNING.DOT_MIN_SIZE_DPR.toFixed(1)} * uDpr, ${(MEDIACARD_TUNING.DOT_MAX_SIZE_DPR * 1.25).toFixed(1)} * uDpr);
@@ -1581,7 +1752,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
     const marketOverlayFragmentShader = `
       precision highp float;
       varying float vMarketId;
-      varying float vMarketW;
+      varying float vMarketMask;
       varying float vReveal;
       uniform float uReveal;
       uniform float uHoverMarket;
@@ -1594,12 +1765,58 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         float r = sqrt(r2);
         float isHover = step(0.5, 1.0 - abs(vMarketId - uHoverMarket));
         float isActive = step(0.5, 1.0 - abs(vMarketId - uActiveMarket));
-        float w = clamp(isHover + isActive, 0.0, 1.0);
-        vec3 accent = vec3(0.90, 0.84, 1.00);
+        float w = clamp((isHover + isActive) * vMarketMask, 0.0, 1.0);
+        if (w <= 0.001) discard;
+        vec3 accent = vec3(0.70, 0.55, 1.00);
         float disc = 1.0 - smoothstep(0.86, 1.0, r);
-        float a = 0.70 * w;
+        float a = 0.16 * w;
         float outA = a * disc;
         gl_FragColor = vec4(accent * outA, outA);
+      }
+    `;
+    const underlayVertexShader = `
+      precision highp float;
+      uniform float uPointPx;
+      uniform float uDpr;
+      uniform float uBeadNear;
+      uniform float uBeadFar;
+      uniform float uBeadBoost;
+      varying float vReveal;
+      varying float vFacing;
+      void main() {
+        vec3 unit = normalize(position);
+        vReveal = clamp(0.5 - asin(clamp(unit.y, -1.0, 1.0)) / 3.14159265359, 0.0, 1.0);
+        vec3 underPos = normalize(position) * (length(position) * ${UNDERLAY_RADIAL_SCALE.toFixed(3)});
+        vec3 worldPos = (modelMatrix * vec4(underPos, 1.0)).xyz;
+        vec3 worldNormal = normalize((modelMatrix * vec4(unit, 0.0)).xyz);
+        vec3 viewDir = normalize(cameraPosition - worldPos);
+        vFacing = dot(worldNormal, viewDir);
+        vec4 mv = modelViewMatrix * vec4(underPos, 1.0);
+        gl_Position = projectionMatrix * mv;
+        float basePointSize = clamp(uPointPx, ${MEDIACARD_TUNING.DOT_MIN_SIZE_DPR.toFixed(1)} * uDpr, ${MEDIACARD_TUNING.DOT_MAX_SIZE_DPR.toFixed(1)} * uDpr);
+        float d = length(mv.xyz);
+        float t = smoothstep(uBeadFar, uBeadNear, d);
+        basePointSize *= mix(1.0, uBeadBoost, t);
+        gl_PointSize = basePointSize * ${UNDERLAY_POINTSIZE_MULT.toFixed(2)};
+      }
+    `;
+    const underlayFragmentShader = `
+      precision highp float;
+      varying float vReveal;
+      varying float vFacing;
+      uniform float uReveal;
+      uniform vec3 uColor;
+      uniform float uAlpha;
+      void main() {
+        if (vReveal > uReveal) discard;
+        vec2 p = gl_PointCoord * 2.0 - 1.0;
+        float r2 = dot(p, p);
+        if (r2 > 1.0) discard;
+        float r = sqrt(r2);
+        float disc = 1.0 - smoothstep(0.90, 1.0, r);
+        float front = smoothstep(-0.28, 0.10, vFacing);
+        float outA = uAlpha * disc * front;
+        gl_FragColor = vec4(uColor * outA, outA);
       }
     `;
 
@@ -1685,6 +1902,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
 
     let material: THREE.ShaderMaterial;
     let glowMaterial: THREE.ShaderMaterial;
+    let ghostUnderlayMaterial: THREE.ShaderMaterial | null = null;
     let marketOverlayMaterial: THREE.ShaderMaterial;
     try {
       material = new THREE.ShaderMaterial({
@@ -1717,18 +1935,36 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         toneMapped: false,
         premultipliedAlpha: true,
       });
+      if (UNDERLAY_ENABLE) {
+        ghostUnderlayMaterial = new THREE.ShaderMaterial({
+          uniforms: underlayUniforms,
+          vertexShader: underlayVertexShader,
+          fragmentShader: underlayFragmentShader,
+          transparent: true,
+          depthWrite: false,
+          depthTest: true,
+          blending: THREE.NormalBlending,
+          premultipliedAlpha: true,
+        });
+      }
     } catch (error) {
       console.error("[mediacard] dot shader compile failed", error);
       const fallbackVertexShader = `
         precision highp float;
         attribute float aHot;
+        attribute float aMarketId;
+        attribute float aMarketMask;
         uniform float uPointPx;
         uniform float uDpr;
         uniform float uReveal;
         varying float vHot;
         varying float vReveal;
+        varying float vMarketId;
+        varying float vMarketMask;
         void main() {
           vHot = aHot;
+          vMarketId = aMarketId;
+          vMarketMask = aMarketMask;
           vec3 unit = normalize(position);
           vReveal = clamp(0.5 - asin(clamp(unit.y, -1.0, 1.0)) / 3.14159265359, 0.0, 1.0);
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
@@ -1740,9 +1976,14 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         precision highp float;
         varying float vHot;
         varying float vReveal;
+        varying float vMarketId;
+        varying float vMarketMask;
         uniform float uReveal;
         uniform vec3 uBase;
         uniform vec3 uViolet;
+        uniform float uHoverMarket;
+        uniform float uActiveMarket;
+        uniform float uDebugBaseOnly;
         void main() {
           if (vReveal > uReveal) discard;
           vec2 p = gl_PointCoord * 2.0 - 1.0;
@@ -1750,7 +1991,14 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
           if (r2 > 1.0) discard;
           float r = sqrt(r2);
           float alpha = pow(1.0 - r, 1.5);
-          vec3 color = mix(uBase * vec3(0.90, 0.76, 0.50), uViolet * vec3(0.84, 0.66, 1.02), smoothstep(0.78, 0.96, vHot));
+          vec3 color = uBase * vec3(0.90, 0.76, 0.50);
+          if (uDebugBaseOnly < 0.5) {
+            float isHover = step(0.5, 1.0 - abs(vMarketId - uHoverMarket));
+            float isActive = step(0.5, 1.0 - abs(vMarketId - uActiveMarket));
+            float marketOn = max(isHover, isActive) * step(0.5, vMarketMask);
+            vec3 highlightColor = vec3(0.70, 0.55, 1.00);
+            color = mix(color, mix(color, highlightColor, 0.65), marketOn);
+          }
           gl_FragColor = vec4(color * alpha, alpha);
         }
       `;
@@ -1760,8 +2008,10 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         varying float vReveal;
         uniform float uReveal;
         uniform vec3 uViolet;
+        uniform float uDebugBaseOnly;
         void main() {
           if (vReveal > uReveal) discard;
+          if (uDebugBaseOnly > 0.5) discard;
           if (vHot <= 0.001) discard;
           vec2 p = gl_PointCoord * 2.0 - 1.0;
           float r = length(p);
@@ -1773,32 +2023,47 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       `;
       const fallbackMarketVertexShader = `
         precision highp float;
-        attribute float aMarketW;
+        attribute float aMarketId;
+        attribute float aMarketMask;
         uniform float uPointPx;
         uniform float uDpr;
-        varying float vMarketW;
+        uniform float uHoverMarket;
+        uniform float uActiveMarket;
+        varying float vMarketId;
+        varying float vMarketMask;
         varying float vReveal;
         void main() {
-          vMarketW = aMarketW;
+          vMarketId = aMarketId;
+          vMarketMask = aMarketMask;
           vec3 unit = normalize(position);
           vReveal = clamp(0.5 - asin(clamp(unit.y, -1.0, 1.0)) / 3.14159265359, 0.0, 1.0);
+          float isHover = step(0.5, 1.0 - abs(aMarketId - uHoverMarket));
+          float isActive = step(0.5, 1.0 - abs(aMarketId - uActiveMarket));
+          float w = clamp((isHover + isActive) * aMarketMask, 0.0, 1.0);
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           gl_Position = projectionMatrix * mv;
-          gl_PointSize = clamp(uPointPx, ${MEDIACARD_TUNING.DOT_MIN_SIZE_DPR.toFixed(1)} * uDpr, ${(MEDIACARD_TUNING.DOT_MAX_SIZE_DPR * 1.25).toFixed(1)} * uDpr) * 1.08;
+          gl_PointSize = clamp(uPointPx, ${MEDIACARD_TUNING.DOT_MIN_SIZE_DPR.toFixed(1)} * uDpr, ${(MEDIACARD_TUNING.DOT_MAX_SIZE_DPR * 1.25).toFixed(1)} * uDpr) * (1.0 + 0.10 * w);
         }
       `;
       const fallbackMarketFragmentShader = `
         precision highp float;
-        varying float vMarketW;
+        varying float vMarketId;
+        varying float vMarketMask;
         varying float vReveal;
         uniform float uReveal;
+        uniform float uHoverMarket;
+        uniform float uActiveMarket;
         void main() {
           if (vReveal > uReveal) discard;
           vec2 p = gl_PointCoord * 2.0 - 1.0;
           float r2 = dot(p, p);
           if (r2 > 1.0) discard;
-          float alpha = pow(1.0 - sqrt(r2), 1.8) * vMarketW * 0.32;
-          vec3 col = vec3(0.70, 0.60, 1.00);
+          float isHover = step(0.5, 1.0 - abs(vMarketId - uHoverMarket));
+          float isActive = step(0.5, 1.0 - abs(vMarketId - uActiveMarket));
+          float w = clamp((isHover + isActive) * vMarketMask, 0.0, 1.0);
+          if (w <= 0.001) discard;
+          float alpha = pow(1.0 - sqrt(r2), 1.8) * w * 0.96;
+          vec3 col = vec3(0.70, 0.55, 1.00);
           gl_FragColor = vec4(col * alpha, alpha);
         }
       `;
@@ -1832,19 +2097,37 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         toneMapped: false,
         premultipliedAlpha: true,
       });
+      if (UNDERLAY_ENABLE) {
+        ghostUnderlayMaterial = new THREE.ShaderMaterial({
+          uniforms: underlayUniforms,
+          vertexShader: underlayVertexShader,
+          fragmentShader: underlayFragmentShader,
+          transparent: true,
+          depthWrite: false,
+          depthTest: true,
+          blending: THREE.NormalBlending,
+          premultipliedAlpha: true,
+        });
+      }
     }
     material.customProgramCacheKey = () => `dots_${MEDIACARD_BUILD_TAG}`;
     glowMaterial.customProgramCacheKey = () => `glow_${MEDIACARD_BUILD_TAG}`;
+    if (ghostUnderlayMaterial) ghostUnderlayMaterial.customProgramCacheKey = () => `ghost_underlay_${MEDIACARD_BUILD_TAG}`;
     marketOverlayMaterial.customProgramCacheKey = () => `market_overlay_${MEDIACARD_BUILD_TAG}`;
     material.needsUpdate = true;
     glowMaterial.needsUpdate = true;
+    if (ghostUnderlayMaterial) ghostUnderlayMaterial.needsUpdate = true;
     marketOverlayMaterial.needsUpdate = true;
+    const ghostUnderlayPoints = ghostUnderlayMaterial ? new THREE.Points(geo, ghostUnderlayMaterial) : null;
     const points = new THREE.Points(geo, material);
     const glow = new THREE.Points(geo, glowMaterial);
     const marketOverlay = new THREE.Points(marketOverlayGeo, marketOverlayMaterial);
+    if (ghostUnderlayPoints) ghostUnderlayPoints.renderOrder = 1.98;
     points.renderOrder = 2;
     glow.renderOrder = 1.95;
     marketOverlay.renderOrder = 999;
+    marketOverlay.visible = false;
+    if (ghostUnderlayPoints) ghostUnderlayPoints.frustumCulled = false;
     points.frustumCulled = false;
     glow.frustumCulled = false;
     marketOverlay.frustumCulled = false;
@@ -1856,7 +2139,9 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
     const marketOverlayGroup = new THREE.Group();
     marketOverlayGroup.name = "mediacard-market-overlay-group";
     marketOverlayGroup.add(marketOverlay);
-    dotsGroup.add(glow, points, marketOverlayGroup);
+    dotsGroup.add(glow);
+    if (ghostUnderlayPoints) dotsGroup.add(ghostUnderlayPoints);
+    dotsGroup.add(points, marketOverlayGroup);
     globeGroup.add(dotsGroup);
     marketOverlayGroupRef.current = marketOverlayGroup;
     dotsGroupRef.current = dotsGroup;
@@ -2087,16 +2372,10 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       const frontFacing = worldPoint.dot(viewDir) > 0.02;
       if (!frontFacing) return null;
 
-      let best: (typeof marketRuntime)[number] | null = null;
-      let bestDeg = Number.POSITIVE_INFINITY;
-      for (const market of marketRuntime) {
-        const dot = clamp(unit.dot(market.center), -1, 1);
-        const distanceDeg = THREE.MathUtils.radToDeg(Math.acos(dot));
-        if (distanceDeg <= market.hitRadiusDeg && distanceDeg < bestDeg) {
-          best = market;
-          bestDeg = distanceDeg;
-        }
-      }
+      const { lonDeg, latDeg } = unitToLatLonDeg(unit, MEDIACARD_TUNING.LON_OFFSET_DEG);
+      const marketId = marketIdForLonLat(latDeg, lonDeg);
+      if (marketId === MARKET_NONE_ID) return null;
+      const best = MARKETS.find((market) => market.id === marketId);
       if (!best) return null;
       return {
         marketId: best.id,
@@ -2233,6 +2512,13 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       if (event.key === "d" || event.key === "D") {
         debugMaskEnabled = !debugMaskEnabled;
         syncDebugMaskVisibility();
+        return;
+      }
+      if (debugMarketsEnabled && (event.key === "b" || event.key === "B")) {
+        debugBaseDotsOnly = !debugBaseDotsOnly;
+        uniforms.uDebugBaseOnly.value = debugBaseDotsOnly ? 1 : 0;
+        glowUniforms.uDebugBaseOnly.value = debugBaseDotsOnly ? 1 : 0;
+        console.log("[mediacard][debugMarkets] baseDotsOnly", debugBaseDotsOnly);
       }
     };
 
@@ -2247,6 +2533,21 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(host);
     resize();
+    if (debugMarketsEnabled) {
+      const hoverDefault = Number(uniforms.uHoverMarket.value ?? 0);
+      const activeDefault = Number(uniforms.uActiveMarket.value ?? 0);
+      const marketShadingNonZeroAtRest = false;
+      console.log(
+        "[mediacard][debugMarkets] init",
+        {
+          uHoverMarket: hoverDefault,
+          uActiveMarket: activeDefault,
+          marketShadingNonZeroAtRest,
+          rootCauseRemoved: "main dot shader hotspotTint/hotMix base-color modulation",
+          toggleKey: "B",
+        }
+      );
+    }
 
     const animate = (time: number) => {
       if (!aliveRef.current) return;
@@ -2260,6 +2561,8 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uniforms.uTime.value = timeSec;
       glowUniforms.uTime.value = timeSec;
       const finalHover = hoverMarketIdRef.current > 0 ? hoverMarketIdRef.current : cursorHoverMarketIdRef.current;
+      uniforms.uHoverMarket.value = finalHover;
+      uniforms.uActiveMarket.value = activeMarketIdRef.current;
       marketOverlayUniforms.uHoverMarket.value = finalHover;
       marketOverlayUniforms.uActiveMarket.value = activeMarketIdRef.current;
       if (finalHover !== lastLoggedHoverMarket || activeMarketIdRef.current !== lastLoggedActiveMarket) {
@@ -2353,6 +2656,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       geo.dispose();
       material.dispose();
       glowMaterial.dispose();
+      ghostUnderlayMaterial?.dispose();
       debugMaskMesh.geometry.dispose();
       debugMaskMaterial.dispose();
       (debugAnchorMarkers.geometry as THREE.BufferGeometry).dispose();

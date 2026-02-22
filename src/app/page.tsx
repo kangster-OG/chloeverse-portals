@@ -13,7 +13,7 @@ const ibmPlexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-export default function Home() {
+export default function Page() {
   return (
     <ChloeverseMainLanding
       titleFontClassName={rubikPuddles.className}

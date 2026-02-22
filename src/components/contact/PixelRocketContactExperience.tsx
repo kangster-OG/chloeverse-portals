@@ -12,27 +12,7 @@ type Channel = {
   copyValue: string;
 };
 
-const ASSETS = {
-  launchBg: "/contact/pixelrocket/launch_clean3.png",
-  flybyBg: "/contact/pixelrocket/flyby_clean.png",
-  boom1: "/contact/pixelrocket/explosion_clean.png",
-  boom2: "/contact/pixelrocket/explosion_clean2.png",
-  boom3: "/contact/pixelrocket/explosion_clean3.png",
-  card: "/contact/pixelrocket/card_clean2.png",
-} as const;
-
-const PLANETS = [
-  "Mercury",
-  "Venus",
-  "Earth",
-  "Mars",
-  "Jupiter",
-  "Saturn",
-  "Uranus",
-  "Neptune",
-  "Pluto",
-] as const;
-
+const PLANETS = ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const;
 type PlanetName = (typeof PLANETS)[number];
 
 function clamp(n: number, a: number, b: number) {
@@ -51,6 +31,7 @@ function easeOutBack(t: number) {
   const c3 = c1 + 1;
   return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
 }
+
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -93,7 +74,7 @@ function ensureSfx(ref: React.MutableRefObject<Sfx | null>, enabled: boolean) {
   return s;
 }
 
-function beep(sfx: Sfx, freq: number, durMs: number, type: OscillatorType = "square", gain = 0.5) {
+function beep(sfx: Sfx, freq: number, durMs: number, type: OscillatorType = "square", gain = 0.45) {
   if (!sfx.enabled) return;
   const { ctx, master } = sfx;
   const o = ctx.createOscillator();
@@ -111,7 +92,7 @@ function beep(sfx: Sfx, freq: number, durMs: number, type: OscillatorType = "squ
   o.stop(now + dur + 0.03);
 }
 
-function noiseBurst(sfx: Sfx, durMs: number, cutoff = 1700) {
+function noiseBurst(sfx: Sfx, durMs: number, cutoff = 1800) {
   if (!sfx.enabled) return;
   const { ctx, master } = sfx;
   const dur = Math.max(0.03, durMs / 1000);
@@ -141,9 +122,9 @@ function noiseBurst(sfx: Sfx, durMs: number, cutoff = 1700) {
   src.stop(now + dur + 0.02);
 }
 
-/* -------------------- Pixel renderer helpers -------------------- */
+/* -------------------- Pixel rendering helpers -------------------- */
 function setPixelPerfect(ctx: CanvasRenderingContext2D) {
-  // @ts-expect-error - vendor props
+  // @ts-expect-error
   ctx.imageSmoothingEnabled = false;
 }
 
@@ -165,46 +146,78 @@ function ptxt(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, c:
 type Puff = { x: number; y: number; vx: number; vy: number; age: number; life: number; s: number };
 type Spark = { x: number; y: number; vx: number; vy: number; age: number; life: number; c: string; s: number };
 
+function drawSky(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "#55b9ff");
+  g.addColorStop(0.55, "#2a7bff");
+  g.addColorStop(1, "#1d3cff");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function drawSpace(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "#070816");
+  g.addColorStop(1, "#04040c");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function drawClouds(ctx: CanvasRenderingContext2D, t: number, w: number, h: number, layer: 0 | 1) {
+  const yBase = layer === 0 ? Math.round(h * 0.50) : Math.round(h * 0.62);
+  const speed = layer === 0 ? 14 : 28;
+  const alpha = layer === 0 ? 0.20 : 0.14;
+  for (let i = 0; i < 6; i++) {
+    const ww = 28 + i * 12;
+    const hh = 6 + (i % 2) * 2;
+    const x = ((t * speed) + i * 56) % (w + 80) - 80;
+    const y = yBase + i * 4;
+    px(ctx, x, y, ww, hh, "rgba(255,255,255,1)", alpha);
+    px(ctx, x + 6, y - 2, ww * 0.55, hh, "rgba(255,255,255,1)", alpha * 0.85);
+  }
+}
+
 function drawStarfield(ctx: CanvasRenderingContext2D, t: number, w: number, h: number, speed: number) {
-  // two layers: slow dots + fast streaks
-  for (let i = 0; i < 90; i++) {
+  // mint/cyan stars
+  for (let i = 0; i < 110; i++) {
     const sx = (i * 97) % w;
     const sy = (i * 53) % h;
     const k = 0.2 + (((i * 13) % 50) / 100);
-    const x = (sx + t * (6 + 16 * k) * speed) % w;
-    const a = 0.25 + 0.50 * (0.5 + 0.5 * Math.sin(t * 1.1 + k * 10));
+    const x = (sx + t * (6 + 18 * k) * speed) % w;
+    const a = 0.22 + 0.55 * (0.5 + 0.5 * Math.sin(t * 1.1 + k * 10));
     ctx.fillStyle = `rgba(170,255,250,${a.toFixed(3)})`;
     const s = 1 + (i % 2);
     ctx.fillRect(Math.round(x), Math.round(sy), s, s);
   }
-  for (let i = 0; i < 28; i++) {
-    const sy = 8 + i * 6;
+  // lilac nebula specks
+  for (let i = 0; i < 22; i++) {
+    const sx = (i * 83) % w;
+    const sy = (i * 41) % h;
+    const x = (sx + t * (2.5 + i * 0.4) * speed) % w;
+    ctx.fillStyle = "rgba(200,140,255,0.06)";
+    ctx.fillRect(Math.round(x), Math.round(sy), 2, 2);
+  }
+  // streaks
+  for (let i = 0; i < 24; i++) {
+    const sy = 10 + i * 7;
     const x = (w - ((t * (90 + i * 7) * speed) % (w + 60)));
     ctx.fillStyle = "rgba(255,255,255,0.10)";
     ctx.fillRect(Math.round(x), Math.round(sy), 10, 1);
   }
-  // lilac specks
-  for (let i = 0; i < 16; i++) {
-    const sx = (i * 83) % w;
-    const sy = (i * 41) % h;
-    const x = (sx + t * (3 + i) * speed) % w;
-    ctx.fillStyle = "rgba(200,140,255,0.07)";
-    ctx.fillRect(Math.round(x), Math.round(sy), 2, 2);
-  }
 }
 
 function drawEarthHorizon(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const horizonY = Math.round(h * 0.70);
+  const horizonY = Math.round(h * 0.72);
   // ocean band
   px(ctx, 0, horizonY, w, h - horizonY, "#1d3cff", 1);
-  // cloud streaks
+  // cloud streaks on horizon
   for (let i = 0; i < 6; i++) {
-    const y = horizonY + 6 + i * 6;
-    const x = (t * (24 + i * 8)) % (w + 60) - 60;
-    px(ctx, x, y, 22 + i * 6, 2, "rgba(255,255,255,0.35)");
+    const y = horizonY + 4 + i * 6;
+    const x = (t * (26 + i * 8)) % (w + 60) - 60;
+    px(ctx, x, y, 20 + i * 6, 2, "rgba(255,255,255,1)", 0.32);
   }
-  // subtle curved edge illusion
-  px(ctx, 0, horizonY - 2, w, 2, "rgba(140,255,220,0.10)");
+  // glow edge
+  px(ctx, 0, horizonY - 2, w, 2, "rgba(140,255,220,1)", 0.10);
 }
 
 function drawLaunchPad(ctx: CanvasRenderingContext2D, cx: number, y: number) {
@@ -246,7 +259,7 @@ function drawRocket(ctx: CanvasRenderingContext2D, x: number, y: number, t: numb
   // flame
   if (mode !== "idle") {
     const flick = Math.floor((t * 18) % 3);
-    const h = 4 + flick + Math.round(thrust * 6);
+    const h = 4 + flick + Math.round(thrust * 7);
     px(ctx, xx + 11, yy + 27, 2, h, "#ffd36b");
     px(ctx, xx + 11, yy + 28, 2, Math.max(0, h - 2), "#ff7a3d");
     if (flick === 2) px(ctx, xx + 11, yy + 29, 2, Math.max(0, h - 3), "#fff6c7");
@@ -256,9 +269,9 @@ function drawRocket(ctx: CanvasRenderingContext2D, x: number, y: number, t: numb
 function planetRamp(name: PlanetName) {
   switch (name) {
     case "Mercury":
-      return ["#a6a6b0", "#7b7b86", "#d6d6df", "#5f5f6a"];
+      return ["#d6d6df", "#a6a6b0", "#7b7b86", "#5f5f6a"];
     case "Venus":
-      return ["#ffe7b0", "#f6d07a", "#d2a954", "#fff6d0"];
+      return ["#fff6d0", "#f6d07a", "#d2a954", "#ffe7b0"];
     case "Earth":
       return ["#76c8ff", "#2a7bff", "#1b4eb6", "#39d07a"];
     case "Mars":
@@ -273,47 +286,39 @@ function planetRamp(name: PlanetName) {
       return ["#7aa0ff", "#3a59ff", "#2636aa", "#ffffff"];
     case "Pluto":
       return ["#f5efe9", "#cfc6bf", "#a79f98", "#ff7da1"];
-    default:
-      return ["#ffffff", "#cccccc", "#999999", "#666666"];
   }
 }
 
 function drawPlanet(ctx: CanvasRenderingContext2D, name: PlanetName, cx: number, cy: number, r: number, t: number) {
   const [hi, base, shade, accent] = planetRamp(name);
-  // disc
   for (let yy = -r; yy <= r; yy++) {
-    const w = Math.floor(Math.sqrt(Math.max(0, r * r - yy * yy)));
+    const ww = Math.floor(Math.sqrt(Math.max(0, r * r - yy * yy)));
     const y = cy + yy;
     const k = (yy / r) * 0.5 + 0.5;
     let col = base;
     if (k > 0.62) col = hi;
     else if (k < 0.38) col = shade;
     ctx.fillStyle = col;
-    ctx.fillRect(Math.round(cx - w), Math.round(y), Math.round(w * 2), 1);
+    ctx.fillRect(Math.round(cx - ww), Math.round(y), Math.round(ww * 2), 1);
 
-    // stripes/bands for gas giants
     if ((name === "Jupiter" || name === "Saturn" || name === "Venus") && Math.abs(yy) % 4 === 0) {
       ctx.fillStyle = "rgba(0,0,0,0.10)";
-      ctx.fillRect(Math.round(cx - w), Math.round(y), Math.round(w * 2), 1);
+      ctx.fillRect(Math.round(cx - ww), Math.round(y), Math.round(ww * 2), 1);
     }
   }
+  px(ctx, cx - r * 0.35, cy - r * 0.35, 3, 3, "rgba(255,255,255,1)", 0.25);
 
-  // highlight
-  px(ctx, cx - r * 0.35, cy - r * 0.35, 3, 3, "rgba(255,255,255,0.25)");
-
-  // special details
   if (name === "Earth") {
     px(ctx, cx - 6, cy + 1, 5, 3, accent, 1);
     px(ctx, cx + 3, cy - 5, 4, 2, accent, 1);
   }
   if (name === "Mars") {
-    px(ctx, cx - 2, cy - r + 2, 4, 2, "rgba(255,255,255,0.35)", 1);
+    px(ctx, cx - 2, cy - r + 2, 4, 2, "rgba(255,255,255,1)", 0.30);
   }
   if (name === "Jupiter") {
     px(ctx, cx + Math.round(r * 0.15), cy + Math.round(r * 0.15), 3, 2, accent, 1);
   }
   if (name === "Uranus" || name === "Neptune") {
-    // glow aura
     ctx.strokeStyle = "rgba(150,240,255,0.22)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -321,38 +326,32 @@ function drawPlanet(ctx: CanvasRenderingContext2D, name: PlanetName, cx: number,
     ctx.stroke();
   }
   if (name === "Pluto") {
-    // cute marking
     px(ctx, cx - 2, cy + 1, 2, 2, accent, 0.65);
     px(ctx, cx + 2, cy + 1, 2, 2, accent, 0.65);
   }
   if (name === "Saturn") {
-    // ring wobble
     const wob = Math.sin(t * 2) * 1;
-    px(ctx, cx - r * 1.35, cy + wob, r * 2.7, 2, "rgba(255,255,255,0.35)");
-    px(ctx, cx - r * 1.35, cy + wob + 1, r * 2.7, 1, "rgba(0,0,0,0.15)");
+    px(ctx, cx - r * 1.35, cy + wob, r * 2.7, 2, "rgba(255,255,255,1)", 0.35);
+    px(ctx, cx - r * 1.35, cy + wob + 1, r * 2.7, 1, "rgba(0,0,0,1)", 0.15);
   }
 }
 
 function drawExplosion(ctx: CanvasRenderingContext2D, cx: number, cy: number, t: number, sparks: Spark[]) {
-  // t: 0..1
   const k = smooth(t);
-  const r = 6 + k * 48;
+  const r = 6 + k * 52;
 
-  // expanding ring
   ctx.strokeStyle = "rgba(255, 180, 80, 0.75)";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.stroke();
 
-  // core puff
   ctx.fillStyle = "rgba(255,246,199,0.80)";
   ctx.beginPath();
   ctx.arc(cx, cy, 4 + k * 20, 0, Math.PI * 2);
   ctx.fill();
 
-  // starbursts pixels
-  const n = 16;
+  const n = 18;
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + t * 0.8;
     const rr = r * (0.6 + 0.5 * Math.sin(i * 1.7 + t * 3));
@@ -361,7 +360,6 @@ function drawExplosion(ctx: CanvasRenderingContext2D, cx: number, cy: number, t:
     px(ctx, x, y, 2 + (i % 2), 2 + (i % 2), i % 3 === 0 ? "#ff4d7d" : "#ffd36b", 0.9);
   }
 
-  // glitter falling
   sparks.forEach((s) => {
     const a2 = 1 - clamp(s.age / s.life, 0, 1);
     px(ctx, s.x, s.y, s.s, s.s, s.c, a2);
@@ -386,20 +384,6 @@ export function PixelRocketContactExperience() {
     []
   );
 
-  // Card hit areas (these already line up for you)
-  const hitAreas = useMemo(
-    () => [
-      { key: "instagram", x: 0.22, y: 0.46, w: 0.11, h: 0.14, on: () => openNewTab(CONTACTS[1].href) },
-      { key: "x",         x: 0.37, y: 0.46, w: 0.11, h: 0.14, on: () => openNewTab(CONTACTS[2].href) },
-      { key: "linkedin",  x: 0.52, y: 0.46, w: 0.11, h: 0.14, on: () => openNewTab(CONTACTS[3].href) },
-      { key: "tiktok",    x: 0.67, y: 0.46, w: 0.11, h: 0.14, on: () => openNewTab(CONTACTS[4].href) },
-      { key: "open",      x: 0.16, y: 0.64, w: 0.33, h: 0.18, on: () => openNewTab(CONTACTS[0].href) },
-      { key: "copy",      x: 0.52, y: 0.64, w: 0.33, h: 0.18, on: async () => copyToClipboard(CONTACTS[0].copyValue) },
-      { key: "email",     x: 0.10, y: 0.30, w: 0.80, h: 0.12, on: () => openNewTab(CONTACTS[0].href) },
-    ],
-    [CONTACTS]
-  );
-
   const BASE_W = 320;
   const BASE_H = 180;
 
@@ -408,9 +392,6 @@ export function PixelRocketContactExperience() {
   const startRef = useRef<number | null>(null);
 
   const [stage, setStage] = useState<Stage>("launch");
-  const stageRef = useRef<Stage>("launch");
-  useEffect(() => { stageRef.current = stage; }, [stage]);
-
   const [planetIndex, setPlanetIndex] = useState(0);
   const [showCard, setShowCard] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -418,40 +399,29 @@ export function PixelRocketContactExperience() {
 
   const sfxRef = useRef<Sfx | null>(null);
 
-  // preload images
-  const imgRef = useRef<Record<string, HTMLImageElement>>({});
-  useEffect(() => {
-    const load = (key: string, src: string) => {
-      const img = new Image();
-      img.src = src;
-      imgRef.current[key] = img;
-    };
-    load("launchBg", ASSETS.launchBg);
-    load("flybyBg", ASSETS.flybyBg);
-    load("boom1", ASSETS.boom1);
-    load("boom2", ASSETS.boom2);
-    load("boom3", ASSETS.boom3);
-    load("card", ASSETS.card);
-  }, []);
+  const puffsRef = useRef<Puff[]>([]);
+  const sparksRef = useRef<Spark[]>([]);
 
   const DUR = useMemo(() => {
     return {
       launch: 1.5,
       lift: 1.0,
-      flybyEach: 1.0, // 0.9 travel + 0.1 label pop (we approximate)
+      flyEach: 1.0,
       crash: 1.6,
-      explosion: 1.25,
-      cardPop: 0.6,
+      boom: 1.25,
+      card: 0.6,
     };
   }, []);
 
-  const totalFlyby = PLANETS.length * DUR.flybyEach;
-  const timelineEnds = DUR.launch + DUR.lift + totalFlyby + DUR.crash + DUR.explosion + DUR.cardPop;
+  const totalFly = PLANETS.length * DUR.flyEach;
+  const tLaunchEnd = DUR.launch;
+  const tLiftEnd = tLaunchEnd + DUR.lift;
+  const tFlyEnd = tLiftEnd + totalFly;
+  const tCrashEnd = tFlyEnd + DUR.crash;
+  const tBoomEnd = tCrashEnd + DUR.boom;
+  const tCardEnd = tBoomEnd + DUR.card;
 
-  const puffsRef = useRef<Puff[]>([]);
-  const sparksRef = useRef<Spark[]>([]);
-
-  const resetTimeline = () => {
+  const reset = () => {
     startRef.current = null;
     setStage("launch");
     setPlanetIndex(0);
@@ -467,12 +437,12 @@ export function PixelRocketContactExperience() {
   };
 
   const replay = () => {
-    resetTimeline();
+    reset();
     const s = ensureSfx(sfxRef, soundOn);
-    if (s) beep(s, 640, 70, "triangle", 0.20);
+    if (s) beep(s, 740, 60, "triangle", 0.20);
   };
 
-  async function copyToClipboard(text: string) {
+  const copyToClipboard = async (text: string) => {
     const s = ensureSfx(sfxRef, soundOn);
     if (s) beep(s, 980, 40, "square", 0.16);
     try {
@@ -482,10 +452,42 @@ export function PixelRocketContactExperience() {
       setCopied("Copy failed");
     }
     window.setTimeout(() => setCopied(null), 900);
-  }
+  };
 
   const goCandyCastle = () => (window.location.href = "https://imchloekang.com");
   const goChloeverse = () => (window.location.href = "https://chloeverse.io");
+
+  // HTML card UI (matches spec; no fake email in an image)
+  const CardUI = () => (
+    <div className="pr-cardUi" role="dialog" aria-label="Contact card">
+      <div className="pr-cardFrame">
+        <div className="pr-cardTitle">Contact Me!</div>
+        <div className="pr-cardLine">
+          <span className="pr-cardLabel">Email:</span>
+          <button className="pr-cardLink" onClick={() => openNewTab(CONTACTS[0].href)} type="button">
+            {CONTACTS[0].value}
+          </button>
+        </div>
+
+        <div className="pr-icons">
+          <button className="pr-icon" onClick={() => openNewTab(CONTACTS[1].href)} type="button" aria-label="Instagram">IG</button>
+          <button className="pr-icon" onClick={() => openNewTab(CONTACTS[2].href)} type="button" aria-label="Twitter/X">X</button>
+          <button className="pr-icon" onClick={() => openNewTab(CONTACTS[3].href)} type="button" aria-label="LinkedIn">in</button>
+          <button className="pr-icon" onClick={() => openNewTab(CONTACTS[4].href)} type="button" aria-label="TikTok">TT</button>
+        </div>
+
+        <div className="pr-cardBtns">
+          <button className="pr-btnA" onClick={() => openNewTab(CONTACTS[0].href)} type="button">Open</button>
+          <button className="pr-btnB" onClick={() => copyToClipboard(CONTACTS[0].copyValue)} type="button">Copy</button>
+        </div>
+      </div>
+
+      <div className="pr-actions">
+        <button type="button" className="pr-actionBtn" onClick={goCandyCastle}>Return to Candy Castle</button>
+        <button type="button" className="pr-actionBtn" onClick={goChloeverse}>Back to Chloeverse</button>
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -501,7 +503,7 @@ export function PixelRocketContactExperience() {
       puffsRef.current.push({
         x, y, vx, vy,
         age: 0,
-        life: 0.7 + Math.random() * 0.5,
+        life: 0.6 + Math.random() * 0.6,
         s: 2 + Math.floor(Math.random() * 2),
       });
     };
@@ -514,137 +516,121 @@ export function PixelRocketContactExperience() {
         vx: Math.cos(angle) * spd,
         vy: Math.sin(angle) * spd - (10 + Math.random() * 10),
         age: 0,
-        life: 0.5 + Math.random() * 0.5,
+        life: 0.5 + Math.random() * 0.6,
         c: Math.random() < 0.35 ? "#ff4d7d" : "#ffd36b",
         s: 2,
       });
     };
 
-    let lastSfxStage: Stage | null = null;
+    let lastStage: Stage | null = null;
 
     const frame = (ms: number) => {
       if (startRef.current == null) startRef.current = ms;
       const tRaw = (ms - startRef.current) / 1000;
       const t = reducedMotion ? tRaw * 2.2 : tRaw;
 
-      // stage times
-      const t0 = 0;
-      const tLaunchEnd = t0 + DUR.launch;
-      const tLiftEnd = tLaunchEnd + DUR.lift;
-      const tFlybyEnd = tLiftEnd + totalFlyby;
-      const tCrashEnd = tFlybyEnd + DUR.crash;
-      const tExplEnd = tCrashEnd + DUR.explosion;
-      const tCardEnd = tExplEnd + DUR.cardPop;
-
+      // Determine stage
       let st: Stage = "launch";
       if (t < tLaunchEnd) st = "launch";
       else if (t < tLiftEnd) st = "lift";
-      else if (t < tFlybyEnd) st = "flyby";
+      else if (t < tFlyEnd) st = "flyby";
       else if (t < tCrashEnd) st = "crash";
-      else if (t < tExplEnd) st = "explosion";
+      else if (t < tBoomEnd) st = "explosion";
       else st = "card";
 
-      if (st !== stageRef.current) {
-        stageRef.current = st;
-        setStage(st);
-      }
+      if (st !== stage) setStage(st);
 
-      // sound events
-      if (lastSfxStage !== st) {
-        lastSfxStage = st;
+      // SFX triggers on stage transitions (and countdown beeps)
+      if (lastStage !== st) {
+        lastStage = st;
         const s = ensureSfx(sfxRef, soundOn);
         if (s) {
-          if (st === "launch") beep(s, 520, 60, "square", 0.18);
-          if (st === "lift") beep(s, 720, 80, "triangle", 0.20);
+          if (st === "launch") beep(s, 520, 50, "square", 0.18);
+          if (st === "lift") beep(s, 740, 80, "triangle", 0.20);
           if (st === "flyby") beep(s, 860, 40, "square", 0.12);
           if (st === "crash") beep(s, 420, 120, "square", 0.16);
-          if (st === "explosion") { noiseBurst(s, 180, 1900); beep(s, 260, 120, "sawtooth", 0.18); }
+          if (st === "explosion") { noiseBurst(s, 190, 1900); beep(s, 260, 130, "sawtooth", 0.18); }
           if (st === "card") beep(s, 880, 70, "triangle", 0.18);
         }
       }
 
-      // clear background
-      ctx.fillStyle = "#070816";
-      ctx.fillRect(0, 0, BASE_W, BASE_H);
-
-      // stage-specific base background (use assets as *backplates* but not as slideshow)
-      const img = imgRef.current;
-      const bg = st === "launch" || st === "lift" ? img.launchBg : img.flybyBg;
-      if (bg && bg.complete && bg.naturalWidth > 0) {
-        // draw centered contain into base canvas
-        const iw = bg.naturalWidth;
-        const ih = bg.naturalHeight;
-        const s = Math.min(BASE_W / iw, BASE_H / ih);
-        const dw = iw * s;
-        const dh = ih * s;
-        const dx = (BASE_W - dw) / 2;
-        const dy = (BASE_H - dh) / 2;
-        ctx.drawImage(bg, dx, dy, dw, dh);
+      // Background
+      if (st === "launch" || st === "lift") {
+        drawSky(ctx, BASE_W, BASE_H);
+        drawClouds(ctx, t, BASE_W, BASE_H, 0);
+        drawClouds(ctx, t, BASE_W, BASE_H, 1);
+        drawEarthHorizon(ctx, BASE_W, BASE_H, t);
       } else {
-        drawStarfield(ctx, t, BASE_W, BASE_H, 1.0);
+        drawSpace(ctx, BASE_W, BASE_H);
       }
 
-      // overlay our own diorama elements to match spec (always)
-      const speed = st === "flyby" ? 1.15 + planetIndex * 0.05 : 1.0;
-      drawStarfield(ctx, t * 0.7, BASE_W, BASE_H, speed);
+      // Parallax stars for space scenes
+      if (st !== "launch" && st !== "lift") {
+        const speed = st === "flyby" ? 1.05 + planetIndex * 0.06 : st === "crash" ? 1.15 : 1.0;
+        drawStarfield(ctx, t * 0.7, BASE_W, BASE_H, speed);
+      }
 
-      // subtle vignette
-      ctx.fillStyle = "rgba(0,0,0,0.25)";
-      ctx.fillRect(0, 0, BASE_W, 12);
-      ctx.fillRect(0, BASE_H - 14, BASE_W, 14);
-
-      // Scene rendering
+      // Scene content
       if (st === "launch") {
-        drawEarthHorizon(ctx, BASE_W, BASE_H, t);
         const cx = 160;
-        const padY = 132 - 8;
+        const padY = 124;
         drawLaunchPad(ctx, cx, padY);
 
-        // countdown bubble
+        // countdown
         const rem = tLaunchEnd - t;
         const n = rem > 1.0 ? "3" : rem > 0.5 ? "2" : "1";
         ptxt(ctx, "CONTACT MISSION", 160, 14, "rgba(255,255,255,0.92)", 12, "center");
         ptxt(ctx, "launching...", 160, 30, "rgba(255,255,255,0.70)", 9, "center");
         ptxt(ctx, n, 160, 54, "#ffd36b", 22, "center");
 
-        // rocket idle + tiny smoke puffs
         drawRocket(ctx, 148, 92, t, "idle");
-        if (Math.floor(t * 10) % 2 === 0) spawnPuff(160, 128, (Math.random() - 0.5) * 6, 18 + Math.random() * 6);
+
+        // smoke puffs
+        if (Math.floor(t * 12) % 2 === 0) spawnPuff(160, 128, (Math.random() - 0.5) * 6, 18 + Math.random() * 6);
+
+        // countdown beeps
+        const s = ensureSfx(sfxRef, soundOn);
+        if (s) {
+          if (Math.abs(rem - 1.0) < 0.02) beep(s, 520, 40, "square", 0.10);
+          if (Math.abs(rem - 0.5) < 0.02) beep(s, 560, 40, "square", 0.10);
+        }
       }
 
       if (st === "lift") {
         const k = smooth((t - tLaunchEnd) / DUR.lift);
-        drawEarthHorizon(ctx, BASE_W, BASE_H, t + k);
-        const rocketY = lerp(92, 24, k);
-        drawRocket(ctx, 148, rocketY, t, "thrust", 0.9);
+        const rocketY = lerp(92, 18, k);
+        drawRocket(ctx, 148, rocketY, t, "thrust", 0.95);
         ptxt(ctx, "LIFTOFF!", 160, 14, "#ff7da1", 14, "center");
-
-        // smoke trail
         if (Math.floor(t * 20) % 2 === 0) spawnPuff(160, rocketY + 34, (Math.random() - 0.5) * 8, 22 + Math.random() * 10);
+
+        // darken towards space
+        px(ctx, 0, 0, BASE_W, BASE_H, "#070816", k * 0.35);
       }
 
       if (st === "flyby") {
         const flyT = t - tLiftEnd;
-        const idx = Math.floor(flyT / DUR.flybyEach);
-        const local = flyT - idx * DUR.flybyEach;
+        const idx = Math.floor(flyT / DUR.flyEach);
+        const local = flyT - idx * DUR.flyEach;
         const pIndex = clamp(idx, 0, PLANETS.length - 1);
-        if (pIndex !== planetIndex) setPlanetIndex(pIndex);
+        if (pIndex !== planetIndex) {
+          setPlanetIndex(pIndex);
+          const s = ensureSfx(sfxRef, soundOn);
+          if (s) beep(s, 620 + pIndex * 18, 35, "square", 0.10);
+        }
 
         const planet = PLANETS[pIndex] as PlanetName;
         const travel = clamp(local / 0.9, 0, 1);
         const labelPop = local >= 0.9 ? clamp((local - 0.9) / 0.1, 0, 1) : 0;
         const pxT = smooth(travel);
 
-        // planet slides in from right to left
         const planetX = lerp(BASE_W + 60, -60, pxT);
         const planetY = 92 + Math.sin((t + pIndex) * 1.2) * 6;
         const r = planet === "Jupiter" ? 30 : planet === "Saturn" ? 28 : planet === "Earth" ? 24 : planet === "Pluto" ? 18 : 22;
         drawPlanet(ctx, planet, planetX, planetY, r, t);
 
-        // rocket stays center-left with gentle bob and thruster flicker
         drawRocket(ctx, 96, 78, t, "thrust", 0.45 + pIndex * 0.05);
 
-        // minimal label sign pop (6 frames feel)
+        // tiny label pop (6-frame feel)
         if (labelPop > 0.02) {
           const s = 0.85 + 0.15 * smooth(labelPop);
           ctx.save();
@@ -656,55 +642,35 @@ export function PixelRocketContactExperience() {
       }
 
       if (st === "crash") {
-        const k = smooth((t - tFlybyEnd) / DUR.crash);
+        const k = smooth((t - tFlyEnd) / DUR.crash);
         const plutoX = 220;
         const plutoY = 92;
         drawPlanet(ctx, "Pluto", plutoX, plutoY, 18, t);
 
-        // rocket wobble then bonk
         const approachX = lerp(96, 196, k);
         const approachY = lerp(78, 86, k);
         drawRocket(ctx, approachX, approachY, t, k > 0.55 ? "wobble" : "thrust", 0.25);
 
-        // smoke
         if (Math.floor(t * 18) % 2 === 0) spawnPuff(approachX + 12, approachY + 34, (Math.random() - 0.5) * 6, 18 + Math.random() * 8);
 
         if (k > 0.65) ptxt(ctx, "uh oh.", 244, 44, "#ffd36b", 10, "center");
       }
 
       if (st === "explosion") {
-        const k = clamp((t - tCrashEnd) / DUR.explosion, 0, 1);
+        const k = clamp((t - tCrashEnd) / DUR.boom, 0, 1);
 
         // shake
-        const shake = reducedMotion ? 0 : (1 - k) * 3.5;
+        const shake = reducedMotion ? 0 : (1 - k) * 3.0;
         const sx = (Math.random() - 0.5) * shake;
         const sy = (Math.random() - 0.5) * shake;
+
         ctx.save();
         ctx.translate(sx, sy);
 
-        // base pluto
         drawPlanet(ctx, "Pluto", 220, 92, 18, t);
 
-        // overlay sprite explosion frames lightly (for your supplied art), but driven by animation timing
-        const boomArr = [img.boom1, img.boom2, img.boom3];
-        const bi = Math.min(2, Math.floor(k * 3));
-        const boom = boomArr[bi];
-        if (boom && boom.complete && boom.naturalWidth > 0) {
-          const iw = boom.naturalWidth;
-          const ih = boom.naturalHeight;
-          const s = Math.min(BASE_W / iw, BASE_H / ih);
-          const dw = iw * s;
-          const dh = ih * s;
-          const dx = (BASE_W - dw) / 2;
-          const dy = (BASE_H - dh) / 2;
-          ctx.globalAlpha = 0.55;
-          ctx.drawImage(boom, dx, dy, dw, dh);
-          ctx.globalAlpha = 1;
-        }
-
-        // spawn glitter sparks early
         if (k < 0.55 && Math.floor(t * 30) % 2 === 0) {
-          for (let i = 0; i < 2; i++) spawnSpark(200, 92, 1.0 - k);
+          for (let i = 0; i < 3; i++) spawnSpark(200, 92, 1.0 - k);
         }
 
         // update sparks
@@ -718,16 +684,14 @@ export function PixelRocketContactExperience() {
         sparksRef.current = sparks.filter((s) => s.age < s.life);
 
         drawExplosion(ctx, 200, 92, k, sparksRef.current);
-
         ptxt(ctx, "BOOM!!", 160, 14, "#ff7da1", 14, "center");
 
         ctx.restore();
 
-        // trigger card pop near end
-        if (k > 0.75 && !showCard) setShowCard(true);
+        if (k > 0.76 && !showCard) setShowCard(true);
       }
 
-      // update smoke puffs
+      // update puffs
       const puffs = puffsRef.current;
       for (const p of puffs) {
         p.age += 1 / 60;
@@ -739,33 +703,26 @@ export function PixelRocketContactExperience() {
       }
       puffsRef.current = puffs.filter((p) => p.age < p.life);
 
-      // draw smoke puffs (always on top)
+      // draw puffs on top
       for (const p of puffsRef.current) {
         const a = 0.45 * (1 - p.age / p.life);
         px(ctx, p.x, p.y, p.s, p.s, "rgba(255,255,255,1)", a);
         px(ctx, p.x + 2, p.y + 1, p.s, p.s, "rgba(0,0,0,1)", a * 0.08);
       }
 
-      // Card pop animation on canvas behind the interactive overlay
+      // card pop behind HTML UI
       if (showCard) {
-        const tCard = clamp((t - tExplEnd) / DUR.cardPop, 0, 1);
+        const tCard = clamp((t - tBoomEnd) / DUR.card, 0, 1);
         const s = 0.82 + 0.18 * easeOutBack(tCard);
-        const card = img.card;
-        if (card && card.complete && card.naturalWidth > 0) {
-          const iw = card.naturalWidth;
-          const ih = card.naturalHeight;
-          const sc = Math.min(BASE_W / iw, BASE_H / ih) * s;
-          const dw = iw * sc;
-          const dh = ih * sc;
-          const dx = (BASE_W - dw) / 2;
-          const dy = (BASE_H - dh) / 2 + (1 - tCard) * 6;
-          ctx.drawImage(card, dx, dy, dw, dh);
-        }
-      }
-
-      // stop timeline after end (but keep subtle background motion)
-      if (t > timelineEnds + 2.0) {
-        // keep rendering so the card backdrop stays consistent; no-op
+        const w = 210 * s;
+        const h = 92 * s;
+        const x = (BASE_W - w) / 2;
+        const y = 44 - (1 - tCard) * 6;
+        px(ctx, x, y, w, h, "rgba(10,12,20,1)", 0.70);
+        ctx.strokeStyle = "rgba(255,255,255,0.28)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(Math.round(x) + 1, Math.round(y) + 1, Math.round(w) - 2, Math.round(h) - 2);
+        ptxt(ctx, "CONTACT CARD", 160, y + 10, "rgba(255,255,255,0.9)", 10, "center");
       }
 
       rafRef.current = requestAnimationFrame(frame);
@@ -776,15 +733,12 @@ export function PixelRocketContactExperience() {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [DUR, PLANETS.length, reducedMotion, soundOn, showCard, timelineEnds, totalFlyby, planetIndex]);
-
-  const currentPlanet = PLANETS[Math.max(0, Math.min(PLANETS.length - 1, planetIndex))];
+  }, [DUR, PLANETS.length, reducedMotion, soundOn, stage, showCard, planetIndex, tBoomEnd, tCardEnd, tCrashEnd, tFlyEnd, tLiftEnd, tLaunchEnd]);
 
   return (
     <div
       className="fixed inset-0 bg-black"
       onPointerDown={() => {
-        // unlock audio
         ensureSfx(sfxRef, soundOn);
       }}
     >
@@ -796,6 +750,7 @@ export function PixelRocketContactExperience() {
           image-rendering: crisp-edges;
           display: block;
         }
+
         .pr-hud {
           pointer-events: none;
           position: absolute;
@@ -839,6 +794,7 @@ export function PixelRocketContactExperience() {
           backdrop-filter: blur(10px);
         }
         .pr-btn:hover { background: rgba(255,255,255,0.14); }
+
         .pr-toast {
           position: absolute;
           top: 56px;
@@ -855,63 +811,83 @@ export function PixelRocketContactExperience() {
           backdrop-filter: blur(10px);
         }
 
-        .pr-cardOverlay {
+        .pr-cardUi {
           position: absolute;
           inset: 0;
-          display: grid;
-          place-items: center;
-          z-index: 40;
-          pointer-events: none;
-        }
-        .pr-cardWrap {
-          position: relative;
-          width: min(1180px, 100vw);
-          height: 100vh;
+          z-index: 60;
           display: grid;
           place-items: center;
           pointer-events: none;
         }
-        .pr-cardImg {
-          width: min(1180px, 100vw);
-          height: 100vh;
-          object-fit: contain;
-          image-rendering: pixelated;
-          image-rendering: crisp-edges;
-          filter: drop-shadow(0 30px 90px rgba(0,0,0,0.70));
-          pointer-events: none;
-        }
-        .pr-hit {
-          position: absolute;
-          border: none;
-          background: transparent;
-          cursor: pointer;
-          border-radius: 10px;
+        .pr-cardFrame {
           pointer-events: auto;
+          width: min(520px, 92vw);
+          border-radius: 18px;
+          background: rgba(12, 15, 26, 0.82);
+          border: 1px solid rgba(255,255,255,0.14);
+          box-shadow: 0 30px 90px rgba(0,0,0,0.65);
+          backdrop-filter: blur(12px);
+          padding: 16px;
         }
-        .pr-hit::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          border-radius: 10px;
-          background: rgba(255,255,255,0.0);
-          outline: 1px solid rgba(255,255,255,0.0);
-          box-shadow: 0 0 0 rgba(0,0,0,0);
-          transition: all 120ms ease-out;
+        .pr-cardTitle {
+          font-weight: 900;
+          color: rgba(255,255,255,0.92);
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          font-size: 14px;
         }
-        .pr-hit:hover::before, .pr-hit:focus-visible::before {
-          background: rgba(255,255,255,0.08);
-          outline: 1px solid rgba(255,255,255,0.22);
-          box-shadow: 0 0 24px rgba(43,214,255,0.18);
-        }
-
-        .pr-actions {
-          position: absolute;
-          left: 50%;
-          transform: translateX(-50%);
-          bottom: max(18px, env(safe-area-inset-bottom));
+        .pr-cardLine {
+          margin-top: 10px;
           display: flex;
           gap: 10px;
-          z-index: 60;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+        .pr-cardLabel { color: rgba(255,255,255,0.65); font-size: 12px; font-weight: 800; letter-spacing: 0.08em; }
+        .pr-cardLink {
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(0,0,0,0.22);
+          color: rgba(255,255,255,0.9);
+          padding: 8px 10px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+        .pr-cardLink:hover { background: rgba(0,0,0,0.30); }
+
+        .pr-icons { margin-top: 12px; display: flex; gap: 10px; }
+        .pr-icon {
+          width: 44px; height: 38px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(0,0,0,0.22);
+          color: rgba(255,255,255,0.88);
+          font-weight: 900;
+          cursor: pointer;
+        }
+        .pr-icon:hover { background: rgba(0,0,0,0.30); }
+
+        .pr-cardBtns { margin-top: 12px; display: flex; gap: 10px; }
+        .pr-btnA, .pr-btnB {
+          flex: 1;
+          border-radius: 12px;
+          padding: 10px 12px;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+          border: 1px solid rgba(255,255,255,0.14);
+        }
+        .pr-btnA { background: rgba(255,211,107,0.95); color: rgba(0,0,0,0.85); }
+        .pr-btnB { background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.9); }
+        .pr-btnA:hover { opacity: 0.96; }
+        .pr-btnB:hover { background: rgba(255,255,255,0.14); }
+
+        .pr-actions {
+          margin-top: 12px;
+          display: flex;
+          gap: 10px;
+          justify-content: center;
           pointer-events: auto;
         }
         .pr-actionBtn {
@@ -919,38 +895,17 @@ export function PixelRocketContactExperience() {
           padding: 10px 14px;
           font-size: 12px;
           font-weight: 900;
-          letter-spacing: 0.02em;
           color: rgba(255,255,255,0.92);
           background: rgba(0,0,0,0.40);
           border: 1px solid rgba(255,255,255,0.14);
           backdrop-filter: blur(12px);
+          cursor: pointer;
         }
         .pr-actionBtn:hover { background: rgba(0,0,0,0.50); }
-
-        .pr-planetPill {
-          position: absolute;
-          top: 76px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 35;
-          padding: 10px 14px;
-          border-radius: 999px;
-          background: rgba(0,0,0,0.45);
-          border: 1px solid rgba(255,255,255,0.14);
-          color: rgba(255,255,255,0.95);
-          font-weight: 900;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          font-size: 16px;
-          text-shadow: 0 2px 0 rgba(0,0,0,0.6);
-          backdrop-filter: blur(10px);
-          pointer-events: none;
-        }
       `}</style>
 
       <canvas ref={canvasRef} className="pixel" aria-label="Pixel rocket contact animation" />
 
-      {/* HUD */}
       <div className="pr-hud">
         <div className="pr-chip">
           <span className="pr-dot" />
@@ -974,51 +929,7 @@ export function PixelRocketContactExperience() {
 
       {copied && <div className="pr-toast">{copied}</div>}
 
-      {/* planet label during flyby */}
-      {stage === "flyby" && !showCard && <div className="pr-planetPill">{currentPlanet}</div>}
-
-      {/* Interactive card overlay (only when card is shown) */}
-      {showCard && (
-        <div className="pr-cardOverlay">
-          <div className="pr-cardWrap">
-            <img className="pr-cardImg" src={ASSETS.card} alt="Contact card" />
-            {hitAreas.map((a) => (
-              <button
-                key={a.key}
-                type="button"
-                className="pr-hit"
-                aria-label={a.key}
-                title={a.key}
-                style={{
-                  left: `${a.x * 100}%`,
-                  top: `${a.y * 100}%`,
-                  width: `${a.w * 100}%`,
-                  height: `${a.h * 100}%`,
-                }}
-                onMouseEnter={() => {
-                  const s = ensureSfx(sfxRef, soundOn);
-                  if (s) beep(s, 760, 25, "square", 0.10);
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const s = ensureSfx(sfxRef, soundOn);
-                  if (s) beep(s, 660, 35, "square", 0.14);
-                  a.on();
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="pr-actions">
-            <button type="button" className="pr-actionBtn" onClick={goCandyCastle}>
-              Return to Candy Castle
-            </button>
-            <button type="button" className="pr-actionBtn" onClick={goChloeverse}>
-              Back to Chloeverse
-            </button>
-          </div>
-        </div>
-      )}
+      {showCard && <CardUI />}
     </div>
   );
 }
