@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "next-env.d.ts",
+    "src/app/collabs/**/*.ts",
+    "src/app/collabs/**/*.tsx",
+    "src/components/collabs/**/*.ts",
+    "src/components/collabs/**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
+}
