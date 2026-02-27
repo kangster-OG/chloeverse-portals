@@ -10,3 +10,4 @@ dist/
 *.backup.tsx
 _design_dump/
 backup_*/
+*.tsbuildinfo
