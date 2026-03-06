@@ -175,7 +175,7 @@ export function MediaCardExperience() {
         ) : null}
       </section>
 
-      <ReturnButton label="Return" className="opacity-65 hover:opacity-95" />
+      <ReturnButton label="Return to Candy Castle" className="opacity-65 hover:opacity-95" />
     </main>
   );
 }
