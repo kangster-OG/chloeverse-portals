@@ -6,7 +6,7 @@ import View from '@/View/View.js'
 import Debug from '@/Debug/Debug.js'
 import State from '@/State/State.js'
 
-const DOOR_MODEL_URL = '/infinite-world/assets/portal/door.glb?v=doorcapsule3'
+const DOOR_MODEL_URL = '/infinite-world/assets/portal/door.glb?v=doorcapsule4'
 const DOOR_FRAME_TOKEN = 'door_frame'
 const DOOR_SLAB_TOKEN = 'door_slab'
 const DOOR_LIGHT_HEMI_INTENSITY = 1.0
