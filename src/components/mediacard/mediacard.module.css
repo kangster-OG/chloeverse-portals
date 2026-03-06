@@ -163,6 +163,21 @@
   animation: sceneHeaderArrowPulse 1.5s ease-in-out infinite;
 }
 
+.sceneTopHint {
+  position: absolute;
+  right: clamp(16px, 2.8vw, 44px);
+  top: clamp(14px, 2.8vh, 36px);
+  z-index: 14;
+  margin: 0;
+  pointer-events: none;
+  font-family: var(--mc-font-body);
+  font-size: clamp(10px, 0.84vw, 12px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(198, 215, 241, 0.62);
+  animation: sceneTopHintBlink 1.8s ease-in-out infinite;
+}
+
 .menuDock {
   position: absolute;
   left: var(--mc-menu-left-px, 46px);
@@ -741,6 +756,16 @@
   50% {
     transform: translateX(-2px);
     opacity: 0.96;
+  }
+}
+
+@keyframes sceneTopHintBlink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
   }
 }
 

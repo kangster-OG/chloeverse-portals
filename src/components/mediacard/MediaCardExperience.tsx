@@ -137,6 +137,7 @@ export function MediaCardExperience() {
             <span>Return to the Chloeverse</span>
           </a>
         </header>
+        <p className={styles.sceneTopHint}>click and drag to move globe</p>
 
         <div className={styles.menuDock}>
           <MediaCardMenu
