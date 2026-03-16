@@ -327,9 +327,7 @@ export default function CollabsShell({
       </header>
 
       <a
-        href="https://chloeverse.io"
-        target="_blank"
-        rel="noreferrer noopener"
+        href="/"
         className={[styles.topRightLink, modalOpen ? styles.hudHidden : ""].filter(Boolean).join(" ")}
       >
         Chloeverse

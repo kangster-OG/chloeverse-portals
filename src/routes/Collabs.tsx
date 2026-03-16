@@ -2,17 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { fadeVolumeTo, initBgm, startBgmOnFirstGesture, stopBgm, toggleMute } from "@/lib/collabsBgm";
+import ReelsRoute from "@/routes/Reels";
 
 type PortalAudioEvent = {
   source: "collabs-portal";
-  type: "door-open" | "portal-suction-start" | "user-gesture";
+  type: "door-open" | "portal-suction-start" | "user-gesture" | "enter-reels-inline";
 };
 
 export default function CollabsRoute() {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [muted, setMuted] = useState(false);
+  const [mode, setMode] = useState<"portal" | "reels">("portal");
 
   useEffect(() => {
+    if (mode !== "portal") return;
+
     initBgm();
     startBgmOnFirstGesture(window);
     startBgmOnFirstGesture(document);
@@ -21,6 +25,12 @@ export default function CollabsRoute() {
       if (event.origin !== window.location.origin) return;
       const payload = event.data as Partial<PortalAudioEvent> | null;
       if (!payload || payload.source !== "collabs-portal") return;
+
+      if (payload.type === "enter-reels-inline") {
+        stopBgm({ resetTime: true, clearGestureListeners: true });
+        setMode("reels");
+        return;
+      }
 
       if (payload.type === "door-open" || payload.type === "user-gesture") {
         startBgmOnFirstGesture();
@@ -34,7 +44,11 @@ export default function CollabsRoute() {
       window.removeEventListener("message", onMessage);
       stopBgm({ resetTime: true, clearGestureListeners: true });
     };
-  }, []);
+  }, [mode]);
+
+  if (mode === "reels") {
+    return <ReelsRoute />;
+  }
 
   const bindIframeGestureFallbacks = () => {
     const frameWindow = iframeRef.current?.contentWindow ?? null;

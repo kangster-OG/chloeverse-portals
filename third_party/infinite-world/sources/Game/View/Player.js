@@ -1360,27 +1360,45 @@ export default class Player
     {
         this.forcePortalFullWhiteLock()
 
-        let topWindow = null
+        let parentWindow = null
         try
         {
-            topWindow = window.top
-            if(topWindow && topWindow !== window)
-            {
-                this.applyTopWhiteOverlay('1')
-            }
+            parentWindow = window.parent && window.parent !== window ? window.parent : null
         }
         catch(error)
         {
-            console.warn('Unable to apply top-window whiteout overlay, using local overlay only', error)
-            topWindow = null
+            console.warn('Unable to capture parent window for inline portal transition', error)
+            parentWindow = null
         }
 
         const doNavigate = () =>
         {
-            if(topWindow && topWindow !== window)
-                topWindow.location.href = DOOR_NAVIGATE_URL
-            else
-                window.location.href = DOOR_NAVIGATE_URL
+            try
+            {
+                window.sessionStorage.setItem('collabs:portal-entry', '1')
+            }
+            catch(error)
+            {
+                console.warn('Unable to persist collabs portal entry flag', error)
+            }
+
+            if(parentWindow)
+            {
+                try
+                {
+                    parentWindow.postMessage({
+                        source: 'collabs-portal',
+                        type: 'enter-reels-inline'
+                    }, window.location.origin)
+                    return
+                }
+                catch(error)
+                {
+                    console.warn('[portal] unable to post enter-reels-inline message to parent', error)
+                }
+            }
+
+            window.location.href = DOOR_NAVIGATE_URL
         }
 
         window.setTimeout(doNavigate, PORTAL_NAVIGATE_WHITEOUT_DELAY_MS)

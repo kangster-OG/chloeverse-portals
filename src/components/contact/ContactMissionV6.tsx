@@ -40,7 +40,7 @@ const CONTACT = {
   email: "ugcbychloekang@gmail.com",
   instagram: "https://instagram.com/imchloekang",
   tiktok: "https://www.tiktok.com/@imchloekang",
-  linkedin: "https://www.linkedin.com/in/chloekang",
+  linkedin: "https://www.linkedin.com/in/chloe-kang-234292250/",
   x: "https://x.com/imchloekang",
   portals: "/",
   candy: "https://imchloekang.com",

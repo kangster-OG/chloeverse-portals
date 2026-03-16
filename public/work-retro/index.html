@@ -766,6 +766,16 @@ Worked with Adidas, Adobe, Estee Lauder, OpenAI, Hera, etc.
       try { if (typeof window.closeMenu === "function") window.closeMenu(); } catch {}
     };
 
+    const navigateTopLevel = (href) => {
+      try {
+        if (window.top) {
+          window.top.location.href = href;
+          return;
+        }
+      } catch {}
+      window.location.href = href;
+    };
+
     const home = makeLink("Home", "#home");
     home.addEventListener("click", (e) => {
       e.preventDefault();
@@ -787,9 +797,8 @@ Worked with Adidas, Adobe, Estee Lauder, OpenAI, Hera, etc.
     candy.rel = "noopener noreferrer";
     candy.addEventListener("click", () => closeMenu());
 
-    const chloeverse = makeLink("Chloeverse", "https://chloeverse.io");
-    chloeverse.target = "_blank";
-    chloeverse.rel = "noopener noreferrer";
+    const chloeverse = makeLink("Chloeverse", "/");
+    chloeverse.target = "_top";
     chloeverse.addEventListener("click", () => closeMenu());
 
     menuBody.append(home, projects, candy, chloeverse);
@@ -873,13 +882,13 @@ Worked with Adidas, Adobe, Estee Lauder, OpenAI, Hera, etc.
     const chloeverseEl = byText("Chloeverse");
     if (chloeverseEl) {
       if (chloeverseEl.tagName === "A") {
-        chloeverseEl.setAttribute("href", "https://chloeverse.io");
-        chloeverseEl.setAttribute("target", "_blank");
-        chloeverseEl.setAttribute("rel", "noopener noreferrer");
+        chloeverseEl.setAttribute("href", "/");
+        chloeverseEl.setAttribute("target", "_top");
+        chloeverseEl.removeAttribute("rel");
       }
       wireInteractive(chloeverseEl, () => {
         closeMenu();
-        window.open("https://chloeverse.io", "_blank", "noopener,noreferrer");
+        navigateTopLevel("/");
       });
     }
   }
@@ -946,7 +955,7 @@ Worked with Adidas, Adobe, Estee Lauder, OpenAI, Hera, etc.
         label: "Chloeverse",
         onActivate: () => {
           closeMenuSafe();
-          window.open("https://chloeverse.io", "_blank", "noopener,noreferrer");
+          navigateTopLevel("/");
         },
       },
     ];
