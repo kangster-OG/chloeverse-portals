@@ -1,4 +1,7 @@
-export default function WorkPage() {
+import { MobileWorkExperience } from "@/components/mobile/work/MobileWorkExperience";
+import { ExperienceModeSwitch } from "@/lib/experience-mode/ExperienceModeSwitch";
+
+function WorkDesktopPage() {
   return (
     <div style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
       <iframe
@@ -14,5 +17,14 @@ export default function WorkPage() {
         allow="fullscreen"
       />
     </div>
+  );
+}
+
+export default function WorkPage() {
+  return (
+    <ExperienceModeSwitch
+      desktop={<WorkDesktopPage />}
+      mobile={<MobileWorkExperience />}
+    />
   );
 }

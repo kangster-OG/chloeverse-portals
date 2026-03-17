@@ -1,15 +1,12 @@
-"use client";
-
-import { useState } from "react";
-import { ReelsDesktop } from "@/components/projects/reels/ReelsDesktop";
-import { XpDesktop } from "@/components/projects/xp/XpDesktop";
+import { MobileProjectsExperience } from "@/components/mobile/projects/MobileProjectsExperience";
+import { ProjectsDesktopRoute } from "@/components/projects/ProjectsDesktopRoute";
+import { ExperienceModeSwitch } from "@/lib/experience-mode/ExperienceModeSwitch";
 
 export default function ProjectsPage() {
-  const [mode, setMode] = useState<"xp" | "reels">("xp");
-
-  if (mode === "xp") {
-    return <XpDesktop onOpen={() => setMode("reels")} />;
-  }
-
-  return <ReelsDesktop />;
+  return (
+    <ExperienceModeSwitch
+      desktop={<ProjectsDesktopRoute />}
+      mobile={<MobileProjectsExperience />}
+    />
+  );
 }

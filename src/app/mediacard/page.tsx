@@ -1,3 +1,5 @@
+import { MobileMediaCardExperience } from "@/components/mobile/mediacard/MobileMediaCardExperience";
+import { ExperienceModeSwitch } from "@/lib/experience-mode/ExperienceModeSwitch";
 import * as Mod from "@/components/mediacard/MediaCardExperience";
 
 const MediaCardExperience = (Mod as any).default ?? (Mod as any).MediaCardExperience;
@@ -6,7 +8,7 @@ export const metadata = {
   title: "Mediacard",
 };
 
-export default function MediaCardPage() {
+function MediaCardDesktopPage() {
   const Comp = MediaCardExperience;
   if (!Comp) {
     return (
@@ -22,4 +24,13 @@ export default function MediaCardPage() {
     );
   }
   return <Comp />;
+}
+
+export default function MediaCardPage() {
+  return (
+    <ExperienceModeSwitch
+      desktop={<MediaCardDesktopPage />}
+      mobile={<MobileMediaCardExperience />}
+    />
+  );
 }

@@ -1,4 +1,6 @@
+import { MobileHomeExperience } from "@/components/mobile/home/MobileHomeExperience";
 import ChloeverseMainLanding from "@/components/home/ChloeverseMainLanding";
+import { ExperienceModeSwitch } from "@/lib/experience-mode/ExperienceModeSwitch";
 import { IBM_Plex_Mono, Rubik_Puddles } from "next/font/google";
 
 const rubikPuddles = Rubik_Puddles({
@@ -15,9 +17,19 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export default function Page() {
   return (
-    <ChloeverseMainLanding
-      titleFontClassName={rubikPuddles.className}
-      monoFontClassName={ibmPlexMono.className}
+    <ExperienceModeSwitch
+      desktop={
+        <ChloeverseMainLanding
+          titleFontClassName={rubikPuddles.className}
+          monoFontClassName={ibmPlexMono.className}
+        />
+      }
+      mobile={
+        <MobileHomeExperience
+          titleFontClassName={rubikPuddles.className}
+          monoFontClassName={ibmPlexMono.className}
+        />
+      }
     />
   );
 }
