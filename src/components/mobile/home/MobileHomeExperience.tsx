@@ -92,15 +92,7 @@ export function MobileHomeExperience({
                   href={item.href}
                   data-index={index}
                   aria-current={active ? "true" : undefined}
-                  onClick={(event) => {
-                    if (!active) {
-                      event.preventDefault();
-                      itemRefs.current[index]?.scrollIntoView({
-                        block: "center",
-                        behavior: "smooth",
-                      });
-                    }
-                  }}
+                  onPointerDown={() => setActiveIndex(index)}
                   className={[
                     "group relative snap-center overflow-hidden rounded-[2rem] border px-5 py-6 transition duration-300",
                     active
