@@ -68,7 +68,7 @@ export default function CollabsRoute() {
     <>
       <iframe
         ref={iframeRef}
-        src="/infinite-world/index.html?v=door-tune-20260305f"
+        src="/infinite-world/index.html?v=door-tune-20260317a"
         title="Infinite World"
         onLoad={bindIframeGestureFallbacks}
         style={{

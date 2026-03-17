@@ -41,6 +41,11 @@ const PORTAL_RECENTER_POSITION_EPSILON = 0.01
 const PORTAL_RECENTER_ANGLE_EPSILON = THREE.MathUtils.degToRad(0.5)
 const PORTAL_CAMERA_DISTANCE_END = 0.02
 const PORTAL_CAMERA_ABOVE_END = 0.03
+const PORTAL_NAVIGATE_FALLBACK_DELAY_MS = Math.ceil(
+    ((PORTAL_RECENTER_DURATION + PORTAL_PULL_DURATION + PORTAL_WHITEOUT_HOLD_DURATION) * 1000) +
+    PORTAL_NAVIGATE_WHITEOUT_DELAY_MS +
+    900
+)
 const doorLoader = new GLTFLoader()
 
 export default class Player
@@ -110,6 +115,7 @@ export default class Player
         this.portalRecenterCameraDistanceTarget = null
         this.portalRecenterCameraAboveStart = null
         this.portalRecenterCameraAboveTarget = null
+        this.portalNavigateFallbackTimeout = null
         this.lastPortalPositionLogTime = -Infinity
         this.raycaster = new THREE.Raycaster()
         this.pointerNdc = new THREE.Vector2()
@@ -276,8 +282,32 @@ export default class Player
         this.lookHintOverlay.style.opacity = hideHint ? '0' : '1'
     }
 
+    clearPortalNavigateFallback()
+    {
+        if(this.portalNavigateFallbackTimeout === null)
+            return
+
+        window.clearTimeout(this.portalNavigateFallbackTimeout)
+        this.portalNavigateFallbackTimeout = null
+    }
+
+    schedulePortalNavigateFallback()
+    {
+        this.clearPortalNavigateFallback()
+        this.portalNavigateFallbackTimeout = window.setTimeout(() =>
+        {
+            if(this.doorNavigateTriggered)
+                return
+
+            this.doorNavigateTriggered = true
+            console.warn('[portal] fallback handoff fired before whiteout completed')
+            this.navigateToReels()
+        }, PORTAL_NAVIGATE_FALLBACK_DELAY_MS)
+    }
+
     resetPortalSequenceState()
     {
+        this.clearPortalNavigateFallback()
         this.portalPhase = 'idle'
         this.portalPhaseStartTime = 0
         this.portalSequenceActive = false
@@ -663,6 +693,7 @@ export default class Player
         }
         this.lastPortalPositionLogTime = -Infinity
         this.doorNavigateTriggered = false
+        this.schedulePortalNavigateFallback()
         this.disableMovementInputForPortal()
 
         console.groupCollapsed('[portal] pull-in sequence started')
@@ -1358,6 +1389,7 @@ export default class Player
 
     navigateToReels()
     {
+        this.clearPortalNavigateFallback()
         this.forcePortalFullWhiteLock()
 
         let parentWindow = null
