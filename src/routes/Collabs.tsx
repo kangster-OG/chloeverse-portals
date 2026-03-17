@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CollabsReelsExperience } from "@/components/collabs/CollabsReelsExperience";
 import { fadeVolumeTo, initBgm, startBgmOnFirstGesture, stopBgm, toggleMute } from "@/lib/collabsBgm";
-import ReelsRoute from "@/routes/Reels";
 
 type PortalAudioEvent = {
   source: "collabs-portal";
@@ -68,7 +68,7 @@ export default function CollabsRoute() {
   }, [mode]);
 
   if (mode === "reels") {
-    return <ReelsRoute />;
+    return <CollabsReelsExperience />;
   }
 
   const bindIframeGestureFallbacks = () => {

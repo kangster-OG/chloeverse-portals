@@ -1,12 +1,5 @@
-import { MobileCollabsExperience } from "@/components/mobile/collabs/MobileCollabsExperience";
-import { ExperienceModeSwitch } from "@/lib/experience-mode/ExperienceModeSwitch";
-import ReelsRoute from "@/routes/Reels";
+import { CollabsReelsExperience } from "@/components/collabs/CollabsReelsExperience";
 
 export default function CollabsReelsPage() {
-  return (
-    <ExperienceModeSwitch
-      desktop={<ReelsRoute />}
-      mobile={<MobileCollabsExperience skipIntro={true} />}
-    />
-  );
+  return <CollabsReelsExperience />;
 }
