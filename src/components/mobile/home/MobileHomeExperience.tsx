@@ -17,7 +17,7 @@ export function MobileHomeExperience({
   monoFontClassName,
 }: MobileHomeExperienceProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const itemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const itemRefs = useRef<Array<HTMLElement | null>>([]);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -83,23 +83,16 @@ export function MobileHomeExperience({
           <div className="mx-auto flex max-w-sm flex-col gap-5">
             {HOME_PORTALS.map((item, index) => {
               const active = index === activeIndex;
-              return (
-                <Link
-                  key={item.href}
-                  ref={(node) => {
-                    itemRefs.current[index] = node;
-                  }}
-                  href={item.href}
-                  data-index={index}
-                  aria-current={active ? "true" : undefined}
-                  onPointerDown={() => setActiveIndex(index)}
-                  className={[
-                    "group relative snap-center overflow-hidden rounded-[2rem] border px-5 py-6 transition duration-300",
-                    active
-                      ? "scale-[1.02] border-white/24 bg-white/14 shadow-[0_18px_55px_rgba(112,152,255,0.26)]"
-                      : "border-white/10 bg-white/[0.06]",
-                  ].join(" ")}
-                >
+              const cardClassName = [
+                "group relative snap-center overflow-hidden rounded-[2rem] border px-5 py-6 transition duration-300",
+                active
+                  ? "scale-[1.02] border-white/24 bg-white/14 shadow-[0_18px_55px_rgba(112,152,255,0.26)]"
+                  : "border-white/10 bg-white/[0.06]",
+                item.mobileEnabled ? "" : "opacity-72",
+              ].join(" ");
+
+              const cardContent = (
+                <>
                   <div className="chv-glass-sheen absolute inset-0 rounded-[inherit]" />
                   <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/28 to-transparent" />
                   <div className="relative flex items-center justify-between gap-4">
@@ -113,10 +106,41 @@ export function MobileHomeExperience({
                       <p className="mt-1 text-sm text-white/62">{item.subtitle}</p>
                     </div>
                     <div className="grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-black/25 text-white/76">
-                      <span className="text-lg leading-none">↗</span>
+                      <span className="text-lg leading-none">{item.mobileEnabled ? "↗" : "Lock"}</span>
                     </div>
                   </div>
-                </Link>
+                </>
+              );
+
+              if (item.mobileEnabled) {
+                return (
+                  <Link
+                    key={item.href}
+                    ref={(node) => {
+                      itemRefs.current[index] = node;
+                    }}
+                    href={item.href}
+                    data-index={index}
+                    aria-current={active ? "true" : undefined}
+                    onPointerDown={() => setActiveIndex(index)}
+                    className={cardClassName}
+                  >
+                    {cardContent}
+                  </Link>
+                );
+              }
+
+              return (
+                <div
+                  key={item.href}
+                  ref={(node) => {
+                    itemRefs.current[index] = node;
+                  }}
+                  data-index={index}
+                  className={cardClassName}
+                >
+                  {cardContent}
+                </div>
               );
             })}
           </div>

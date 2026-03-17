@@ -1,11 +1,11 @@
 import type { ReelItem } from "@/components/collabs/reelsData";
 
 export const HOME_PORTALS = [
-  { href: "/projects", label: "PROJECTS", subtitle: "experiments in motion" },
-  { href: "/collabs", label: "COLLABS", subtitle: "worlds built together" },
-  { href: "/work", label: "WORK", subtitle: "career as an archive" },
-  { href: "/contact", label: "CONTACT", subtitle: "send a signal" },
-  { href: "/mediacard", label: "MEDIACARD", subtitle: "audience, reach, services" },
+  { href: "/projects", label: "PROJECTS", subtitle: "experiments in motion", mobileEnabled: true },
+  { href: "/collabs", label: "COLLABS", subtitle: "worlds built together", mobileEnabled: true },
+  { href: "/work", label: "WORK", subtitle: "desktop archive only", mobileEnabled: false },
+  { href: "/contact", label: "CONTACT", subtitle: "send a signal", mobileEnabled: true },
+  { href: "/mediacard", label: "MEDIACARD", subtitle: "desktop briefing only", mobileEnabled: false },
 ] as const;
 
 export const PROJECT_DEVICE_APPS = [
