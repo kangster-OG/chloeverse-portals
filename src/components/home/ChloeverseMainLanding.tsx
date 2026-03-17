@@ -21,6 +21,37 @@ type SpotTarget = "title" | "tagline" | null;
 type HoverRegion = "bg" | "title" | "small";
 type CursorMode = "idle" | "text" | "bg";
 type CssVars = CSSProperties & Record<`--${string}`, string>;
+type DepthKind = "title" | "tagline";
+type GlyphTone = "painted" | "plain";
+type GlyphMetric = { x: number; y: number; radius: number };
+type GlyphRefCollection = MutableRefObject<Array<HTMLSpanElement | null>>;
+type MaskPointRef = MutableRefObject<{ x: number; y: number }>;
+type BlockMotionState = { tiltX: number; tiltY: number; shiftX: number; shiftY: number };
+type RippleState = {
+  active: boolean;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  energy: number;
+  startedAt: number;
+  lastX: number;
+  lastY: number;
+  hasLast: boolean;
+};
+type DepthConfig = {
+  baseDepth: number;
+  hoverRadius: number;
+  hoverLift: number;
+  rippleLift: number;
+  rippleDurationMs: number;
+  rippleSpeedPxPerMs: number;
+  rippleBandPx: number;
+  maxTiltX: number;
+  maxTiltY: number;
+  maxShiftX: number;
+  maxShiftY: number;
+};
 
 const TITLE_TOP = "The";
 const TITLE_MAIN = "Chloeverse";
@@ -46,6 +77,35 @@ const CURSOR_HALO_MEDIUM_SIZE = CURSOR_HALO_LARGE_SIZE - 14;
 const CURSOR_HALO_SMALL_SIZE = CURSOR_HALO_LARGE_SIZE - 24;
 const POINTER_LERP = 0.16;
 const MASK_LERP = 0.2;
+const TITLE_TEXT = `${TITLE_TOP}${TITLE_MAIN}`;
+const TITLE_TOP_COUNT = TITLE_TOP.length;
+const TITLE_GLYPH_COUNT = TITLE_TEXT.length;
+const TITLE_DEPTH_CONFIG: DepthConfig = {
+  baseDepth: 10.5,
+  hoverRadius: 128,
+  hoverLift: 13.5,
+  rippleLift: 11.5,
+  rippleDurationMs: 430,
+  rippleSpeedPxPerMs: 0.42,
+  rippleBandPx: 52,
+  maxTiltX: 7.2,
+  maxTiltY: 9.2,
+  maxShiftX: 9,
+  maxShiftY: 7,
+};
+const TAGLINE_DEPTH_CONFIG: DepthConfig = {
+  baseDepth: 5.5,
+  hoverRadius: 98,
+  hoverLift: 8.25,
+  rippleLift: 6.75,
+  rippleDurationMs: 380,
+  rippleSpeedPxPerMs: 0.34,
+  rippleBandPx: 42,
+  maxTiltX: 4.2,
+  maxTiltY: 5.6,
+  maxShiftX: 4.5,
+  maxShiftY: 3.4,
+};
 const RAINBOW_COLORS = ["#ff4ea8", "#ff8a3d", "#ffd646", "#8aff5c", "#4ce4ff", "#6f8dff", "#da6dff"] as const;
 const GREEN_HEX = "#8aff5c";
 const GREEN_SWAP_RATE = 0.2;
@@ -137,6 +197,13 @@ function paintStyle(seed: number): CSSProperties {
     WebkitTextStroke: "0.7px rgba(255,255,255,0.08)",
     textShadow:
       "0 0 1px rgba(255,255,255,0.12), 0 0 12px rgba(255,255,255,0.06), 0 6px 22px rgba(0,0,0,0.35)",
+  };
+}
+
+function plainFaceStyle(): CSSProperties {
+  return {
+    color: "rgba(255,255,255,0.96)",
+    textShadow: "0 0 14px rgba(255,255,255,0.14)",
   };
 }
 
@@ -253,16 +320,236 @@ function updateMaskTarget(
   clientX: number,
   clientY: number,
   host: HTMLElement | null,
-  targetRef: MutableRefObject<{ x: number; y: number }>,
+  targetRef: MaskPointRef,
+): { x: number; y: number } | null {
+  if (!host) {
+    return null;
+  }
+  const rect = host.getBoundingClientRect();
+  const next = {
+    x: clamp(clientX - rect.left, 0, rect.width),
+    y: clamp(clientY - rect.top, 0, rect.height),
+  };
+  targetRef.current = next;
+  return next;
+}
+
+function createRippleState(): RippleState {
+  return {
+    active: false,
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    energy: 0,
+    startedAt: 0,
+    lastX: 0,
+    lastY: 0,
+    hasLast: false,
+  };
+}
+
+function setRipplePointer(ripple: RippleState, x: number, y: number, reducedMotion: boolean): void {
+  if (!ripple.hasLast) {
+    ripple.lastX = x;
+    ripple.lastY = y;
+    ripple.hasLast = true;
+    return;
+  }
+
+  const dx = x - ripple.lastX;
+  const dy = y - ripple.lastY;
+  ripple.lastX = x;
+  ripple.lastY = y;
+
+  if (reducedMotion) {
+    return;
+  }
+
+  const speed = Math.hypot(dx, dy);
+  if (speed < 6) {
+    return;
+  }
+
+  ripple.active = true;
+  ripple.x = x;
+  ripple.y = y;
+  ripple.vx = dx;
+  ripple.vy = dy;
+  ripple.energy = clamp(speed / 30, 0.35, 1.2);
+  ripple.startedAt = performance.now();
+}
+
+function measureGlyphMetrics(
+  host: HTMLElement | null,
+  refs: Array<HTMLSpanElement | null>,
+  count: number,
+): GlyphMetric[] {
+  if (!host || count <= 0) {
+    return [];
+  }
+
+  const hostRect = host.getBoundingClientRect();
+  const nextMetrics: GlyphMetric[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const node = refs[index];
+    if (!node) {
+      continue;
+    }
+    const rect = node.getBoundingClientRect();
+    nextMetrics.push({
+      x: rect.left - hostRect.left + rect.width * 0.5,
+      y: rect.top - hostRect.top + rect.height * 0.5,
+      radius: Math.max(18, Math.max(rect.width, rect.height) * 0.64),
+    });
+  }
+
+  return nextMetrics;
+}
+
+function setBlockMotionVars(host: HTMLElement | null, motion: BlockMotionState): void {
+  if (!host) {
+    return;
+  }
+  host.style.setProperty("--block-tilt-x", `${motion.tiltX.toFixed(3)}deg`);
+  host.style.setProperty("--block-tilt-y", `${motion.tiltY.toFixed(3)}deg`);
+  host.style.setProperty("--block-shift-x", `${motion.shiftX.toFixed(3)}px`);
+  host.style.setProperty("--block-shift-y", `${motion.shiftY.toFixed(3)}px`);
+}
+
+function setGlyphDepthVars(
+  node: HTMLSpanElement | null,
+  depth: number,
+  lift: number,
+  ripple: number,
+  shadow: number,
+): void {
+  if (!node) {
+    return;
+  }
+  node.style.setProperty("--glyph-depth", `${depth.toFixed(3)}px`);
+  node.style.setProperty("--glyph-lift", `${lift.toFixed(3)}px`);
+  node.style.setProperty("--glyph-ripple", `${ripple.toFixed(3)}px`);
+  node.style.setProperty("--glyph-shadow-alpha", shadow.toFixed(3));
+}
+
+function updateDepthBlock(
+  host: HTMLElement | null,
+  metrics: GlyphMetric[],
+  baseRefs: Array<HTMLSpanElement | null>,
+  overlayRefs: Array<HTMLSpanElement | null>,
+  pointer: { x: number; y: number },
+  active: boolean,
+  config: DepthConfig,
+  motion: BlockMotionState,
+  ripple: RippleState,
+  prefersReducedMotion: boolean,
 ): void {
   if (!host) {
     return;
   }
+
   const rect = host.getBoundingClientRect();
-  targetRef.current = {
-    x: clamp(clientX - rect.left, 0, rect.width),
-    y: clamp(clientY - rect.top, 0, rect.height),
-  };
+  const width = Math.max(1, rect.width);
+  const height = Math.max(1, rect.height);
+  const localX = clamp(pointer.x, 0, width);
+  const localY = clamp(pointer.y, 0, height);
+  const normalizedX = (localX / width - 0.5) * 2;
+  const normalizedY = (localY / height - 0.5) * 2;
+
+  const targetTiltX = active && !prefersReducedMotion ? clamp(-normalizedY * config.maxTiltX, -config.maxTiltX, config.maxTiltX) : 0;
+  const targetTiltY = active && !prefersReducedMotion ? clamp(normalizedX * config.maxTiltY, -config.maxTiltY, config.maxTiltY) : 0;
+  const targetShiftX = active && !prefersReducedMotion ? normalizedX * config.maxShiftX : 0;
+  const targetShiftY = active && !prefersReducedMotion ? normalizedY * config.maxShiftY : 0;
+  const smoothing = prefersReducedMotion ? 0.34 : 0.18;
+
+  motion.tiltX += (targetTiltX - motion.tiltX) * smoothing;
+  motion.tiltY += (targetTiltY - motion.tiltY) * smoothing;
+  motion.shiftX += (targetShiftX - motion.shiftX) * smoothing;
+  motion.shiftY += (targetShiftY - motion.shiftY) * smoothing;
+  setBlockMotionVars(host, motion);
+
+  const now = performance.now();
+  let rippleProgress = 0;
+  let rippleWave = 0;
+  let rippleDecay = 0;
+  let rippleVelocityLength = 1;
+  if (ripple.active && !prefersReducedMotion) {
+    rippleProgress = (now - ripple.startedAt) / config.rippleDurationMs;
+    if (rippleProgress >= 1) {
+      ripple.active = false;
+    } else {
+      rippleWave = rippleProgress * config.rippleDurationMs * config.rippleSpeedPxPerMs;
+      rippleDecay = 1 - rippleProgress;
+      rippleVelocityLength = Math.max(1, Math.hypot(ripple.vx, ripple.vy));
+    }
+  }
+
+  const baseDepth = prefersReducedMotion ? config.baseDepth * 0.74 : config.baseDepth;
+
+  for (let index = 0; index < metrics.length; index += 1) {
+    const metric = metrics[index];
+    const distance = Math.hypot(metric.x - localX, metric.y - localY);
+    const hoverBase = active && !prefersReducedMotion
+      ? clamp(1 - distance / (config.hoverRadius + metric.radius * 0.32), 0, 1)
+      : 0;
+    const hoverLift = hoverBase * hoverBase * config.hoverLift;
+
+    let rippleLift = 0;
+    if (ripple.active && !prefersReducedMotion) {
+      const glyphDx = metric.x - ripple.x;
+      const glyphDy = metric.y - ripple.y;
+      const rippleDistance = Math.hypot(glyphDx, glyphDy);
+      const band = clamp(1 - Math.abs(rippleDistance - rippleWave) / config.rippleBandPx, 0, 1);
+      const direction = (glyphDx * ripple.vx + glyphDy * ripple.vy) / (Math.max(1, rippleDistance) * rippleVelocityLength);
+      const directionBias = 0.78 + Math.max(0, direction) * 0.22;
+      rippleLift = band * band * config.rippleLift * ripple.energy * rippleDecay * directionBias;
+    }
+
+    const shadow = clamp((hoverLift + rippleLift) / (config.hoverLift + config.rippleLift), 0.08, 1);
+    setGlyphDepthVars(baseRefs[index], baseDepth, hoverLift, rippleLift, shadow);
+    setGlyphDepthVars(overlayRefs[index], baseDepth, hoverLift, rippleLift, shadow);
+  }
+}
+
+function renderDepthGlyphs(
+  text: string,
+  seedStart: number,
+  kind: DepthKind,
+  tone: GlyphTone,
+  refs: GlyphRefCollection,
+  indexOffset = 0,
+) {
+  const faceStyle = tone === "plain" ? plainFaceStyle() : undefined;
+
+  return Array.from(text).map((char, index) => {
+    const glyph = char === " " ? "\u00A0" : char;
+    const refIndex = indexOffset + index;
+
+    return (
+      <span
+        key={`${kind}-${tone}-${seedStart}-${index}`}
+        ref={(node) => {
+          refs.current[refIndex] = node;
+        }}
+        className={`chv-glyph-stack chv-glyph-stack--${kind}${char === " " ? " chv-glyph-stack--space" : ""}`}
+      >
+        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--back">{glyph}</span>
+        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-1">{glyph}</span>
+        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-2">{glyph}</span>
+        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-3">{glyph}</span>
+        <span
+          className={`chv-glyph-layer chv-glyph-layer--face ${
+            tone === "painted" ? "chv-glyph-face--painted" : "chv-glyph-face--plain"
+          }`}
+          style={tone === "painted" ? paintStyle(seedStart + index * 37) : faceStyle}
+        >
+          {glyph}
+        </span>
+      </span>
+    );
+  });
 }
 
 export default function ChloeverseMainLanding({
@@ -281,8 +568,21 @@ export default function ChloeverseMainLanding({
   const landingBgmRef = useRef<HTMLAudioElement | null>(null);
   const landingBgmStartedRef = useRef(false);
 
+  const titleBaseGlyphRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const titleOverlayGlyphRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const taglineBaseGlyphRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const taglineOverlayGlyphRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const titleGlyphMetricsRef = useRef<GlyphMetric[]>([]);
+  const taglineGlyphMetricsRef = useRef<GlyphMetric[]>([]);
+  const titleBlockMotionRef = useRef<BlockMotionState>({ tiltX: 0, tiltY: 0, shiftX: 0, shiftY: 0 });
+  const taglineBlockMotionRef = useRef<BlockMotionState>({ tiltX: 0, tiltY: 0, shiftX: 0, shiftY: 0 });
+  const titleRippleRef = useRef<RippleState>(createRippleState());
+  const taglineRippleRef = useRef<RippleState>(createRippleState());
+
   const pointerTargetRef = useRef({ x: 0, y: 0 });
   const pointerCurrentRef = useRef({ x: 0, y: 0 });
+  const pointerPrevRef = useRef({ x: 0, y: 0 });
+  const pointerVelocityRef = useRef({ x: 0, y: 0 });
   const titleMaskTargetRef = useRef({ x: 0, y: 0 });
   const titleMaskCurrentRef = useRef({ x: 0, y: 0 });
   const taglineMaskTargetRef = useRef({ x: 0, y: 0 });
@@ -310,13 +610,17 @@ export default function ChloeverseMainLanding({
       "--bgx": "50vw",
       "--bgy": "50vh",
       "--bgr": "0px",
+      "--bg-parallax-x": "0px",
+      "--bg-parallax-y": "0px",
+      "--bg-scale": "1",
       WebkitMaskImage:
         "radial-gradient(circle var(--bgr) at var(--bgx) var(--bgy), rgba(0,0,0,1) 0%, rgba(0,0,0,1) 94%, rgba(0,0,0,0) 100%)",
       maskImage:
         "radial-gradient(circle var(--bgr) at var(--bgx) var(--bgy), rgba(0,0,0,1) 0%, rgba(0,0,0,1) 94%, rgba(0,0,0,0) 100%)",
       WebkitMaskRepeat: "no-repeat",
       maskRepeat: "no-repeat",
-      willChange: "mask-image, -webkit-mask-image",
+      willChange: "mask-image, -webkit-mask-image, transform",
+      transform: "translate3d(var(--bg-parallax-x), var(--bg-parallax-y), 0) scale(var(--bg-scale))",
     }),
     [backdropPaint],
   );
@@ -332,10 +636,6 @@ export default function ChloeverseMainLanding({
   const titleTransition = prefersReducedMotion
     ? "none"
     : "opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1)";
-  const menuTransition = prefersReducedMotion
-    ? "none"
-    : "opacity 650ms cubic-bezier(0.16, 1, 0.3, 1), transform 650ms cubic-bezier(0.16, 1, 0.3, 1)";
-  const NAV_FINAL_RAISE_PX = 32;
 
   const syncPointerModeFromType = (pointerType: string | undefined) => {
     if (pointerType === "mouse" || pointerType === "pen") {
@@ -394,6 +694,11 @@ export default function ChloeverseMainLanding({
 
   useEffect(() => {
     const syncCenters = () => {
+      titleBaseGlyphRefs.current.length = TITLE_GLYPH_COUNT;
+      titleOverlayGlyphRefs.current.length = TITLE_GLYPH_COUNT;
+      taglineBaseGlyphRefs.current.length = typedText.length;
+      taglineOverlayGlyphRefs.current.length = typedText.length;
+
       const titleRect = titleHitRef.current?.getBoundingClientRect();
       if (titleRect) {
         const center = { x: titleRect.width * 0.5, y: titleRect.height * 0.5 };
@@ -409,11 +714,17 @@ export default function ChloeverseMainLanding({
         taglineMaskCurrentRef.current = center;
         setMaskPosition(taglineOverlayRef.current, center.x, center.y);
       }
+
+      titleGlyphMetricsRef.current = measureGlyphMetrics(titleHitRef.current, titleBaseGlyphRefs.current, TITLE_GLYPH_COUNT);
+      taglineGlyphMetricsRef.current = measureGlyphMetrics(taglineHitRef.current, taglineBaseGlyphRefs.current, typedText.length);
     };
 
-    syncCenters();
+    let raf = window.requestAnimationFrame(syncCenters);
     window.addEventListener("resize", syncCenters);
-    return () => window.removeEventListener("resize", syncCenters);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", syncCenters);
+    };
   }, [typedText]);
 
   useEffect(() => {
@@ -507,7 +818,6 @@ export default function ChloeverseMainLanding({
           markAudible();
         })
         .catch(() => {
-          // Fallback: start muted first (more broadly allowed), then unmute.
           audio.muted = true;
           void audio.play()
             .then(() => {
@@ -523,7 +833,6 @@ export default function ChloeverseMainLanding({
       startAudible();
     };
 
-    // Pre-warm muted audio so scroll/wheel gestures can reliably unmute.
     void audio.play().then(() => {
       landingBgmStartedRef.current = true;
     }).catch(() => {
@@ -574,9 +883,20 @@ export default function ChloeverseMainLanding({
     const animate = () => {
       if (!isFinePointer) {
         bgRadiusCurrentRef.current = 0;
+        pointerVelocityRef.current = { x: 0, y: 0 };
         bgRainbowRef.current?.style.setProperty("--bgr", "0px");
+        bgRainbowRef.current?.style.setProperty("--bg-parallax-x", "0px");
+        bgRainbowRef.current?.style.setProperty("--bg-parallax-y", "0px");
+        bgRainbowRef.current?.style.setProperty("--bg-scale", "1");
         cursorRef.current?.style.setProperty("--fillOpacity", "0");
         cursorRef.current?.style.setProperty("--fillInset", "6px");
+        cursorRef.current?.style.setProperty("--lens-shadow-x", "0px");
+        cursorRef.current?.style.setProperty("--lens-shadow-y", "0px");
+        cursorRef.current?.style.setProperty("--lens-highlight-x", "0px");
+        cursorRef.current?.style.setProperty("--lens-highlight-y", "0px");
+        cursorRef.current?.style.setProperty("--lens-scale", "1");
+        cursorRef.current?.style.setProperty("--lens-shadow-alpha", "0.22");
+        frame = window.requestAnimationFrame(animate);
         return;
       }
 
@@ -584,6 +904,14 @@ export default function ChloeverseMainLanding({
       const pointerCurrent = pointerCurrentRef.current;
       pointerCurrent.x += (pointerTarget.x - pointerCurrent.x) * pointerLerp;
       pointerCurrent.y += (pointerTarget.y - pointerCurrent.y) * pointerLerp;
+
+      const pointerVelocity = pointerVelocityRef.current;
+      const prevPointer = pointerPrevRef.current;
+      const rawVx = pointerCurrent.x - prevPointer.x;
+      const rawVy = pointerCurrent.y - prevPointer.y;
+      pointerVelocity.x += (rawVx - pointerVelocity.x) * 0.26;
+      pointerVelocity.y += (rawVy - pointerVelocity.y) * 0.26;
+      pointerPrevRef.current = { x: pointerCurrent.x, y: pointerCurrent.y };
 
       if (cursorRef.current) {
         cursorRef.current.style.transform = `translate3d(${pointerCurrent.x}px, ${pointerCurrent.y}px, 0) translate(-50%, -50%)`;
@@ -601,28 +929,74 @@ export default function ChloeverseMainLanding({
       taglineCurrent.y += (taglineTarget.y - taglineCurrent.y) * maskLerp;
       setMaskPosition(taglineOverlayRef.current, taglineCurrent.x, taglineCurrent.y);
 
-      const bgTarget = (isFinePointer && hasPointer && hoverRegion === "bg") ? BG_REVEAL_RADIUS : 0;
+      updateDepthBlock(
+        titleHitRef.current,
+        titleGlyphMetricsRef.current,
+        titleBaseGlyphRefs.current,
+        titleOverlayGlyphRefs.current,
+        titleCurrent,
+        hasPointer && activeSpotTarget === "title",
+        TITLE_DEPTH_CONFIG,
+        titleBlockMotionRef.current,
+        titleRippleRef.current,
+        prefersReducedMotion,
+      );
+
+      updateDepthBlock(
+        taglineHitRef.current,
+        taglineGlyphMetricsRef.current,
+        taglineBaseGlyphRefs.current,
+        taglineOverlayGlyphRefs.current,
+        taglineCurrent,
+        hasPointer && activeSpotTarget === "tagline",
+        TAGLINE_DEPTH_CONFIG,
+        taglineBlockMotionRef.current,
+        taglineRippleRef.current,
+        prefersReducedMotion,
+      );
+
+      const bgTarget = hasPointer && hoverRegion === "bg" ? BG_REVEAL_RADIUS : 0;
       if (prefersReducedMotion) {
         bgRadiusCurrentRef.current = bgTarget;
       } else {
         bgRadiusCurrentRef.current += (bgTarget - bgRadiusCurrentRef.current) * 0.2;
       }
 
+      const lensVx = clamp(pointerVelocity.x * 6, -18, 18);
+      const lensVy = clamp(pointerVelocity.y * 6, -18, 18);
+      const bgParallaxX = hoverRegion === "bg" ? clamp(-lensVx * 0.42, -7, 7) : 0;
+      const bgParallaxY = hoverRegion === "bg" ? clamp(-lensVy * 0.42, -7, 7) : 0;
+      const lensScale = hoverRegion === "bg" ? 1.05 + Math.min(0.08, Math.hypot(lensVx, lensVy) * 0.0028) : 1;
+
       if (bgRainbowRef.current) {
         bgRainbowRef.current.style.setProperty("--bgx", `${pointerCurrent.x}px`);
         bgRainbowRef.current.style.setProperty("--bgy", `${pointerCurrent.y}px`);
         bgRainbowRef.current.style.setProperty("--bgr", `${Math.max(0, bgRadiusCurrentRef.current)}px`);
+        bgRainbowRef.current.style.setProperty("--bg-parallax-x", `${bgParallaxX.toFixed(3)}px`);
+        bgRainbowRef.current.style.setProperty("--bg-parallax-y", `${bgParallaxY.toFixed(3)}px`);
+        bgRainbowRef.current.style.setProperty("--bg-scale", hoverRegion === "bg" ? lensScale.toFixed(4) : "1");
       }
+
       if (cursorRef.current) {
-        const showCursorBg = isFinePointer && hoverRegion === "bg";
+        const showCursorBg = hoverRegion === "bg";
         cursorRef.current.style.setProperty("--fillOpacity", showCursorBg ? "1" : "0");
         cursorRef.current.style.setProperty("--fillInset", showCursorBg ? "1px" : "6px");
+        cursorRef.current.style.setProperty("--lens-shadow-x", `${(-lensVx * 0.62).toFixed(3)}px`);
+        cursorRef.current.style.setProperty("--lens-shadow-y", `${(-lensVy * 0.62).toFixed(3)}px`);
+        cursorRef.current.style.setProperty("--lens-highlight-x", `${(lensVx * 0.38).toFixed(3)}px`);
+        cursorRef.current.style.setProperty("--lens-highlight-y", `${(lensVy * 0.34).toFixed(3)}px`);
+        cursorRef.current.style.setProperty("--lens-scale", lensScale.toFixed(4));
+        cursorRef.current.style.setProperty(
+          "--lens-shadow-alpha",
+          (showCursorBg ? clamp(0.26 + Math.hypot(lensVx, lensVy) * 0.006, 0.26, 0.56) : 0.2).toFixed(3),
+        );
       }
+
       if (cursorFillRef.current) {
-        const showCursorBg = isFinePointer && hoverRegion === "bg";
+        const showCursorBg = hoverRegion === "bg";
         if (showCursorBg) {
-          const ox = 50 + Math.sin(pointerCurrent.x * 0.012 + pointerCurrent.y * 0.004) * 18;
-          const oy = 50 + Math.cos(pointerCurrent.y * 0.011 - pointerCurrent.x * 0.003) * 18;
+          const ox = 50 + Math.sin(pointerCurrent.x * 0.012 + pointerCurrent.y * 0.004 + lensVx * 0.016) * 18;
+          const oy = 50 + Math.cos(pointerCurrent.y * 0.011 - pointerCurrent.x * 0.003 + lensVy * 0.014) * 18;
           cursorFillRef.current.style.backgroundPosition = `${ox.toFixed(2)}% ${oy.toFixed(2)}%`;
         } else {
           cursorFillRef.current.style.backgroundPosition = "50% 50%";
@@ -655,6 +1029,7 @@ export default function ChloeverseMainLanding({
     pointerTargetRef.current = { x: event.clientX, y: event.clientY };
     if (!hasPointer) {
       pointerCurrentRef.current = { x: event.clientX, y: event.clientY };
+      pointerPrevRef.current = { x: event.clientX, y: event.clientY };
     }
     setHasPointer(true);
     setHoverRegion("bg");
@@ -672,6 +1047,7 @@ export default function ChloeverseMainLanding({
     pointerTargetRef.current = { x, y };
     if (!hasPointer) {
       pointerCurrentRef.current = { x, y };
+      pointerPrevRef.current = { x, y };
     }
 
     const inRect = (rect: DOMRect | undefined) => !!rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
@@ -692,9 +1068,20 @@ export default function ChloeverseMainLanding({
     const spotTarget: SpotTarget = isTitle ? "title" : isTagline ? "tagline" : null;
 
     if (spotTarget === "title") {
-      updateMaskTarget(x, y, titleHitRef.current, titleMaskTargetRef);
+      const next = updateMaskTarget(x, y, titleHitRef.current, titleMaskTargetRef);
+      if (next) {
+        setRipplePointer(titleRippleRef.current, next.x, next.y, prefersReducedMotion);
+      }
+      taglineRippleRef.current.hasLast = false;
     } else if (spotTarget === "tagline") {
-      updateMaskTarget(x, y, taglineHitRef.current, taglineMaskTargetRef);
+      const next = updateMaskTarget(x, y, taglineHitRef.current, taglineMaskTargetRef);
+      if (next) {
+        setRipplePointer(taglineRippleRef.current, next.x, next.y, prefersReducedMotion);
+      }
+      titleRippleRef.current.hasLast = false;
+    } else {
+      titleRippleRef.current.hasLast = false;
+      taglineRippleRef.current.hasLast = false;
     }
 
     applyRegion(region, spotTarget);
@@ -707,6 +1094,8 @@ export default function ChloeverseMainLanding({
     setHoverRegion("bg");
     setCursorMode("idle");
     bgRadiusCurrentRef.current = 0;
+    titleRippleRef.current.hasLast = false;
+    taglineRippleRef.current.hasLast = false;
     bgRainbowRef.current?.style.setProperty("--bgr", "0px");
   };
 
@@ -716,27 +1105,6 @@ export default function ChloeverseMainLanding({
       setMenuRevealNonce((value) => value + 1);
     }
   };
-
-  const renderPaintedText = (text: string, seedStart: number) =>
-    Array.from(text).map((char, index) => (
-      <span
-        key={`${seedStart}-${index}`}
-        style={paintStyle(seedStart + index * 37)}
-        className="inline-block"
-      >
-        {char === " " ? "\u00A0" : char}
-      </span>
-    ));
-
-  const renderPlainText = (text: string, seedStart: number) =>
-    Array.from(text).map((char, index) => (
-      <span
-        key={`${seedStart}-${index}`}
-        className="inline-block text-white [text-shadow:0_0_14px_rgba(255,255,255,0.13)]"
-      >
-        {char === " " ? "\u00A0" : char}
-      </span>
-    ));
 
   const cursorSize = !hasPointer
     ? 10
@@ -795,16 +1163,34 @@ export default function ChloeverseMainLanding({
             "--fillInset": "6px",
             "--fillOpacity": "0",
             "--fillBaseSize": `${cursorSize}px`,
+            "--lens-shadow-x": "0px",
+            "--lens-shadow-y": "0px",
+            "--lens-highlight-x": "0px",
+            "--lens-highlight-y": "0px",
+            "--lens-scale": "1",
+            "--lens-shadow-alpha": "0.22",
           } as CssVars}
         >
+          <div
+            className="chv-cursor-shadow absolute left-1/2 top-1/2"
+            style={{ width: `${cursorSize + 26}px`, height: `${cursorSize + 26}px` }}
+          />
           <div
             className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ${cursorHaloClass}`}
             style={{ width: `${cursorHaloSize}px`, height: `${cursorHaloSize}px` }}
           />
           <div
+            className="chv-cursor-lens absolute left-1/2 top-1/2"
+            style={{ width: `${cursorSize + 8}px`, height: `${cursorSize + 8}px` }}
+          />
+          <div
+            className="chv-cursor-spec absolute left-1/2 top-1/2"
+            style={{ width: `${Math.max(18, cursorSize * 0.6)}px`, height: `${Math.max(18, cursorSize * 0.6)}px` }}
+          />
+          <div
             ref={cursorFillRef}
             aria-hidden
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            className="chv-cursor-fill absolute left-1/2 top-1/2 rounded-full"
             style={{
               width: "calc(var(--fillBaseSize) - (var(--fillInset) * 2))",
               height: "calc(var(--fillBaseSize) - (var(--fillInset) * 2))",
@@ -834,27 +1220,37 @@ export default function ChloeverseMainLanding({
                 opacity: titleEntered ? 1 : 0,
                 transform: titleEntered ? "translateY(0px)" : "translateY(100px)",
                 transition: titleTransition,
-              }}
+                "--block-tilt-x": "0deg",
+                "--block-tilt-y": "0deg",
+                "--block-shift-x": "0px",
+                "--block-shift-y": "0px",
+              } as CssVars}
             >
-              <div className={`${titleFontClassName} overflow-visible leading-[0.84] tracking-[0.02em]`}>
-                <div className="text-[clamp(2rem,4.85vw,3.45rem)]">{renderPaintedText(TITLE_TOP, 101)}</div>
-                <div className="-mt-1 inline-flex flex-nowrap whitespace-nowrap overflow-visible text-[clamp(3.5rem,13vw,12rem)]">
-                  {renderPaintedText(TITLE_MAIN, 701)}
-                </div>
-              </div>
-
-              <div
-                ref={titleOverlayRef}
-                aria-hidden
-                className={`pointer-events-none absolute inset-0 overflow-visible chv-spotlight-mask transition-opacity duration-200 ${
-                  isFinePointer && activeSpotTarget === "title" ? "opacity-100" : "opacity-0"
-                }`}
-                style={textMaskStyle}
-              >
-                <div className={`${titleFontClassName} overflow-visible leading-[0.84] tracking-[0.02em]`}>
-                  <div className="text-[clamp(2rem,4.85vw,3.45rem)]">{renderPlainText(TITLE_TOP, 1001)}</div>
+              <div className="chv-depth-stage chv-depth-stage--title">
+                <div className={`${titleFontClassName} chv-depth-plane overflow-visible leading-[0.84] tracking-[0.02em]`}>
+                  <div className="text-[clamp(2rem,4.85vw,3.45rem)]">
+                    {renderDepthGlyphs(TITLE_TOP, 101, "title", "painted", titleBaseGlyphRefs, 0)}
+                  </div>
                   <div className="-mt-1 inline-flex flex-nowrap whitespace-nowrap overflow-visible text-[clamp(3.5rem,13vw,12rem)]">
-                    {renderPlainText(TITLE_MAIN, 1601)}
+                    {renderDepthGlyphs(TITLE_MAIN, 701, "title", "painted", titleBaseGlyphRefs, TITLE_TOP_COUNT)}
+                  </div>
+                </div>
+
+                <div
+                  ref={titleOverlayRef}
+                  aria-hidden
+                  className={`chv-depth-plane chv-depth-plane--overlay pointer-events-none absolute inset-0 overflow-visible chv-spotlight-mask transition-opacity duration-200 ${
+                    isFinePointer && activeSpotTarget === "title" ? "opacity-100" : "opacity-0"
+                  }`}
+                  style={textMaskStyle}
+                >
+                  <div className={`${titleFontClassName} overflow-visible leading-[0.84] tracking-[0.02em]`}>
+                    <div className="text-[clamp(2rem,4.85vw,3.45rem)]">
+                      {renderDepthGlyphs(TITLE_TOP, 1001, "title", "plain", titleOverlayGlyphRefs, 0)}
+                    </div>
+                    <div className="-mt-1 inline-flex flex-nowrap whitespace-nowrap overflow-visible text-[clamp(3.5rem,13vw,12rem)]">
+                      {renderDepthGlyphs(TITLE_MAIN, 1601, "title", "plain", titleOverlayGlyphRefs, TITLE_TOP_COUNT)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -863,30 +1259,38 @@ export default function ChloeverseMainLanding({
             <div
               ref={taglineHitRef}
               className={`${monoFontClassName} relative mt-11 inline-block select-none text-[clamp(1rem,2vw,1.35rem)] tracking-[0.15em] text-white`}
+              style={{
+                "--block-tilt-x": "0deg",
+                "--block-tilt-y": "0deg",
+                "--block-shift-x": "0px",
+                "--block-shift-y": "0px",
+              } as CssVars}
             >
-              <div className="relative">
-                <span className="whitespace-pre-wrap text-white/95 [text-shadow:0_0_18px_rgba(255,255,255,0.12)]">
-                  {typedText}
-                </span>
-                <span
-                  aria-hidden
-                  className={typingDone ? "chv-type-cursor chv-type-cursor-done" : "chv-type-cursor"}
-                >
-                  |
-                </span>
-              </div>
+              <div className="chv-depth-stage chv-depth-stage--tagline">
+                <div className="chv-depth-plane relative">
+                  <span className="whitespace-pre-wrap text-white/95 [text-shadow:0_0_18px_rgba(255,255,255,0.12)]">
+                    {renderDepthGlyphs(typedText, 2201, "tagline", "plain", taglineBaseGlyphRefs)}
+                  </span>
+                  <span
+                    aria-hidden
+                    className={typingDone ? "chv-type-cursor chv-type-cursor-done" : "chv-type-cursor"}
+                  >
+                    |
+                  </span>
+                </div>
 
-              <div
-                ref={taglineOverlayRef}
-                aria-hidden
-                className={`pointer-events-none absolute inset-0 chv-spotlight-mask transition-opacity duration-150 ${
-                  isFinePointer && activeSpotTarget === "tagline" ? "opacity-100" : "opacity-0"
-                }`}
-                style={textMaskStyle}
-              >
-                <span className="whitespace-pre-wrap">
-                  {renderPaintedText(typedText, 2301)}
-                </span>
+                <div
+                  ref={taglineOverlayRef}
+                  aria-hidden
+                  className={`chv-depth-plane chv-depth-plane--overlay pointer-events-none absolute inset-0 chv-spotlight-mask transition-opacity duration-150 ${
+                    isFinePointer && activeSpotTarget === "tagline" ? "opacity-100" : "opacity-0"
+                  }`}
+                  style={textMaskStyle}
+                >
+                  <span className="whitespace-pre-wrap">
+                    {renderDepthGlyphs(typedText, 2301, "tagline", "painted", taglineOverlayGlyphRefs)}
+                  </span>
+                </div>
               </div>
             </div>
 

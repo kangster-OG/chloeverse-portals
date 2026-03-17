@@ -586,3 +586,159 @@ body {
     transform: translateY(0) scale(1);
   }
 }
+
+.chv-depth-stage {
+  position: relative;
+  perspective: 1400px;
+  perspective-origin: 50% 46%;
+  transform-style: preserve-3d;
+}
+
+.chv-depth-stage--tagline {
+  perspective: 1180px;
+}
+
+.chv-depth-plane {
+  transform-style: preserve-3d;
+  transform:
+    rotateX(var(--block-tilt-x, 0deg))
+    rotateY(var(--block-tilt-y, 0deg))
+    translate3d(var(--block-shift-x, 0px), var(--block-shift-y, 0px), 0);
+  will-change: transform;
+}
+
+.chv-depth-plane--overlay {
+  transform-origin: center;
+}
+
+.chv-glyph-stack {
+  --glyph-depth: 8px;
+  --glyph-lift: 0px;
+  --glyph-ripple: 0px;
+  --glyph-shadow-alpha: 0.12;
+  --glyph-total: calc(var(--glyph-depth) + var(--glyph-lift) + var(--glyph-ripple));
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  transform-style: preserve-3d;
+  transform: translate3d(0, 0, calc(var(--glyph-total) * 0.72));
+  will-change: transform;
+}
+
+.chv-glyph-stack--title {
+  margin-inline: -0.01em;
+}
+
+.chv-glyph-stack--tagline {
+  margin-inline: -0.006em;
+}
+
+.chv-glyph-stack--space {
+  min-width: 0.34em;
+}
+
+.chv-glyph-layer {
+  grid-area: 1 / 1;
+  display: block;
+  transform-style: preserve-3d;
+}
+
+.chv-glyph-layer--back,
+.chv-glyph-layer--slice {
+  color: rgba(7, 9, 18, 0.96);
+  -webkit-text-fill-color: currentColor;
+  text-shadow:
+    0 14px 26px rgba(0, 0, 0, calc(0.22 + (var(--glyph-shadow-alpha) * 0.2))),
+    0 0 10px rgba(127, 168, 255, calc(0.08 + (var(--glyph-shadow-alpha) * 0.08)));
+}
+
+.chv-glyph-layer--back {
+  opacity: 0.92;
+  transform: translate3d(-1px, 1.25px, calc(var(--glyph-total) * -1));
+}
+
+.chv-glyph-layer--slice-1 {
+  opacity: 0.96;
+  transform: translate3d(-0.7px, 0.8px, calc(var(--glyph-total) * -0.78));
+}
+
+.chv-glyph-layer--slice-2 {
+  opacity: 0.92;
+  transform: translate3d(-0.32px, 0.44px, calc(var(--glyph-total) * -0.54));
+}
+
+.chv-glyph-layer--slice-3 {
+  opacity: 0.88;
+  transform: translate3d(0px, 0.16px, calc(var(--glyph-total) * -0.3));
+}
+
+.chv-glyph-layer--face {
+  position: relative;
+  transform: translate3d(0, 0, 0);
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, calc(0.14 + (var(--glyph-shadow-alpha) * 0.18))));
+}
+
+.chv-glyph-face--plain {
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.chv-cursor-shadow {
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(0, 0, 0, calc(var(--lens-shadow-alpha, 0.24) * 0.72)) 0%,
+    rgba(0, 0, 0, calc(var(--lens-shadow-alpha, 0.24) * 0.28)) 48%,
+    rgba(0, 0, 0, 0) 76%
+  );
+  filter: blur(9px);
+  transform:
+    translate(-50%, -50%)
+    translate3d(var(--lens-shadow-x, 0px), var(--lens-shadow-y, 0px), 0)
+    scale(calc(var(--lens-scale, 1) * 1.08));
+  will-change: transform;
+}
+
+.chv-cursor-lens {
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.06) 34%, rgba(255, 255, 255, 0) 62%),
+    radial-gradient(circle at 60% 64%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 70%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.14);
+  transform:
+    translate(-50%, -50%)
+    scale(var(--lens-scale, 1));
+  will-change: transform;
+}
+
+.chv-cursor-spec {
+  border-radius: 9999px;
+  background: radial-gradient(circle at 38% 36%, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.42) 24%, rgba(255, 255, 255, 0) 64%);
+  mix-blend-mode: screen;
+  opacity: 0.72;
+  transform:
+    translate(-50%, -50%)
+    translate3d(var(--lens-highlight-x, 0px), var(--lens-highlight-y, 0px), 0)
+    scale(calc(var(--lens-scale, 1) * 0.92));
+  will-change: transform;
+}
+
+.chv-cursor-fill {
+  transform:
+    translate(-50%, -50%)
+    translate3d(calc(var(--lens-highlight-x, 0px) * 0.24), calc(var(--lens-highlight-y, 0px) * 0.24), 0)
+    scale(var(--lens-scale, 1));
+  will-change: transform, background-position;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chv-depth-plane,
+  .chv-glyph-stack,
+  .chv-cursor-shadow,
+  .chv-cursor-lens,
+  .chv-cursor-spec,
+  .chv-cursor-fill {
+    transition: none !important;
+  }
+}
