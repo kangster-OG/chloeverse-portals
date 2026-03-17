@@ -14,6 +14,28 @@ export default function CollabsRoute() {
   const [muted, setMuted] = useState(false);
   const [mode, setMode] = useState<"portal" | "reels">("portal");
 
+  const enterInlineReels = () => {
+    stopBgm({ resetTime: true, clearGestureListeners: true });
+    setMode("reels");
+  };
+
+  const shouldInlineReelsFromFrame = (frameWindow: Window | null) => {
+    if (!frameWindow) return false;
+
+    try {
+      const framePathname = new URL(frameWindow.location.href).pathname.replace(/\/+$/, "");
+      if (framePathname === "/collabs/reels") {
+        return true;
+      }
+    } catch {}
+
+    try {
+      return frameWindow.sessionStorage.getItem("collabs:portal-entry") === "1";
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (mode !== "portal") return;
 
@@ -27,8 +49,7 @@ export default function CollabsRoute() {
       if (!payload || payload.source !== "collabs-portal") return;
 
       if (payload.type === "enter-reels-inline") {
-        stopBgm({ resetTime: true, clearGestureListeners: true });
-        setMode("reels");
+        enterInlineReels();
         return;
       }
 
@@ -53,6 +74,12 @@ export default function CollabsRoute() {
   const bindIframeGestureFallbacks = () => {
     const frameWindow = iframeRef.current?.contentWindow ?? null;
     if (!frameWindow) return;
+
+    if (shouldInlineReelsFromFrame(frameWindow)) {
+      enterInlineReels();
+      return;
+    }
+
     startBgmOnFirstGesture(frameWindow);
     try {
       startBgmOnFirstGesture(frameWindow.document);
