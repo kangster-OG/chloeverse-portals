@@ -25,6 +25,7 @@ type DepthKind = "title" | "tagline";
 type GlyphTone = "painted" | "plain";
 type GlyphMetric = { x: number; y: number; radius: number };
 type GlyphRefCollection = MutableRefObject<Array<HTMLSpanElement | null>>;
+type MenuCardRefCollection = MutableRefObject<Array<HTMLAnchorElement | null>>;
 type MaskPointRef = MutableRefObject<{ x: number; y: number }>;
 type BlockMotionState = { tiltX: number; tiltY: number; shiftX: number; shiftY: number };
 type RippleState = {
@@ -56,8 +57,6 @@ type DepthConfig = {
 const TITLE_TOP = "The";
 const TITLE_MAIN = "Chloeverse";
 const TAGLINE = "where storytelling meets tomorrow";
-const LANDING_BGM_SRC = "/audio/landing-sparkle.mp3";
-const LANDING_BGM_VOLUME = 0.07;
 const PORTAL_LINKS_TOP_OFFSET_PX = 144;
 const MENU_LINKS = [
   { href: "/projects", label: "PROJECTS" },
@@ -105,6 +104,19 @@ const TAGLINE_DEPTH_CONFIG: DepthConfig = {
   maxTiltY: 5.6,
   maxShiftX: 4.5,
   maxShiftY: 3.4,
+};
+const MENU_CARD_DEPTH_CONFIG: DepthConfig = {
+  baseDepth: 8.2,
+  hoverRadius: 126,
+  hoverLift: 10.8,
+  rippleLift: 9.1,
+  rippleDurationMs: 410,
+  rippleSpeedPxPerMs: 0.52,
+  rippleBandPx: 70,
+  maxTiltX: 6.4,
+  maxTiltY: 8.4,
+  maxShiftX: 10.5,
+  maxShiftY: 7.5,
 };
 const RAINBOW_COLORS = ["#ff4ea8", "#ff8a3d", "#ffd646", "#8aff5c", "#4ce4ff", "#6f8dff", "#da6dff"] as const;
 const GREEN_HEX = "#8aff5c";
@@ -380,9 +392,9 @@ function setRipplePointer(ripple: RippleState, x: number, y: number, reducedMoti
   ripple.startedAt = performance.now();
 }
 
-function measureGlyphMetrics(
+function measureGlyphMetrics<T extends HTMLElement>(
   host: HTMLElement | null,
-  refs: Array<HTMLSpanElement | null>,
+  refs: Array<T | null>,
   count: number,
 ): GlyphMetric[] {
   if (!host || count <= 0) {
@@ -416,6 +428,104 @@ function setBlockMotionVars(host: HTMLElement | null, motion: BlockMotionState):
   host.style.setProperty("--block-tilt-y", `${motion.tiltY.toFixed(3)}deg`);
   host.style.setProperty("--block-shift-x", `${motion.shiftX.toFixed(3)}px`);
   host.style.setProperty("--block-shift-y", `${motion.shiftY.toFixed(3)}px`);
+}
+
+function setMenuCardVars(
+  node: HTMLAnchorElement | null,
+  depth: number,
+  lift: number,
+  ripple: number,
+  shadow: number,
+  offsetX: number,
+  offsetY: number,
+  rotateX: number,
+  rotateY: number,
+  scale: number,
+): void {
+  if (!node) {
+    return;
+  }
+  node.style.setProperty("--card-depth", `${depth.toFixed(3)}px`);
+  node.style.setProperty("--card-lift", `${lift.toFixed(3)}px`);
+  node.style.setProperty("--card-ripple", `${ripple.toFixed(3)}px`);
+  node.style.setProperty("--card-shadow-alpha", shadow.toFixed(3));
+  node.style.setProperty("--card-offset-x", `${offsetX.toFixed(3)}px`);
+  node.style.setProperty("--card-offset-y", `${offsetY.toFixed(3)}px`);
+  node.style.setProperty("--card-rotate-x", `${rotateX.toFixed(3)}deg`);
+  node.style.setProperty("--card-rotate-y", `${rotateY.toFixed(3)}deg`);
+  node.style.setProperty("--card-scale", scale.toFixed(4));
+}
+
+function updateMenuCards(
+  host: HTMLElement | null,
+  metrics: GlyphMetric[],
+  refs: Array<HTMLAnchorElement | null>,
+  pointer: { x: number; y: number },
+  active: boolean,
+  config: DepthConfig,
+  ripple: RippleState,
+  prefersReducedMotion: boolean,
+): void {
+  if (!host) {
+    return;
+  }
+
+  const rect = host.getBoundingClientRect();
+  const width = Math.max(1, rect.width);
+  const height = Math.max(1, rect.height);
+  const localX = clamp(pointer.x, 0, width);
+  const localY = clamp(pointer.y, 0, height);
+  const now = performance.now();
+
+  let rippleProgress = 0;
+  let rippleWave = 0;
+  let rippleDecay = 0;
+  let rippleVelocityLength = 1;
+  if (ripple.active && !prefersReducedMotion) {
+    rippleProgress = (now - ripple.startedAt) / config.rippleDurationMs;
+    if (rippleProgress >= 1) {
+      ripple.active = false;
+    } else {
+      rippleWave = rippleProgress * config.rippleDurationMs * config.rippleSpeedPxPerMs;
+      rippleDecay = 1 - rippleProgress;
+      rippleVelocityLength = Math.max(1, Math.hypot(ripple.vx, ripple.vy));
+    }
+  }
+
+  const baseDepth = prefersReducedMotion ? config.baseDepth * 0.76 : config.baseDepth;
+
+  for (let index = 0; index < metrics.length; index += 1) {
+    const metric = metrics[index];
+    const deltaX = metric.x - localX;
+    const deltaY = metric.y - localY;
+    const distance = Math.hypot(deltaX, deltaY);
+    const hoverBase = active && !prefersReducedMotion
+      ? clamp(1 - distance / (config.hoverRadius + metric.radius * 0.28), 0, 1)
+      : 0;
+    const hoverLift = hoverBase * hoverBase * config.hoverLift;
+
+    let rippleLift = 0;
+    if (ripple.active && !prefersReducedMotion) {
+      const glyphDx = metric.x - ripple.x;
+      const glyphDy = metric.y - ripple.y;
+      const rippleDistance = Math.hypot(glyphDx, glyphDy);
+      const band = clamp(1 - Math.abs(rippleDistance - rippleWave) / config.rippleBandPx, 0, 1);
+      const direction = (glyphDx * ripple.vx + glyphDy * ripple.vy) / (Math.max(1, rippleDistance) * rippleVelocityLength);
+      rippleLift = band * band * config.rippleLift * ripple.energy * rippleDecay * (0.82 + Math.max(0, direction) * 0.18);
+    }
+
+    const totalLift = hoverLift + rippleLift;
+    const distanceScale = Math.max(metric.radius, distance);
+    const directionalX = clamp(deltaX / distanceScale, -1, 1);
+    const directionalY = clamp(deltaY / distanceScale, -1, 1);
+    const offsetX = active && !prefersReducedMotion ? -directionalX * totalLift * 0.28 : 0;
+    const offsetY = -(hoverLift * 0.72 + rippleLift * 0.96);
+    const rotateY = active && !prefersReducedMotion ? clamp(-directionalX * (7 + hoverBase * 7), -15, 15) : 0;
+    const rotateX = active && !prefersReducedMotion ? clamp(directionalY * (5 + hoverBase * 5) - totalLift * 0.14, -12, 12) : clamp(-totalLift * 0.08, -6, 6);
+    const scale = 1 + clamp(totalLift * 0.01, 0, prefersReducedMotion ? 0.025 : 0.12);
+    const shadow = clamp(totalLift / (config.hoverLift + config.rippleLift), 0.12, 1);
+    setMenuCardVars(refs[index], baseDepth, hoverLift, rippleLift, shadow, offsetX, offsetY, rotateX, rotateY, scale);
+  }
 }
 
 function setGlyphDepthVars(
@@ -597,24 +707,27 @@ export default function ChloeverseMainLanding({
   const taglineOverlayRef = useRef<HTMLDivElement>(null);
   const menuHitRef = useRef<HTMLElement>(null);
   const scrollHintRef = useRef<HTMLParagraphElement>(null);
-  const landingBgmRef = useRef<HTMLAudioElement | null>(null);
-  const landingBgmStartedRef = useRef(false);
 
   const titleBaseGlyphRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const titleOverlayGlyphRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const taglineBaseGlyphRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const taglineOverlayGlyphRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const menuCardRefs: MenuCardRefCollection = useRef<Array<HTMLAnchorElement | null>>([]);
   const titleGlyphMetricsRef = useRef<GlyphMetric[]>([]);
   const taglineGlyphMetricsRef = useRef<GlyphMetric[]>([]);
+  const menuCardMetricsRef = useRef<GlyphMetric[]>([]);
   const titleBlockMotionRef = useRef<BlockMotionState>({ tiltX: 0, tiltY: 0, shiftX: 0, shiftY: 0 });
   const taglineBlockMotionRef = useRef<BlockMotionState>({ tiltX: 0, tiltY: 0, shiftX: 0, shiftY: 0 });
   const titleRippleRef = useRef<RippleState>(createRippleState());
   const taglineRippleRef = useRef<RippleState>(createRippleState());
+  const menuRippleRef = useRef<RippleState>(createRippleState());
 
   const pointerTargetRef = useRef({ x: 0, y: 0 });
   const pointerCurrentRef = useRef({ x: 0, y: 0 });
   const pointerPrevRef = useRef({ x: 0, y: 0 });
   const pointerVelocityRef = useRef({ x: 0, y: 0 });
+  const menuPointerTargetRef = useRef({ x: 0, y: 0 });
+  const menuPointerCurrentRef = useRef({ x: 0, y: 0 });
   const titleMaskTargetRef = useRef({ x: 0, y: 0 });
   const titleMaskCurrentRef = useRef({ x: 0, y: 0 });
   const taglineMaskTargetRef = useRef({ x: 0, y: 0 });
@@ -730,6 +843,7 @@ export default function ChloeverseMainLanding({
       titleOverlayGlyphRefs.current.length = TITLE_GLYPH_COUNT;
       taglineBaseGlyphRefs.current.length = typedText.length;
       taglineOverlayGlyphRefs.current.length = typedText.length;
+      menuCardRefs.current.length = MENU_LINKS.length;
 
       const titleRect = titleHitRef.current?.getBoundingClientRect();
       if (titleRect) {
@@ -749,6 +863,18 @@ export default function ChloeverseMainLanding({
 
       titleGlyphMetricsRef.current = measureGlyphMetrics(titleHitRef.current, titleBaseGlyphRefs.current, TITLE_GLYPH_COUNT);
       taglineGlyphMetricsRef.current = measureGlyphMetrics(taglineHitRef.current, taglineBaseGlyphRefs.current, typedText.length);
+
+      if (menuVisible) {
+        const menuRect = menuHitRef.current?.getBoundingClientRect();
+        if (menuRect) {
+          const center = { x: menuRect.width * 0.5, y: menuRect.height * 0.5 };
+          menuPointerTargetRef.current = center;
+          menuPointerCurrentRef.current = center;
+        }
+        menuCardMetricsRef.current = measureGlyphMetrics(menuHitRef.current, menuCardRefs.current, MENU_LINKS.length);
+      } else {
+        menuCardMetricsRef.current = [];
+      }
     };
 
     let raf = window.requestAnimationFrame(syncCenters);
@@ -757,7 +883,7 @@ export default function ChloeverseMainLanding({
       window.cancelAnimationFrame(raf);
       window.removeEventListener("resize", syncCenters);
     };
-  }, [typedText]);
+  }, [menuRevealNonce, menuVisible, typedText]);
 
   useEffect(() => {
     setTitleEntered(prefersReducedMotion);
@@ -802,112 +928,6 @@ export default function ChloeverseMainLanding({
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const audio = new Audio(LANDING_BGM_SRC);
-    audio.loop = true;
-    audio.preload = "auto";
-    audio.muted = true;
-    audio.volume = LANDING_BGM_VOLUME;
-    landingBgmRef.current = audio;
-
-    let listenersAttached = true;
-    const detachGestureListeners = () => {
-      if (!listenersAttached) return;
-      listenersAttached = false;
-      window.removeEventListener("pointerdown", onGesture, true);
-      window.removeEventListener("touchstart", onGesture, true);
-      window.removeEventListener("wheel", onGesture, true);
-      window.removeEventListener("scroll", onGesture, true);
-      window.removeEventListener("pointermove", onGesture, true);
-      window.removeEventListener("mousemove", onGesture, true);
-      window.removeEventListener("touchmove", onGesture, true);
-      window.removeEventListener("keydown", onGesture, true);
-      document.removeEventListener("wheel", onGesture, true);
-      document.removeEventListener("scroll", onGesture, true);
-      document.removeEventListener("pointermove", onGesture, true);
-      document.removeEventListener("mousemove", onGesture, true);
-      document.removeEventListener("touchmove", onGesture, true);
-    };
-
-    const markAudible = () => {
-      landingBgmStartedRef.current = true;
-      audio.muted = false;
-      audio.volume = LANDING_BGM_VOLUME;
-      detachGestureListeners();
-    };
-
-    const startAudible = () => {
-      if (!audio.paused) {
-        markAudible();
-        return;
-      }
-
-      audio.muted = false;
-      audio.volume = LANDING_BGM_VOLUME;
-      void audio.play()
-        .then(() => {
-          markAudible();
-        })
-        .catch(() => {
-          audio.muted = true;
-          void audio.play()
-            .then(() => {
-              markAudible();
-            })
-            .catch(() => {
-              // Keep listeners active; next gesture retries.
-            });
-        });
-    };
-
-    const onGesture = () => {
-      startAudible();
-    };
-
-    void audio.play().then(() => {
-      landingBgmStartedRef.current = true;
-    }).catch(() => {
-      // Some browsers block all autoplay; explicit gesture path above handles it.
-    });
-
-    window.addEventListener("pointerdown", onGesture, { passive: true, capture: true });
-    window.addEventListener("touchstart", onGesture, { passive: true, capture: true });
-    window.addEventListener("wheel", onGesture, { passive: true, capture: true });
-    window.addEventListener("scroll", onGesture, { passive: true, capture: true });
-    window.addEventListener("pointermove", onGesture, { passive: true, capture: true });
-    window.addEventListener("mousemove", onGesture, { passive: true, capture: true });
-    window.addEventListener("touchmove", onGesture, { passive: true, capture: true });
-    window.addEventListener("keydown", onGesture, { capture: true });
-    document.addEventListener("wheel", onGesture, { passive: true, capture: true });
-    document.addEventListener("scroll", onGesture, { passive: true, capture: true });
-    document.addEventListener("pointermove", onGesture, { passive: true, capture: true });
-    document.addEventListener("mousemove", onGesture, { passive: true, capture: true });
-    document.addEventListener("touchmove", onGesture, { passive: true, capture: true });
-
-    return () => {
-      window.removeEventListener("pointerdown", onGesture, true);
-      window.removeEventListener("touchstart", onGesture, true);
-      window.removeEventListener("wheel", onGesture, true);
-      window.removeEventListener("scroll", onGesture, true);
-      window.removeEventListener("pointermove", onGesture, true);
-      window.removeEventListener("mousemove", onGesture, true);
-      window.removeEventListener("touchmove", onGesture, true);
-      window.removeEventListener("keydown", onGesture, true);
-      document.removeEventListener("wheel", onGesture, true);
-      document.removeEventListener("scroll", onGesture, true);
-      document.removeEventListener("pointermove", onGesture, true);
-      document.removeEventListener("mousemove", onGesture, true);
-      document.removeEventListener("touchmove", onGesture, true);
-      audio.pause();
-      audio.currentTime = 0;
-      audio.muted = true;
-      landingBgmRef.current = null;
-      landingBgmStartedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
     let frame = 0;
     const pointerLerp = prefersReducedMotion ? 1 : POINTER_LERP;
     const maskLerp = prefersReducedMotion ? 1 : MASK_LERP;
@@ -936,6 +956,10 @@ export default function ChloeverseMainLanding({
       const pointerCurrent = pointerCurrentRef.current;
       pointerCurrent.x += (pointerTarget.x - pointerCurrent.x) * pointerLerp;
       pointerCurrent.y += (pointerTarget.y - pointerCurrent.y) * pointerLerp;
+      const menuPointerTarget = menuPointerTargetRef.current;
+      const menuPointerCurrent = menuPointerCurrentRef.current;
+      menuPointerCurrent.x += (menuPointerTarget.x - menuPointerCurrent.x) * pointerLerp;
+      menuPointerCurrent.y += (menuPointerTarget.y - menuPointerCurrent.y) * pointerLerp;
 
       const pointerVelocity = pointerVelocityRef.current;
       const prevPointer = pointerPrevRef.current;
@@ -986,6 +1010,19 @@ export default function ChloeverseMainLanding({
         taglineRippleRef.current,
         prefersReducedMotion,
       );
+
+      if (menuVisible) {
+        updateMenuCards(
+          menuHitRef.current,
+          menuCardMetricsRef.current,
+          menuCardRefs.current,
+          menuPointerCurrent,
+          hasPointer && hoverRegion === "small" && activeSpotTarget === null,
+          MENU_CARD_DEPTH_CONFIG,
+          menuRippleRef.current,
+          prefersReducedMotion,
+        );
+      }
 
       const bgTarget = hasPointer && hoverRegion === "bg" ? BG_REVEAL_RADIUS : 0;
       if (prefersReducedMotion) {
@@ -1040,7 +1077,7 @@ export default function ChloeverseMainLanding({
 
     frame = window.requestAnimationFrame(animate);
     return () => window.cancelAnimationFrame(frame);
-  }, [activeSpotTarget, hasPointer, hoverRegion, isFinePointer, prefersReducedMotion]);
+  }, [activeSpotTarget, hasPointer, hoverRegion, isFinePointer, menuVisible, prefersReducedMotion]);
 
   const applyRegion = (region: HoverRegion, spotTarget: SpotTarget) => {
     setHoverRegion(region);
@@ -1116,6 +1153,21 @@ export default function ChloeverseMainLanding({
       taglineRippleRef.current.hasLast = false;
     }
 
+    if (isMenu && menuHitRef.current) {
+      const menuRect = menuHitRef.current.getBoundingClientRect();
+      const local = {
+        x: clamp(x - menuRect.left, 0, menuRect.width),
+        y: clamp(y - menuRect.top, 0, menuRect.height),
+      };
+      if (!menuRippleRef.current.hasLast) {
+        menuPointerCurrentRef.current = local;
+      }
+      menuPointerTargetRef.current = local;
+      setRipplePointer(menuRippleRef.current, local.x, local.y, prefersReducedMotion);
+    } else {
+      menuRippleRef.current.hasLast = false;
+    }
+
     applyRegion(region, spotTarget);
     setHasPointer(true);
   };
@@ -1128,6 +1180,7 @@ export default function ChloeverseMainLanding({
     bgRadiusCurrentRef.current = 0;
     titleRippleRef.current.hasLast = false;
     taglineRippleRef.current.hasLast = false;
+    menuRippleRef.current.hasLast = false;
     bgRainbowRef.current?.style.setProperty("--bgr", "0px");
   };
 
@@ -1355,10 +1408,22 @@ export default function ChloeverseMainLanding({
               {MENU_LINKS.map((link, index) => (
                 <Link
                   key={`${link.href}-${menuRevealNonce}`}
+                  ref={(node) => {
+                    menuCardRefs.current[index] = node;
+                  }}
                   href={link.href}
                   prefetch={link.href === "/contact" ? false : undefined}
-                  className={`${monoFontClassName} group relative inline-flex items-center overflow-hidden rounded-full border border-white/12 bg-black/35 px-5 py-2 text-[0.74rem] tracking-[0.22em] text-white/78 backdrop-blur-md transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60`}
+                  className={`${monoFontClassName} chv-menu-card group relative inline-flex items-center overflow-hidden rounded-full border border-white/12 bg-black/35 px-5 py-2 text-[0.74rem] tracking-[0.22em] text-white/78 backdrop-blur-md transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60`}
                   style={{
+                    "--card-depth": "8.2px",
+                    "--card-lift": "0px",
+                    "--card-ripple": "0px",
+                    "--card-shadow-alpha": "0.12",
+                    "--card-offset-x": "0px",
+                    "--card-offset-y": "0px",
+                    "--card-rotate-x": "0deg",
+                    "--card-rotate-y": "0deg",
+                    "--card-scale": "1",
                     ...(menuVisible
                       ? {
                           animationName: "chv-portal-link-drop-bounce",
@@ -1368,9 +1433,9 @@ export default function ChloeverseMainLanding({
                           animationDelay: `${index * 90}ms`,
                         }
                       : {}),
-                  }}
+                  } as CssVars}
                 >
-                  <span className="relative z-10">{link.label}</span>
+                  <span className="chv-menu-card__label relative z-10">{link.label}</span>
                   <span
                     aria-hidden
                     className="pointer-events-none absolute inset-x-3 bottom-[6px] h-px bg-gradient-to-r from-[#ff4ea8] via-[#ffd646] to-[#4ce4ff] opacity-0 transition-opacity duration-200 group-hover:opacity-70 group-focus-visible:opacity-70"

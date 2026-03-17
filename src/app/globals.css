@@ -566,25 +566,118 @@ body {
 @keyframes chv-portal-link-drop-bounce {
   0% {
     opacity: 0;
-    transform: translateY(-180px) scale(0.9);
+    transform:
+      translate3d(var(--card-offset-x, 0px), calc(var(--card-offset-y, 0px) - 180px), calc(var(--card-total, 8px) * 0.42))
+      rotateX(var(--card-rotate-x, 0deg))
+      rotateY(var(--card-rotate-y, 0deg))
+      scale(calc(var(--card-scale, 1) * 0.9));
   }
   52% {
     opacity: 1;
-    transform: translateY(16px) scale(1.028);
+    transform:
+      translate3d(var(--card-offset-x, 0px), calc(var(--card-offset-y, 0px) + 16px), calc(var(--card-total, 8px) * 0.42))
+      rotateX(var(--card-rotate-x, 0deg))
+      rotateY(var(--card-rotate-y, 0deg))
+      scale(calc(var(--card-scale, 1) * 1.028));
   }
   68% {
-    transform: translateY(-9px) scale(0.994);
+    transform:
+      translate3d(var(--card-offset-x, 0px), calc(var(--card-offset-y, 0px) - 9px), calc(var(--card-total, 8px) * 0.42))
+      rotateX(var(--card-rotate-x, 0deg))
+      rotateY(var(--card-rotate-y, 0deg))
+      scale(calc(var(--card-scale, 1) * 0.994));
   }
   81% {
-    transform: translateY(6px) scale(1.003);
+    transform:
+      translate3d(var(--card-offset-x, 0px), calc(var(--card-offset-y, 0px) + 6px), calc(var(--card-total, 8px) * 0.42))
+      rotateX(var(--card-rotate-x, 0deg))
+      rotateY(var(--card-rotate-y, 0deg))
+      scale(calc(var(--card-scale, 1) * 1.003));
   }
   91% {
-    transform: translateY(-3px) scale(0.999);
+    transform:
+      translate3d(var(--card-offset-x, 0px), calc(var(--card-offset-y, 0px) - 3px), calc(var(--card-total, 8px) * 0.42))
+      rotateX(var(--card-rotate-x, 0deg))
+      rotateY(var(--card-rotate-y, 0deg))
+      scale(calc(var(--card-scale, 1) * 0.999));
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform:
+      translate3d(var(--card-offset-x, 0px), var(--card-offset-y, 0px), calc(var(--card-total, 8px) * 0.42))
+      rotateX(var(--card-rotate-x, 0deg))
+      rotateY(var(--card-rotate-y, 0deg))
+      scale(var(--card-scale, 1));
   }
+}
+
+.chv-menu-card {
+  --card-depth: 8px;
+  --card-lift: 0px;
+  --card-ripple: 0px;
+  --card-shadow-alpha: 0.12;
+  --card-offset-x: 0px;
+  --card-offset-y: 0px;
+  --card-rotate-x: 0deg;
+  --card-rotate-y: 0deg;
+  --card-scale: 1;
+  --card-total: calc(var(--card-depth) + var(--card-lift) + var(--card-ripple));
+  position: relative;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  transform-origin: 50% 58%;
+  transform:
+    translate3d(var(--card-offset-x), var(--card-offset-y), calc(var(--card-total) * 0.42))
+    rotateX(var(--card-rotate-x))
+    rotateY(var(--card-rotate-y))
+    scale(var(--card-scale));
+  box-shadow:
+    0 calc(14px + (var(--card-total) * 0.34)) calc(28px + (var(--card-total) * 0.5)) rgba(0, 0, 0, calc(0.18 + (var(--card-shadow-alpha) * 0.22))),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  will-change: transform, box-shadow;
+}
+
+.chv-menu-card::before,
+.chv-menu-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.chv-menu-card::before {
+  z-index: 0;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 34%),
+    linear-gradient(180deg, rgba(16, 18, 34, 0.96), rgba(8, 10, 22, 0.98) 52%, rgba(2, 3, 8, 0.98) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    inset -1px -2px 4px rgba(0, 0, 0, 0.22);
+  transform:
+    translate3d(
+      calc((var(--card-depth) + (var(--card-lift) * 0.18) + (var(--card-ripple) * 0.12)) * -0.5),
+      calc((var(--card-depth) + (var(--card-lift) * 0.24) + (var(--card-ripple) * 0.18)) * 0.68),
+      calc(var(--card-total) * -0.82)
+    )
+    scale(1.015);
+}
+
+.chv-menu-card::after {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 24% 22%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 24%, rgba(255, 255, 255, 0) 52%),
+    linear-gradient(138deg, rgba(255, 78, 168, 0.08), rgba(255, 214, 70, 0.04) 42%, rgba(76, 228, 255, 0.07));
+  mix-blend-mode: screen;
+  opacity: calc(0.28 + (var(--card-shadow-alpha) * 0.18));
+  transform: translateZ(calc(var(--card-total) * 0.06));
+}
+
+.chv-menu-card__label {
+  position: relative;
+  z-index: 2;
+  transform: translateZ(calc(var(--card-total) * 0.12));
 }
 
 .chv-depth-stage {
@@ -802,6 +895,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .chv-depth-plane,
   .chv-glyph-stack,
+  .chv-menu-card,
   .chv-cursor-shadow,
   .chv-cursor-lens,
   .chv-cursor-spec,
