@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { Bungee_Shade } from "next/font/google";
 
 import { MobileRouteLink } from "@/components/mobile/shared/MobileRouteLink";
 import { MobileRouteFrame } from "@/components/mobile/shared/MobileRouteFrame";
@@ -13,6 +14,12 @@ type MobileHomeExperienceProps = {
 };
 
 const ITEM_HEIGHT = 132;
+
+const bungeeShade = Bungee_Shade({
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
 
 function MobileLiquidChromeField({
   accent,
@@ -31,20 +38,36 @@ function MobileLiquidChromeField({
         viewBox="0 0 100 170"
       >
         <defs>
-          <linearGradient id="chv-metal-base" x1="0%" x2="100%" y1="0%" y2="100%">
+          <pattern
+            id="chv-metal-bands"
+            height="34"
+            patternTransform="rotate(22)"
+            patternUnits="userSpaceOnUse"
+            width="34"
+          >
+            <rect fill="#050607" height="34" width="34" />
+            <rect fill="#f4f4f4" height="34" opacity="0.96" width="6" x="0" />
+            <rect fill="#a7a7ac" height="34" opacity="0.72" width="4" x="6" />
+            <rect fill="#1a1b1f" height="34" opacity="0.98" width="7" x="10" />
+            <rect fill="#d7d8db" height="34" opacity="0.84" width="5" x="17" />
+            <rect fill="#0a0b0d" height="34" opacity="0.98" width="6" x="22" />
+            <rect fill="#ececee" height="34" opacity="0.92" width="6" x="28" />
+          </pattern>
+          <linearGradient id="chv-metal-sweep" x1="0%" x2="100%" y1="0%" y2="100%">
             <stop offset="0%" stopColor="#040506" />
-            <stop offset="24%" stopColor="#d9d9d9" />
-            <stop offset="42%" stopColor="#111214" />
-            <stop offset="62%" stopColor="#f4f4f4" />
-            <stop offset="82%" stopColor="#050607" />
-            <stop offset="100%" stopColor="#d8d8d8" />
+            <stop offset="16%" stopColor="#d7d8db" />
+            <stop offset="30%" stopColor="#141518" />
+            <stop offset="48%" stopColor="#f6f6f6" />
+            <stop offset="66%" stopColor="#090a0c" />
+            <stop offset="84%" stopColor="#c8c9cd" />
+            <stop offset="100%" stopColor="#050607" />
           </linearGradient>
           <linearGradient id="chv-iridescent-flow" x1="0%" x2="100%" y1="10%" y2="90%">
             <stop offset="0%" stopColor="#6fb9ff" stopOpacity="0" />
-            <stop offset="24%" stopColor="#6fb9ff" stopOpacity="0.34" />
-            <stop offset="46%" stopColor="#ffd6aa" stopOpacity="0.2" />
-            <stop offset="68%" stopColor="#d8a6ff" stopOpacity="0.28" />
-            <stop offset="84%" stopColor="#6cffd8" stopOpacity="0.2" />
+            <stop offset="22%" stopColor="#6fb9ff" stopOpacity="0.42" />
+            <stop offset="44%" stopColor="#ffd6aa" stopOpacity="0.28" />
+            <stop offset="66%" stopColor="#d8a6ff" stopOpacity="0.34" />
+            <stop offset="84%" stopColor="#6cffd8" stopOpacity="0.26" />
             <stop offset="100%" stopColor="#6cffd8" stopOpacity="0" />
           </linearGradient>
           <filter
@@ -56,43 +79,56 @@ function MobileLiquidChromeField({
             y="-20%"
           >
             <feTurbulence
-              baseFrequency="0.014 0.008"
-              numOctaves="2"
+              baseFrequency="0.012 0.032"
+              numOctaves="3"
               result="noise"
               seed="7"
-              type="fractalNoise"
+              type="turbulence"
             >
               {reducedMotion ? null : (
                 <animate
                   attributeName="baseFrequency"
-                  dur="24s"
+                  dur="10s"
                   repeatCount="indefinite"
-                  values="0.014 0.008;0.02 0.012;0.016 0.007;0.014 0.008"
+                  values="0.012 0.032;0.017 0.05;0.011 0.026;0.012 0.032"
                 />
               )}
             </feTurbulence>
+            <feGaussianBlur in="noise" result="noiseSoft" stdDeviation="0.3" />
             <feDisplacementMap
               in="SourceGraphic"
-              in2="noise"
+              in2="noiseSoft"
               result="displaced"
-              scale="34"
+              scale="62"
               xChannelSelector="R"
               yChannelSelector="B"
             >
               {reducedMotion ? null : (
                 <animate
                   attributeName="scale"
-                  dur="18s"
+                  dur="8s"
                   repeatCount="indefinite"
-                  values="28;42;34;28"
+                  values="48;78;56;48"
                 />
               )}
             </feDisplacementMap>
-            <feGaussianBlur in="displaced" result="softened" stdDeviation="0.65" />
+            <feSpecularLighting
+              in="noiseSoft"
+              lightingColor="#ffffff"
+              result="specular"
+              specularConstant="1.4"
+              specularExponent="28"
+              surfaceScale="10"
+            >
+              <fePointLight x="42" y="-18" z="118" />
+            </feSpecularLighting>
+            <feComposite in="specular" in2="displaced" operator="in" result="litMetal" />
+            <feBlend in="displaced" in2="litMetal" mode="screen" result="brightened" />
+            <feGaussianBlur in="brightened" result="softened" stdDeviation="0.5" />
             <feColorMatrix
               in="softened"
               type="matrix"
-              values="1.18 0 0 0 0  0 1.18 0 0 0  0 0 1.18 0 0  0 0 0 1 0"
+              values="1.34 0 0 0 0  0 1.34 0 0 0  0 0 1.34 0 0  0 0 0 1 0"
             />
           </filter>
           <filter
@@ -104,7 +140,7 @@ function MobileLiquidChromeField({
             y="-20%"
           >
             <feTurbulence
-              baseFrequency="0.01 0.016"
+              baseFrequency="0.016 0.024"
               numOctaves="2"
               result="noise"
               seed="11"
@@ -113,75 +149,67 @@ function MobileLiquidChromeField({
               {reducedMotion ? null : (
                 <animate
                   attributeName="baseFrequency"
-                  dur="26s"
+                  dur="12s"
                   repeatCount="indefinite"
-                  values="0.01 0.016;0.014 0.02;0.011 0.014;0.01 0.016"
+                  values="0.016 0.024;0.022 0.03;0.014 0.02;0.016 0.024"
                 />
               )}
             </feTurbulence>
             <feDisplacementMap
               in="SourceGraphic"
               in2="noise"
-              scale="42"
+              scale="56"
               xChannelSelector="G"
               yChannelSelector="R"
             >
               {reducedMotion ? null : (
                 <animate
                   attributeName="scale"
-                  dur="20s"
+                  dur="9s"
                   repeatCount="indefinite"
-                  values="34;48;38;34"
+                  values="40;64;46;40"
                 />
               )}
             </feDisplacementMap>
-            <feGaussianBlur stdDeviation="1.1" />
+            <feGaussianBlur stdDeviation="0.9" />
           </filter>
         </defs>
 
         <rect fill="#040507" height="170" width="100" />
         <g filter="url(#chv-liquid-chrome)" opacity="0.58">
-          <ellipse cx="12" cy="14" fill="url(#chv-metal-base)" rx="16" ry="22" transform="rotate(-14 12 14)" />
-          <ellipse cx="34" cy="26" fill="url(#chv-metal-base)" rx="18" ry="16" transform="rotate(12 34 26)" />
-          <ellipse cx="68" cy="18" fill="url(#chv-metal-base)" rx="16" ry="20" transform="rotate(-18 68 18)" />
-          <ellipse cx="86" cy="42" fill="url(#chv-metal-base)" rx="18" ry="18" transform="rotate(8 86 42)" />
-          <ellipse cx="22" cy="64" fill="url(#chv-metal-base)" rx="22" ry="18" transform="rotate(20 22 64)" />
-          <ellipse cx="52" cy="60" fill="url(#chv-metal-base)" rx="16" ry="22" transform="rotate(-12 52 60)" />
-          <ellipse cx="78" cy="78" fill="url(#chv-metal-base)" rx="22" ry="18" transform="rotate(14 78 78)" />
-          <ellipse cx="14" cy="108" fill="url(#chv-metal-base)" rx="18" ry="24" transform="rotate(-8 14 108)" />
-          <ellipse cx="46" cy="102" fill="url(#chv-metal-base)" rx="22" ry="18" transform="rotate(6 46 102)" />
-          <ellipse cx="72" cy="122" fill="url(#chv-metal-base)" rx="20" ry="20" transform="rotate(-20 72 122)" />
-          <ellipse cx="26" cy="146" fill="url(#chv-metal-base)" rx="20" ry="16" transform="rotate(14 26 146)" />
-          <ellipse cx="84" cy="150" fill="url(#chv-metal-base)" rx="18" ry="22" transform="rotate(-6 84 150)" />
+          <rect fill="url(#chv-metal-bands)" height="170" width="100" x="0" y="0" />
+          <rect fill="url(#chv-metal-sweep)" height="170" opacity="0.66" width="100" x="0" y="0" />
         </g>
 
-        <g filter="url(#chv-liquid-color)" opacity="0.24">
+        <g filter="url(#chv-liquid-color)" opacity="0.34">
           <rect fill="url(#chv-iridescent-flow)" height="170" width="100">
             {reducedMotion ? null : (
               <animateTransform
                 attributeName="transform"
-                dur="26s"
+                dur="9s"
                 repeatCount="indefinite"
                 type="translate"
-                values="-6 0; 8 4; -4 8; -6 0"
+                values="-10 0; 12 6; -6 10; -10 0"
               />
             )}
           </rect>
         </g>
       </svg>
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,4,7,0.3)_0%,rgba(2,3,5,0.46)_38%,rgba(2,2,4,0.68)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,4,7,0.22)_0%,rgba(2,3,5,0.34)_38%,rgba(2,2,4,0.54)_100%)]" />
+      <div className="chv-mobile-liquid-metal__iridescence" />
+      <div className="chv-mobile-liquid-metal__ripple" />
       <motion.div
         animate={
           reducedMotion
             ? undefined
             : {
-                opacity: [0.08, 0.18, 0.1],
-                scale: [1, 1.08, 1.02],
-                x: [0, 18, -8],
-                y: [0, 22, -12],
+                opacity: [0.14, 0.28, 0.16],
+                scale: [1, 1.14, 1.06],
+                x: [0, 28, -12],
+                y: [0, 30, -16],
               }
         }
-        transition={{ duration: 14, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+        transition={{ duration: 9, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
         className="absolute left-1/2 top-[12%] h-[24rem] w-[24rem] -translate-x-1/2 rounded-full blur-3xl"
         style={{ background: `radial-gradient(circle, ${accent}88 0%, transparent 66%)` }}
       />
@@ -243,21 +271,18 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
       <section className="pt-7 text-center">
         <div className="relative mx-auto max-w-sm">
           <motion.div
-            animate={reducedMotion ? undefined : { opacity: [0.2, 0.34, 0.2], x: [-8, 0, -8] }}
-            transition={{ duration: 8, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-            className="chv-mobile-signal-title absolute inset-x-0 top-0 text-[3.3rem] font-extrabold leading-[0.82] tracking-[-0.1em] text-white/10 blur-[1.6px] sm:text-[3.7rem]"
+            aria-hidden="true"
+            animate={reducedMotion ? undefined : { opacity: [0.18, 0.28, 0.18], scale: [1, 1.04, 1] }}
+            transition={{ duration: 9, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+            className="absolute inset-x-6 top-3 h-20 rounded-full blur-3xl"
+            style={{ background: `radial-gradient(circle, ${activePortal.accent}36 0%, rgba(255,255,255,0.08) 34%, transparent 72%)` }}
+          />
+          <h1
+            className={`${bungeeShade.className} relative text-[3.18rem] leading-[0.88] tracking-[0.01em] text-[#f4f0e9] sm:text-[3.56rem]`}
+            style={{
+              textShadow: "0 1px 0 rgba(255,255,255,0.14), 0 18px 38px rgba(0,0,0,0.34)",
+            }}
           >
-            The Chloeverse
-          </motion.div>
-          <motion.div
-            animate={reducedMotion ? undefined : { opacity: [0.18, 0.36, 0.18], x: [10, 4, 10], y: [2, -2, 2] }}
-            transition={{ duration: 7.2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-            className="chv-mobile-signal-title absolute inset-x-0 top-1 text-[3.3rem] font-bold leading-[0.82] tracking-[-0.1em] sm:text-[3.7rem]"
-            style={{ color: `${activePortal.accent}55` }}
-          >
-            The Chloeverse
-          </motion.div>
-          <h1 className="chv-mobile-signal-title relative bg-[linear-gradient(180deg,#fffdf9_0%,#ebe8e2_44%,#8c96aa_100%)] bg-clip-text text-[3.3rem] font-extrabold leading-[0.82] tracking-[-0.1em] text-transparent [text-shadow:0_0_30px_rgba(255,255,255,0.06)] sm:text-[3.7rem]">
             The Chloeverse
           </h1>
         </div>
@@ -267,7 +292,7 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
             initial={reducedMotion ? false : { opacity: 0, y: 8 }}
             animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.85, ease: [0.22, 1, 0.36, 1] }}
-            className="chv-mobile-body text-[1.02rem] leading-7 text-white/72"
+            className={`${bungeeShade.className} text-[0.86rem] leading-6 tracking-[0.04em] text-white/72`}
           >
             where storytelling meets tomorrow
           </motion.p>
@@ -275,7 +300,7 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
             initial={reducedMotion ? false : { opacity: 0, y: 10 }}
             animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.48, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}
-            className="chv-mobile-mono pt-1 text-[0.6rem] uppercase tracking-[0.34em] text-white/42"
+            className={`${bungeeShade.className} pt-1 text-[0.56rem] uppercase tracking-[0.12em] text-white/42`}
           >
             scroll to enter
           </motion.p>
