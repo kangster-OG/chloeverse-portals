@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
+import {
+  Bodoni_Moda,
+  Geist,
+  Geist_Mono,
+  IBM_Plex_Mono,
+  Inter,
+  Literata,
+  Space_Grotesk,
+} from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,6 +30,25 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
 });
 
+const bodoniModa = Bodoni_Moda({
+  variable: "--font-mobile-display",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const literata = Literata({
+  variable: "--font-mobile-body",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-mobile-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "chloeverse.io",
   description: "chloeverse.io",
@@ -36,7 +63,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${spaceGrotesk.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${spaceGrotesk.variable} ${bodoniModa.variable} ${literata.variable} ${ibmPlexMono.variable} antialiased`}
       >
         {children}
       </body>

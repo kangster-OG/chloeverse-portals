@@ -1,11 +1,46 @@
 import type { ReelItem } from "@/components/collabs/reelsData";
 
 export const HOME_PORTALS = [
-  { href: "/projects", label: "PROJECTS", subtitle: "experiments in motion", mobileEnabled: true },
-  { href: "/collabs", label: "COLLABS", subtitle: "worlds built together", mobileEnabled: true },
-  { href: "/work", label: "WORK", subtitle: "career as an archive", mobileEnabled: true },
-  { href: "/contact", label: "CONTACT", subtitle: "send a signal", mobileEnabled: true },
-  { href: "/mediacard", label: "MEDIACARD", subtitle: "audience, reach, services", mobileEnabled: true },
+  {
+    href: "/projects",
+    label: "PROJECTS",
+    subtitle: "creator relic / film strip",
+    sigil: "I",
+    accent: "#ff8d5c",
+    mobileEnabled: true,
+  },
+  {
+    href: "/collabs",
+    label: "COLLABS",
+    subtitle: "threshold installation",
+    sigil: "II",
+    accent: "#80a9ff",
+    mobileEnabled: true,
+  },
+  {
+    href: "/work",
+    label: "WORK",
+    subtitle: "blackbook dossier",
+    sigil: "III",
+    accent: "#8de7ad",
+    mobileEnabled: true,
+  },
+  {
+    href: "/contact",
+    label: "CONTACT",
+    subtitle: "beacon transmission",
+    sigil: "IV",
+    accent: "#ffbf72",
+    mobileEnabled: true,
+  },
+  {
+    href: "/mediacard",
+    label: "MEDIACARD",
+    subtitle: "orbital briefing instrument",
+    sigil: "V",
+    accent: "#ead2a7",
+    mobileEnabled: true,
+  },
 ] as const;
 
 export const PROJECT_DEVICE_APPS = [
@@ -20,17 +55,17 @@ export const PROJECT_DEVICE_APPS = [
 ] as const;
 
 export const PROJECT_REELS = [
-  { id: "r1", permalink: "https://www.instagram.com/p/DR1MfgoDvzQ/", user: "edemmii", caption: "Instagram post embed placeholder caption." },
-  { id: "r2", permalink: "https://www.instagram.com/p/DTMwW_Pjv-P/", user: "edemmii", caption: "Instagram post embed placeholder caption." },
-  { id: "r3", permalink: "https://www.instagram.com/reel/DTZ2XtNkeNC/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r4", permalink: "https://www.instagram.com/reel/DR_GW1BkQci/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r5", permalink: "https://www.instagram.com/reel/DSitVRLkjEf/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r6", permalink: "https://www.instagram.com/reel/DOH8x_gk2Ew/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r7", permalink: "https://www.instagram.com/reel/DOQ-ZxuEzan/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r8", permalink: "https://www.instagram.com/reel/DObX6ceE-di/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r9", permalink: "https://www.instagram.com/reel/DOsvvxCkUxJ/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r10", permalink: "https://www.instagram.com/reel/DMLYWLOhTfg/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r11", permalink: "https://www.instagram.com/reel/DMxxlTEp98D/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
+  { id: "r1", permalink: "https://www.instagram.com/p/DR1MfgoDvzQ/", user: "edemmii" },
+  { id: "r2", permalink: "https://www.instagram.com/p/DTMwW_Pjv-P/", user: "edemmii" },
+  { id: "r3", permalink: "https://www.instagram.com/reel/DTZ2XtNkeNC/", user: "edemmii" },
+  { id: "r4", permalink: "https://www.instagram.com/reel/DR_GW1BkQci/", user: "edemmii" },
+  { id: "r5", permalink: "https://www.instagram.com/reel/DSitVRLkjEf/", user: "edemmii" },
+  { id: "r6", permalink: "https://www.instagram.com/reel/DOH8x_gk2Ew/", user: "edemmii" },
+  { id: "r7", permalink: "https://www.instagram.com/reel/DOQ-ZxuEzan/", user: "edemmii" },
+  { id: "r8", permalink: "https://www.instagram.com/reel/DObX6ceE-di/", user: "edemmii" },
+  { id: "r9", permalink: "https://www.instagram.com/reel/DOsvvxCkUxJ/", user: "edemmii" },
+  { id: "r10", permalink: "https://www.instagram.com/reel/DMLYWLOhTfg/", user: "edemmii" },
+  { id: "r11", permalink: "https://www.instagram.com/reel/DMxxlTEp98D/", user: "edemmii" },
 ] as const;
 
 export const WORK_ROLE_STACK = [
@@ -171,6 +206,23 @@ export function getProjectReelKind(permalink: string): "Reel" | "Post" {
   return permalink.includes("/reel/") ? "Reel" : "Post";
 }
 
+export function getProjectPermalinkToken(permalink: string): string {
+  const match = permalink.match(/instagram\.com\/(?:p|reel)\/([^/]+)/i);
+  return match?.[1]?.toUpperCase() ?? permalink;
+}
+
+export function getProjectPathLabel(permalink: string): string {
+  return permalink.includes("/reel/") ? "instagram.com/reel" : "instagram.com/p";
+}
+
+export function formatProjectIndex(index: number): string {
+  return String(index + 1).padStart(2, "0");
+}
+
 export function getCollabBrandLabel(item: ReelItem): string {
   return item.title;
+}
+
+export function getCollabMediumLabel(url: string): "Instagram Reel" | "Instagram Post" {
+  return url.includes("/reel/") ? "Instagram Reel" : "Instagram Post";
 }
