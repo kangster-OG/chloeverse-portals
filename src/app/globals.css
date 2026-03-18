@@ -62,16 +62,16 @@ body {
 
 @keyframes chv-iridescence-drift {
   0% {
-    transform: translate3d(-4%, -3%, 0) rotate(0deg) scale(1);
-    opacity: 0.22;
+    transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1);
+    opacity: 0.3;
   }
   50% {
-    transform: translate3d(3%, 2%, 0) rotate(6deg) scale(1.08);
-    opacity: 0.34;
+    transform: translate3d(4%, 3%, 0) rotate(7deg) scale(1.1);
+    opacity: 0.42;
   }
   100% {
-    transform: translate3d(-3%, 4%, 0) rotate(-4deg) scale(1.02);
-    opacity: 0.24;
+    transform: translate3d(-4%, 5%, 0) rotate(-5deg) scale(1.04);
+    opacity: 0.32;
   }
 }
 
@@ -104,23 +104,23 @@ body {
 
 @keyframes chv-sheen-sweep {
   0% {
-    transform: translate3d(-10%, -2%, 0) rotate(-10deg);
-    opacity: 0.26;
+    transform: translate3d(-14%, -1%, 0) rotate(-10deg);
+    opacity: 0.3;
   }
   50% {
-    transform: translate3d(8%, 3%, 0) rotate(6deg);
-    opacity: 0.4;
+    transform: translate3d(12%, 4%, 0) rotate(6deg);
+    opacity: 0.46;
   }
   100% {
-    transform: translate3d(-8%, -3%, 0) rotate(-8deg);
-    opacity: 0.24;
+    transform: translate3d(-10%, -4%, 0) rotate(-8deg);
+    opacity: 0.28;
   }
 }
 
 .chv-mobile-iridescence {
   background:
-    radial-gradient(120% 86% at 50% 0%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 34%),
-    linear-gradient(180deg, #090b12 0%, #04050b 54%, #010103 100%);
+    radial-gradient(120% 86% at 50% 0%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 34%),
+    linear-gradient(180deg, #090c14 0%, #050811 42%, #03060d 74%, #04070f 100%);
   overflow: hidden;
 }
 
@@ -135,11 +135,11 @@ body {
 
 .chv-mobile-iridescence::before {
   background:
-    radial-gradient(circle at 24% 28%, rgba(157, 205, 255, 0.26), rgba(157, 205, 255, 0) 28%),
-    radial-gradient(circle at 76% 22%, rgba(255, 211, 157, 0.2), rgba(255, 211, 157, 0) 24%),
-    radial-gradient(circle at 68% 72%, rgba(201, 162, 255, 0.22), rgba(201, 162, 255, 0) 24%),
-    radial-gradient(circle at 30% 82%, rgba(117, 255, 223, 0.14), rgba(117, 255, 223, 0) 24%);
-  filter: blur(54px) saturate(1.2);
+    radial-gradient(circle at 20% 22%, rgba(157, 205, 255, 0.3), rgba(157, 205, 255, 0) 25%),
+    radial-gradient(circle at 80% 18%, rgba(255, 211, 157, 0.24), rgba(255, 211, 157, 0) 22%),
+    radial-gradient(circle at 68% 58%, rgba(201, 162, 255, 0.24), rgba(201, 162, 255, 0) 25%),
+    radial-gradient(circle at 22% 82%, rgba(117, 255, 223, 0.18), rgba(117, 255, 223, 0) 22%);
+  filter: blur(56px) saturate(1.24);
   mix-blend-mode: screen;
   animation: chv-iridescence-drift 18s ease-in-out infinite alternate;
 }
@@ -150,55 +150,61 @@ body {
     conic-gradient(
       from 180deg at 50% 50%,
       rgba(255, 255, 255, 0) 0deg,
-      rgba(146, 194, 255, 0.16) 46deg,
-      rgba(255, 224, 188, 0.14) 112deg,
-      rgba(205, 171, 255, 0.14) 194deg,
-      rgba(110, 255, 227, 0.12) 252deg,
+      rgba(146, 194, 255, 0.2) 46deg,
+      rgba(255, 224, 188, 0.18) 112deg,
+      rgba(205, 171, 255, 0.18) 194deg,
+      rgba(110, 255, 227, 0.14) 252deg,
       rgba(255, 255, 255, 0) 360deg
     );
-  filter: blur(80px) saturate(1.16);
+  filter: blur(84px) saturate(1.2);
   mix-blend-mode: screen;
   animation: chv-iridescence-spin 24s linear infinite;
-  opacity: 0.34;
+  opacity: 0.42;
 }
 
-.chv-mobile-ripple-ring {
+.chv-mobile-prism-band {
   position: absolute;
-  left: 50%;
-  top: 33%;
-  width: min(88vw, 27rem);
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  inset: auto -12% -10% -12%;
+  height: 42%;
   background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 22%, rgba(255, 255, 255, 0) 64%);
-  box-shadow:
-    inset 0 0 44px rgba(255, 255, 255, 0.04),
-    0 0 90px rgba(111, 180, 255, 0.08);
-  filter: blur(0.2px);
-  animation: chv-ripple-pulse 13s ease-out infinite;
+    radial-gradient(72% 90% at 50% 36%, rgba(99, 159, 255, 0.16), rgba(99, 159, 255, 0) 60%),
+    radial-gradient(48% 72% at 28% 80%, rgba(90, 255, 222, 0.1), rgba(90, 255, 222, 0) 70%),
+    radial-gradient(50% 70% at 78% 70%, rgba(226, 170, 255, 0.12), rgba(226, 170, 255, 0) 68%);
+  filter: blur(42px);
+  mix-blend-mode: screen;
+  opacity: 0.56;
 }
 
-.chv-mobile-ripple-ring[data-delay="2"] {
-  animation-delay: 4.4s;
+.chv-mobile-prism-band[data-variant="top"] {
+  inset: -12% -10% auto;
+  height: 38%;
+  background:
+    radial-gradient(66% 88% at 50% 24%, rgba(255, 228, 206, 0.12), rgba(255, 228, 206, 0) 64%),
+    radial-gradient(40% 70% at 22% 34%, rgba(139, 188, 255, 0.12), rgba(139, 188, 255, 0) 60%),
+    radial-gradient(36% 66% at 82% 20%, rgba(208, 172, 255, 0.12), rgba(208, 172, 255, 0) 58%);
+  opacity: 0.44;
 }
 
-.chv-mobile-ripple-ring[data-delay="3"] {
-  animation-delay: 8.8s;
+.chv-mobile-prism-band[data-variant="mid"] {
+  inset: 24% -14% auto;
+  height: 32%;
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0) 16%, rgba(181, 222, 255, 0.08) 36%, rgba(255, 219, 195, 0.08) 52%, rgba(255, 255, 255, 0) 74%),
+    radial-gradient(46% 68% at 62% 44%, rgba(178, 147, 255, 0.12), rgba(178, 147, 255, 0) 68%);
+  opacity: 0.4;
 }
 
 .chv-mobile-sheen-sweep {
   position: absolute;
-  inset: -18% -6% auto;
+  inset: -14% -6% auto;
   height: 52%;
   background:
     linear-gradient(
       116deg,
       rgba(255, 255, 255, 0) 18%,
-      rgba(255, 255, 255, 0.14) 33%,
-      rgba(184, 224, 255, 0.14) 42%,
-      rgba(255, 228, 206, 0.08) 50%,
+      rgba(255, 255, 255, 0.18) 33%,
+      rgba(184, 224, 255, 0.18) 42%,
+      rgba(255, 228, 206, 0.1) 50%,
       rgba(255, 255, 255, 0) 68%
     );
   filter: blur(28px);
@@ -272,7 +278,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .chv-mobile-iridescence::before,
   .chv-mobile-iridescence::after,
-  .chv-mobile-ripple-ring,
   .chv-mobile-sheen-sweep {
     animation: none;
   }

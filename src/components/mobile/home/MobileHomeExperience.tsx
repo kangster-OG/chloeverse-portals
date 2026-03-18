@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { MobileRouteLink } from "@/components/mobile/shared/MobileRouteLink";
@@ -48,7 +48,6 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
     return () => observer.disconnect();
   }, []);
 
-  const topPad = useMemo(() => `calc(20svh - ${ITEM_HEIGHT / 2}px)`, []);
   const activePortal = HOME_PORTALS[activeIndex] ?? HOME_PORTALS[0];
 
   return (
@@ -62,10 +61,10 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
       ambient={
         <>
           <div className="chv-mobile-iridescence absolute inset-0" />
+          <div className="chv-mobile-prism-band" data-variant="top" />
+          <div className="chv-mobile-prism-band" data-variant="mid" />
+          <div className="chv-mobile-prism-band" />
           <div className="chv-mobile-sheen-sweep" />
-          <div className="chv-mobile-ripple-ring" />
-          <div className="chv-mobile-ripple-ring" data-delay="2" />
-          <div className="chv-mobile-ripple-ring" data-delay="3" />
           <motion.div
             animate={
               reducedMotion
@@ -78,13 +77,13 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
                   }
             }
             transition={{ duration: 10.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-            className="absolute left-1/2 top-[8%] h-64 w-64 -translate-x-1/2 rounded-full blur-3xl"
+            className="absolute left-1/2 top-[10%] h-72 w-72 -translate-x-1/2 rounded-full blur-3xl"
             style={{ background: `radial-gradient(circle, ${activePortal.accent}88 0%, transparent 68%)` }}
           />
         </>
       }
     >
-      <section className="pt-8 text-center">
+      <section className="pt-7 text-center">
         <div className="relative mx-auto max-w-sm">
           <motion.div
             animate={reducedMotion ? undefined : { opacity: [0.2, 0.34, 0.2], x: [-8, 0, -8] }}
@@ -106,7 +105,7 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
           </h1>
         </div>
 
-        <div className="mx-auto mt-6 max-w-[20rem] space-y-2">
+        <div className="mx-auto mt-5 max-w-[20rem] space-y-2">
           <motion.p
             initial={reducedMotion ? false : { opacity: 0, y: 8 }}
             animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
@@ -126,11 +125,11 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
         </div>
       </section>
 
-      <section className="relative mt-8">
+      <section className="relative mt-5">
         <div
           ref={containerRef}
-          className="chv-hide-scrollbar relative z-10 h-[52svh] snap-y snap-mandatory overflow-y-auto"
-          style={{ paddingTop: topPad, paddingBottom: topPad }}
+          className="chv-hide-scrollbar relative z-10 h-[59svh] snap-y snap-mandatory overflow-y-auto"
+          style={{ paddingTop: `calc(15svh - ${ITEM_HEIGHT / 2}px)`, paddingBottom: `calc(13svh - ${ITEM_HEIGHT / 2}px)` }}
           aria-label="Portal navigation"
         >
           <div className="mx-auto flex max-w-sm flex-col gap-3">
