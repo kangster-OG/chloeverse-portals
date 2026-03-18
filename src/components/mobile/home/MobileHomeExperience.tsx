@@ -128,8 +128,15 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
       <section className="relative mt-5">
         <div
           ref={containerRef}
-          className="chv-hide-scrollbar relative z-10 h-[59svh] snap-y snap-mandatory overflow-y-auto"
-          style={{ paddingTop: `calc(15svh - ${ITEM_HEIGHT / 2}px)`, paddingBottom: `calc(13svh - ${ITEM_HEIGHT / 2}px)` }}
+          className="chv-hide-scrollbar relative z-10 h-[51svh] snap-y snap-mandatory overflow-y-auto"
+          style={{
+            paddingTop: `calc(15svh - ${ITEM_HEIGHT / 2}px)`,
+            paddingBottom: `calc(13svh - ${ITEM_HEIGHT / 2}px)`,
+            WebkitMaskImage:
+              "linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 79%, rgba(0,0,0,0.2) 92%, rgba(0,0,0,0) 100%)",
+            maskImage:
+              "linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 79%, rgba(0,0,0,0.2) 92%, rgba(0,0,0,0) 100%)",
+          }}
           aria-label="Portal navigation"
         >
           <div className="mx-auto flex max-w-sm flex-col gap-3">
