@@ -348,16 +348,24 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
       description=""
       accent={activePortal.accent}
       showHeader={false}
+      contentClassName="h-[100svh] !px-0 !pb-0 !pt-0"
       ambient={
         <>
           <MobileLiquidChromeField accent={activePortal.accent} reducedMotion={Boolean(reducedMotion)} />
         </>
       }
     >
-      <div className="relative h-[calc(100svh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-3.4rem)] overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 top-[10.5rem] z-0 h-[16rem] bg-[radial-gradient(72%_100%_at_50%_0%,rgba(255,255,255,0.08),rgba(255,255,255,0.03)_34%,rgba(0,0,0,0)_76%)] blur-2xl" />
+      <div
+        className="relative flex min-h-0 flex-col overflow-hidden"
+        style={{
+          height: "100svh",
+          paddingTop: "env(safe-area-inset-top,0px)",
+          paddingBottom: "env(safe-area-inset-bottom,0px)",
+        }}
+      >
+        <div className="pointer-events-none absolute inset-x-0 top-[8.75rem] z-0 h-[18rem] bg-[radial-gradient(82%_108%_at_50%_12%,rgba(255,255,255,0.08),rgba(255,255,255,0.02)_42%,rgba(0,0,0,0)_78%)] blur-3xl" />
 
-        <section className="relative z-10 pt-7 text-center">
+        <section className="relative z-10 shrink-0 pt-5 text-center">
           <div className="relative mx-auto max-w-[17.2rem]">
             <motion.div
               aria-hidden="true"
@@ -403,17 +411,17 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
           </div>
         </section>
 
-        <section className="absolute inset-x-0 top-[17.5rem] bottom-0 z-10">
+        <section className="relative z-10 mt-4 min-h-0 flex-1">
           <div
             ref={containerRef}
             className="chv-hide-scrollbar relative h-full snap-y snap-mandatory overflow-y-auto"
             style={{
-              paddingTop: `calc(11svh - ${ITEM_HEIGHT / 2}px)`,
-              paddingBottom: `calc(16svh - ${ITEM_HEIGHT / 2}px)`,
+              paddingTop: "0.4rem",
+              paddingBottom: "1.4rem",
             }}
             aria-label="Portal navigation"
           >
-            <div className="mx-auto flex max-w-sm flex-col gap-3 pb-4">
+            <div className="mx-auto flex max-w-sm flex-col gap-4 pb-2">
             {HOME_PORTALS.map((item, index) => {
               const active = activeIndex === index;
               const sharedClassName =
