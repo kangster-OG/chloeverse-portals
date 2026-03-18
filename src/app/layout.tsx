@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import {
   Bodoni_Moda,
-  Bungee_Shade,
   Geist,
   Geist_Mono,
   IBM_Plex_Mono,
   Inter,
   Literata,
+  Michroma,
   Space_Grotesk,
 } from "next/font/google";
 import "./globals.css";
@@ -50,7 +50,7 @@ const ibmPlexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const bungeeShade = Bungee_Shade({
+const michroma = Michroma({
   variable: "--font-mobile-signal-title",
   subsets: ["latin"],
   weight: "400",
@@ -71,7 +71,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${spaceGrotesk.variable} ${bodoniModa.variable} ${literata.variable} ${ibmPlexMono.variable} ${bungeeShade.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${spaceGrotesk.variable} ${bodoniModa.variable} ${literata.variable} ${ibmPlexMono.variable} ${michroma.variable} antialiased`}
       >
         {children}
       </body>

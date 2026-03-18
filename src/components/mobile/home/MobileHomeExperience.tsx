@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Bungee_Shade } from "next/font/google";
 
 import { MobileRouteLink } from "@/components/mobile/shared/MobileRouteLink";
 import { MobileRouteFrame } from "@/components/mobile/shared/MobileRouteFrame";
@@ -15,11 +14,98 @@ type MobileHomeExperienceProps = {
 
 const ITEM_HEIGHT = 132;
 
-const bungeeShade = Bungee_Shade({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
+function MobileSignalWord({
+  text,
+  accent,
+  reducedMotion,
+  delay = 0,
+}: {
+  text: string;
+  accent: string;
+  reducedMotion: boolean;
+  delay?: number;
+}) {
+  const extrusionLayers = Array.from({ length: 6 }, (_, index) => index);
+
+  return (
+    <motion.span
+      initial={reducedMotion ? false : { opacity: 0, filter: "blur(8px)" }}
+      animate={
+        reducedMotion
+          ? undefined
+          : {
+              opacity: [1, 1, 0.12, 1, 0.04, 1],
+              filter: [
+                "blur(0px)",
+                "blur(0px)",
+                "blur(1.6px)",
+                "blur(0px)",
+                "blur(2px)",
+                "blur(0px)",
+              ],
+            }
+      }
+      transition={{
+        duration: 8.5,
+        times: [0, 0.18, 0.24, 0.62, 0.68, 1],
+        delay,
+        repeat: Number.POSITIVE_INFINITY,
+        ease: "easeInOut",
+      }}
+      className="relative block"
+    >
+      <span className="pointer-events-none absolute inset-0 [transform-style:preserve-3d]">
+        {extrusionLayers.map((layer) => (
+          <span
+            key={`${text}-${layer}`}
+            className="chv-mobile-signal-title absolute inset-0 text-[#090b10]"
+            style={{
+              transform: `translate3d(${layer * 0.7}px, ${layer * 1.15}px, 0)`,
+              opacity: Math.max(0.2, 0.9 - layer * 0.12),
+              textShadow:
+                layer === extrusionLayers.length - 1
+                  ? `0 12px 24px rgba(0,0,0,0.42), 0 0 18px ${accent}22`
+                  : undefined,
+            }}
+            aria-hidden="true"
+          >
+            {text}
+          </span>
+        ))}
+      </span>
+
+      <motion.span
+        aria-hidden="true"
+        animate={
+          reducedMotion
+            ? undefined
+            : {
+                opacity: [0.16, 0.28, 0.16],
+                x: [-2, 2, -2],
+              }
+        }
+        transition={{
+          duration: 5.5,
+          delay,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+        className="chv-mobile-signal-title absolute inset-0 text-white/24 blur-[1.6px]"
+      >
+        {text}
+      </motion.span>
+
+      <span
+        className="chv-mobile-signal-title relative block bg-[linear-gradient(180deg,#fffdfa_0%,#f2eee7_38%,#bfc6d2_76%,#7f8898_100%)] bg-clip-text text-transparent"
+        style={{
+          textShadow: `0 1px 0 rgba(255,255,255,0.16), 0 18px 34px rgba(0,0,0,0.34), 0 0 18px ${accent}1c`,
+        }}
+      >
+        {text}
+      </span>
+    </motion.span>
+  );
+}
 
 function MobileLiquidChromeField({
   accent,
@@ -268,60 +354,66 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
         </>
       }
     >
-      <section className="pt-7 text-center">
-        <div className="relative mx-auto max-w-sm">
-          <motion.div
-            aria-hidden="true"
-            animate={reducedMotion ? undefined : { opacity: [0.18, 0.28, 0.18], scale: [1, 1.04, 1] }}
-            transition={{ duration: 9, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-            className="absolute inset-x-6 top-3 h-20 rounded-full blur-3xl"
-            style={{ background: `radial-gradient(circle, ${activePortal.accent}36 0%, rgba(255,255,255,0.08) 34%, transparent 72%)` }}
-          />
-          <h1
-            className={`${bungeeShade.className} relative text-[3.18rem] leading-[0.88] tracking-[0.01em] text-[#f4f0e9] sm:text-[3.56rem]`}
+      <div className="relative h-[calc(100svh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-3.4rem)] overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-[10.5rem] z-0 h-[16rem] bg-[radial-gradient(72%_100%_at_50%_0%,rgba(255,255,255,0.08),rgba(255,255,255,0.03)_34%,rgba(0,0,0,0)_76%)] blur-2xl" />
+
+        <section className="relative z-10 pt-7 text-center">
+          <div className="relative mx-auto max-w-[17.2rem]">
+            <motion.div
+              aria-hidden="true"
+              animate={reducedMotion ? undefined : { opacity: [0.18, 0.28, 0.18], scale: [1, 1.04, 1] }}
+              transition={{ duration: 9, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+              className="absolute inset-x-6 top-3 h-20 rounded-full blur-3xl"
+              style={{ background: `radial-gradient(circle, ${activePortal.accent}36 0%, rgba(255,255,255,0.08) 34%, transparent 72%)` }}
+            />
+            <div className="relative [perspective:1200px]">
+              <h1 className="relative text-[2.48rem] leading-[0.86] tracking-[0.02em] sm:text-[2.94rem]">
+                <MobileSignalWord
+                  text="The"
+                  accent={activePortal.accent}
+                  reducedMotion={Boolean(reducedMotion)}
+                />
+                <MobileSignalWord
+                  text="Chloeverse"
+                  accent={activePortal.accent}
+                  reducedMotion={Boolean(reducedMotion)}
+                  delay={0.3}
+                />
+              </h1>
+            </div>
+          </div>
+
+          <div className="mx-auto mt-4 max-w-[18rem] space-y-2">
+            <motion.p
+              initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+              animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.85, ease: [0.22, 1, 0.36, 1] }}
+              className="chv-mobile-signal-title text-[0.8rem] leading-6 tracking-[0.08em] text-white/72"
+            >
+              where storytelling meets tomorrow
+            </motion.p>
+            <motion.p
+              initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+              animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
+              transition={{ duration: 0.48, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}
+              className="chv-mobile-signal-title pt-1 text-[0.52rem] uppercase tracking-[0.18em] text-white/42"
+            >
+              scroll to enter
+            </motion.p>
+          </div>
+        </section>
+
+        <section className="absolute inset-x-0 top-[17.5rem] bottom-0 z-10">
+          <div
+            ref={containerRef}
+            className="chv-hide-scrollbar relative h-full snap-y snap-mandatory overflow-y-auto"
             style={{
-              textShadow: "0 1px 0 rgba(255,255,255,0.14), 0 18px 38px rgba(0,0,0,0.34)",
+              paddingTop: `calc(11svh - ${ITEM_HEIGHT / 2}px)`,
+              paddingBottom: `calc(16svh - ${ITEM_HEIGHT / 2}px)`,
             }}
+            aria-label="Portal navigation"
           >
-            The Chloeverse
-          </h1>
-        </div>
-
-        <div className="mx-auto mt-5 max-w-[20rem] space-y-2">
-          <motion.p
-            initial={reducedMotion ? false : { opacity: 0, y: 8 }}
-            animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.85, ease: [0.22, 1, 0.36, 1] }}
-            className={`${bungeeShade.className} text-[0.86rem] leading-6 tracking-[0.04em] text-white/72`}
-          >
-            where storytelling meets tomorrow
-          </motion.p>
-          <motion.p
-            initial={reducedMotion ? false : { opacity: 0, y: 10 }}
-            animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.48, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}
-            className={`${bungeeShade.className} pt-1 text-[0.56rem] uppercase tracking-[0.12em] text-white/42`}
-          >
-            scroll to enter
-          </motion.p>
-        </div>
-      </section>
-
-      <section className="relative mt-5">
-        <div
-          ref={containerRef}
-          className="chv-hide-scrollbar relative z-10 h-[51svh] snap-y snap-mandatory overflow-y-auto"
-          style={{
-            paddingTop: `calc(15svh - ${ITEM_HEIGHT / 2}px)`,
-            paddingBottom: `calc(13svh - ${ITEM_HEIGHT / 2}px)`,
-            WebkitMaskImage:
-              "linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 79%, rgba(0,0,0,0.2) 92%, rgba(0,0,0,0) 100%)",
-            maskImage:
-              "linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 79%, rgba(0,0,0,0.2) 92%, rgba(0,0,0,0) 100%)",
-          }}
-          aria-label="Portal navigation"
-        >
-          <div className="mx-auto flex max-w-sm flex-col gap-3">
+            <div className="mx-auto flex max-w-sm flex-col gap-3 pb-4">
             {HOME_PORTALS.map((item, index) => {
               const active = activeIndex === index;
               const sharedClassName =
@@ -400,8 +492,9 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
               );
             })}
           </div>
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
     </MobileRouteFrame>
   );
 }
