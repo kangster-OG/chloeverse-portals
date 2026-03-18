@@ -370,7 +370,7 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
             {HOME_PORTALS.map((item, index) => {
               const active = activeIndex === index;
               const sharedClassName =
-                "chv-mobile-signal-card-wrap group relative snap-center px-4 py-5 transition-transform duration-300";
+                "chv-mobile-signal-card-wrap group relative snap-center px-6 py-3.5 transition-transform duration-300";
 
               const content = (
                 <motion.div
@@ -389,7 +389,7 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
                   }
                   whileTap={reducedMotion ? undefined : { scale: 0.99, y: -6, rotateX: 10 }}
                   transition={{ type: "spring", stiffness: 220, damping: 24, mass: 0.7 }}
-                  className="chv-mobile-signal-card relative flex min-h-[112px] items-center justify-between gap-5 rounded-[2rem] border border-white/8 px-5"
+                  className="chv-mobile-signal-card relative mx-auto flex min-h-[94px] w-[84%] items-center gap-5 overflow-visible rounded-[1.7rem] border border-white/8 px-5"
                   style={
                     {
                       "--signal-accent": item.accent,
@@ -397,45 +397,44 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
                   }
                 >
                   <div
-                    className="absolute inset-x-6 top-0 h-px"
+                    className="absolute inset-x-8 top-0 h-px"
                     style={{ background: `linear-gradient(90deg, transparent, ${item.accent}66, transparent)` }}
                   />
                   <div className="chv-mobile-signal-card__shine absolute inset-[1px] rounded-[calc(2rem-1px)]" />
-                  <div className="absolute inset-y-4 left-[2.35rem] w-px bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.26),transparent)] [transform:translateZ(18px)]" />
-                  <div className="chv-mobile-signal-layer relative pl-6">
-                    <p className="chv-mobile-mono text-[0.56rem] uppercase tracking-[0.3em] text-white/34">
+                  <div className="absolute inset-y-4 left-5 w-px bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.22),transparent)] [transform:translateZ(18px)]" />
+                  <span className="absolute right-5 top-4 chv-mobile-mono text-[0.52rem] uppercase tracking-[0.26em] text-white/28">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div className="chv-mobile-signal-layer relative pl-4 pr-14">
+                    <p className="chv-mobile-mono text-[0.52rem] uppercase tracking-[0.3em] text-white/30">
                       {item.sigil}
                     </p>
-                    <h2 className="chv-mobile-display mt-2 text-[1.66rem] leading-[0.9] tracking-[-0.06em] text-[#f5efe8]">
+                    <h2 className="chv-mobile-display mt-2 text-[1.5rem] leading-[0.92] tracking-[-0.055em] text-[#f5efe8]">
                       {item.label}
                     </h2>
                   </div>
-                  <div className="chv-mobile-signal-layer--deep relative flex flex-col items-end">
-                    <span className="chv-mobile-mono text-[0.56rem] uppercase tracking-[0.28em] text-white/34">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <motion.span
-                      className="mt-4 block h-9 w-9 rounded-full border border-white/10"
-                      animate={
-                        reducedMotion
-                          ? undefined
-                          : {
-                              scale: active ? [1, 1.08, 1] : 1,
-                              boxShadow: active
-                                ? [
-                                    `0 0 0px ${item.accent}00`,
-                                    `0 0 22px ${item.accent}55`,
-                                    `0 0 12px ${item.accent}30`,
-                                  ]
-                                : `0 0 0px ${item.accent}00`,
-                            }
-                      }
-                      transition={{ duration: 1.8, repeat: active ? Number.POSITIVE_INFINITY : 0, ease: "easeInOut" }}
-                      style={{
-                        background: `radial-gradient(circle at 50% 50%, ${item.accent}dd 0%, ${item.accent}55 34%, transparent 62%)`,
-                      }}
-                    />
-                  </div>
+                  <div className="absolute right-[2.85rem] top-1/2 h-9 w-px -translate-y-1/2 bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.14),transparent)] [transform:translateY(-50%)_translateZ(18px)]" />
+                  <motion.span
+                    className="chv-mobile-signal-layer--deep absolute right-[-0.7rem] top-1/2 block h-10 w-10 -translate-y-1/2 rounded-full border border-white/10"
+                    animate={
+                      reducedMotion
+                        ? undefined
+                        : {
+                            scale: active ? [1, 1.08, 1] : 1,
+                            boxShadow: active
+                              ? [
+                                  `0 0 0px ${item.accent}00`,
+                                  `0 0 24px ${item.accent}55`,
+                                  `0 0 14px ${item.accent}30`,
+                                ]
+                              : `0 0 0px ${item.accent}00`,
+                          }
+                    }
+                    transition={{ duration: 1.8, repeat: active ? Number.POSITIVE_INFINITY : 0, ease: "easeInOut" }}
+                    style={{
+                      background: `radial-gradient(circle at 50% 50%, ${item.accent}dd 0%, ${item.accent}55 34%, rgba(8,10,14,0.88) 72%)`,
+                    }}
+                  />
                 </motion.div>
               );
 
