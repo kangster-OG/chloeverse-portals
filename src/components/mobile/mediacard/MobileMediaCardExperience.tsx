@@ -73,13 +73,6 @@ const SIDE_FACES: CubeFace[] = [
   },
 ] as const;
 
-const MARKET_LAYOUT = [
-  { left: "10%", top: "16%" },
-  { left: "54%", top: "12%" },
-  { left: "14%", top: "60%" },
-  { left: "56%", top: "56%" },
-] as const;
-
 const crystalVertexShader = `
 varying vec3 vWorldPosition;
 varying vec3 vObjectPosition;
@@ -998,39 +991,20 @@ function InteractiveFace({
 }
 
 function MetricsCard() {
-  const [instagram, tiktok, views, engagement] = MEDIACARD_METRICS;
-
   return (
     <div className="grid grid-cols-2 gap-3">
-      <MetricTile metric={instagram} large />
-      <MetricTile metric={tiktok} />
-      <MetricTile metric={views} full />
-      <MetricTile metric={engagement} full />
+      {MEDIACARD_METRICS.map((metric) => (
+        <MetricTile key={metric.label} metric={metric} />
+      ))}
     </div>
   );
 }
 
-function MetricTile({
-  metric,
-  large,
-  full,
-}: {
-  metric: (typeof MEDIACARD_METRICS)[number];
-  large?: boolean;
-  full?: boolean;
-}) {
+function MetricTile({ metric }: { metric: (typeof MEDIACARD_METRICS)[number] }) {
   return (
-    <div
-      className={`rounded-[1.4rem] border border-black/8 bg-[rgba(255,255,255,0.65)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] ${
-        large ? "col-span-2" : ""
-      } ${full ? "col-span-2" : ""}`}
-    >
+    <div className="rounded-[1.4rem] border border-black/8 bg-[rgba(255,255,255,0.65)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
       <p className="chv-mobile-mono text-[0.5rem] uppercase tracking-[0.3em] text-black/34">{metric.label}</p>
-      <p
-        className={`mt-3 chv-mobile-display tracking-[-0.06em] text-black/84 ${
-          large ? "text-[2.9rem] leading-[0.86]" : "text-[2rem] leading-[0.9]"
-        }`}
-      >
+      <p className="mt-4 chv-mobile-display text-[2.18rem] leading-[0.9] tracking-[-0.06em] text-black/84">
         {metric.value}
       </p>
     </div>
@@ -1039,22 +1013,30 @@ function MetricTile({
 
 function MarketsCard() {
   return (
-    <div className="relative min-h-[15rem] overflow-hidden rounded-[1.5rem] border border-black/8 bg-[rgba(255,255,255,0.68)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-      <div className="absolute left-1/2 top-[14%] bottom-[12%] w-px -translate-x-1/2 bg-black/8" />
-      {MEDIACARD_AUDIENCE.map((market, index) => (
-        <div
-          key={market}
-          className="absolute"
-          style={MARKET_LAYOUT[index] as CSSProperties}
-        >
-          <div className="flex items-center gap-2">
-            <span className="block h-2.5 w-2.5 rounded-full bg-black/60" />
-            <div className="rounded-full border border-black/8 bg-white/72 px-3 py-2">
-              <p className="chv-mobile-display text-[1.08rem] leading-none tracking-[-0.05em] text-black/78">{market}</p>
+    <div className="rounded-[1.5rem] border border-black/8 bg-[rgba(255,255,255,0.68)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+      <div className="rounded-[1.15rem] border border-black/8 bg-white/58 px-4 py-3">
+        <p className="chv-mobile-mono text-[0.5rem] uppercase tracking-[0.3em] text-black/34">primary audience markets</p>
+        <p className="mt-2 text-[0.82rem] leading-6 text-black/52">Core territories currently reflected in the media card.</p>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        {MEDIACARD_AUDIENCE.map((market, index) => (
+          <div
+            key={market}
+            className="flex min-h-[5.7rem] flex-col justify-between rounded-[1.2rem] border border-black/8 bg-white/72 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="chv-mobile-mono text-[0.52rem] uppercase tracking-[0.26em] text-black/30">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="block h-2.5 w-2.5 rounded-full bg-black/60" />
             </div>
+            <p className="mt-4 chv-mobile-display text-[1.02rem] leading-[0.98] tracking-[-0.04em] text-black/78">
+              {market}
+            </p>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
