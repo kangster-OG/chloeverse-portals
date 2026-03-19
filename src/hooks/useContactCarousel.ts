@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 
 const STEP_DEGREES = 72;
 const DRAG_SENSITIVITY = 0.34;
-const INTERACTION_PAUSE_MS = 2400;
+const INTERACTION_PAUSE_MS = 320;
 const IDLE_REVOLUTION_SECONDS = 18;
 
 function getActiveIndex(rotation: number, count: number) {

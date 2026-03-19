@@ -54,7 +54,7 @@ export function MobileContactExperience() {
 
       <section className="absolute inset-0 flex items-center justify-center overflow-hidden">
         <div
-          className="chv-contact-ring-stage relative h-[21rem] w-[21rem] max-w-[92vw] touch-none"
+          className="chv-contact-ring-stage relative h-[24rem] w-[24rem] max-w-[100vw] touch-none"
           style={{ touchAction: "none" }}
           onPointerDown={bind.onPointerDown}
           onPointerMove={bind.onPointerMove}
