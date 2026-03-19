@@ -276,37 +276,50 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
               style={{ background: `radial-gradient(circle, ${activePortal.accent}36 0%, rgba(255,255,255,0.08) 34%, transparent 72%)` }}
             />
             <div className="relative pt-3">
-              <div className="relative inline-flex flex-col items-center px-4 pb-3 pt-4">
+              <div className="relative inline-flex flex-col items-center px-5 pb-3 pt-4">
                 <motion.div
                   initial={reducedMotion ? false : { opacity: 0, scale: 0.96, y: 4 }}
                   animate={reducedMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
                   transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                  className="pointer-events-none absolute inset-0 z-0 rounded-[999px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0.035))] shadow-[0_24px_70px_rgba(0,0,0,0.16)] backdrop-blur-[20px]"
-                  style={{
-                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 24px 70px rgba(0,0,0,0.14), 0 0 40px ${activePortal.accent}0f`,
-                  }}
-                />
+                  className="pointer-events-none absolute inset-0 z-0 rounded-[999px]"
+                  style={
+                    {
+                      "--signal-accent": activePortal.accent,
+                      "--signal-bloom-x": "50%",
+                    } as CSSProperties
+                  }
+                >
+                  <div className="chv-mobile-signal-card__core absolute inset-0 rounded-[inherit]" />
+                  <div className="chv-mobile-signal-card__wash absolute inset-0 rounded-[inherit]" />
+                  <div className="chv-mobile-signal-card__shine absolute inset-0 rounded-[inherit]" />
+                  <div
+                    className="absolute inset-0 rounded-[inherit] border border-white/10"
+                    style={{
+                      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 24px 70px rgba(0,0,0,0.14), 0 0 34px ${activePortal.accent}10`,
+                    }}
+                  />
+                </motion.div>
                 <h1 className="relative z-10 text-[2.18rem] leading-[0.82] tracking-[0.01em] sm:text-[2.72rem]">
-                <MobileSignalWord
-                  text="The"
-                  accent={activePortal.accent}
-                  reducedMotion={Boolean(reducedMotion)}
-                  titleClassName="chv-mobile-display text-[0.78em] italic tracking-[-0.045em]"
-                />
-                <MobileSignalWord
-                  text="Chloeverse"
-                  accent={activePortal.accent}
-                  reducedMotion={Boolean(reducedMotion)}
-                  delay={0.3}
-                  titleClassName="chv-mobile-display tracking-[-0.055em]"
-                  crisp
-                />
+                  <MobileSignalWord
+                    text="The"
+                    accent={activePortal.accent}
+                    reducedMotion={Boolean(reducedMotion)}
+                    titleClassName="chv-mobile-display text-[0.78em] italic tracking-[-0.045em]"
+                  />
+                  <MobileSignalWord
+                    text="Chloeverse"
+                    accent={activePortal.accent}
+                    reducedMotion={Boolean(reducedMotion)}
+                    delay={0.3}
+                    titleClassName="chv-mobile-display tracking-[-0.055em]"
+                    crisp
+                  />
                 </h1>
                 <motion.p
                   initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                   animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
                   transition={{ duration: 0.55, delay: 0.85, ease: [0.22, 1, 0.36, 1] }}
-                  className="chv-mobile-body relative z-10 mt-1.5 max-w-[12.2rem] text-[0.95rem] italic leading-7 tracking-[0.01em] text-white/74"
+                  className="chv-mobile-body relative z-10 mt-1.5 whitespace-nowrap text-[0.88rem] italic leading-7 tracking-[0.01em] text-white/74"
                 >
                   where storytelling meets tomorrow
                 </motion.p>
