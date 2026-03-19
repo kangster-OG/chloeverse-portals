@@ -19,23 +19,25 @@ function MobileSignalWord({
   reducedMotion,
   delay = 0,
   titleClassName,
+  crisp = false,
 }: {
   text: string;
   accent: string;
   reducedMotion: boolean;
   delay?: number;
   titleClassName?: string;
+  crisp?: boolean;
 }) {
   return (
     <motion.span
-      initial={reducedMotion ? false : { opacity: 0, y: 10, filter: "blur(6px)" }}
+      initial={reducedMotion ? false : { opacity: 0, y: 10, filter: crisp ? "blur(2px)" : "blur(6px)" }}
       animate={
         reducedMotion
           ? undefined
           : {
               opacity: [0.92, 1, 0.94, 1],
               y: [0, -1.5, 0.5, 0],
-              filter: ["blur(0px)", "blur(0px)", "blur(0.8px)", "blur(0px)"],
+              filter: crisp ? ["blur(0px)", "blur(0px)", "blur(0.25px)", "blur(0px)"] : ["blur(0px)", "blur(0px)", "blur(0.8px)", "blur(0px)"],
             }
       }
       transition={{
@@ -49,8 +51,8 @@ function MobileSignalWord({
     >
       <span
         aria-hidden="true"
-        className={`absolute inset-0 text-white/22 blur-[10px] ${titleClassName ?? ""}`}
-        style={{ textShadow: `0 0 26px ${accent}20` }}
+        className={`absolute inset-0 ${crisp ? "text-white/14 blur-[4px]" : "text-white/22 blur-[10px]"} ${titleClassName ?? ""}`}
+        style={{ textShadow: crisp ? `0 0 16px ${accent}16` : `0 0 26px ${accent}20` }}
       >
         {text}
       </span>
@@ -72,15 +74,18 @@ function MobileSignalWord({
           repeat: Number.POSITIVE_INFINITY,
           ease: "easeInOut",
         }}
-        className={`absolute inset-0 text-white/14 blur-[1.5px] ${titleClassName ?? ""}`}
+        className={`absolute inset-0 ${crisp ? "text-white/10 blur-[0.6px]" : "text-white/14 blur-[1.5px]"} ${titleClassName ?? ""}`}
       >
         {text}
       </motion.span>
 
       <span
-        className={`relative block bg-[linear-gradient(180deg,#fffaf3_0%,#f6f0ea_26%,#d7d2d0_58%,#948d92_100%)] bg-clip-text text-transparent ${titleClassName ?? ""}`}
+        className={`relative block bg-[linear-gradient(180deg,#fffdf8_0%,#fff7ef_22%,#ece5dd_58%,#a7a0a4_100%)] bg-clip-text text-transparent ${titleClassName ?? ""}`}
         style={{
-          textShadow: `0 1px 0 rgba(255,255,255,0.2), 0 16px 36px rgba(0,0,0,0.18), 0 0 16px ${accent}14`,
+          textShadow: crisp
+            ? `0 1px 0 rgba(255,255,255,0.26), 0 12px 26px rgba(0,0,0,0.18), 0 0 10px ${accent}12`
+            : `0 1px 0 rgba(255,255,255,0.2), 0 16px 36px rgba(0,0,0,0.18), 0 0 16px ${accent}14`,
+          WebkitTextStroke: crisp ? "0.18px rgba(255,255,255,0.18)" : undefined,
         }}
       >
         {text}
@@ -264,6 +269,15 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
         <section className="relative z-10 shrink-0 px-5 pt-5 text-center">
           <div className="relative mx-auto max-w-[18rem]">
             <motion.div
+              initial={reducedMotion ? false : { opacity: 0, scale: 0.96, y: 4 }}
+              animate={reducedMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              className="pointer-events-none absolute inset-x-0 top-2 z-0 mx-auto h-[12.6rem] max-w-[17.4rem] rounded-[999px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.13),rgba(255,255,255,0.03))] shadow-[0_24px_70px_rgba(0,0,0,0.16)] backdrop-blur-[20px]"
+              style={{
+                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 24px 70px rgba(0,0,0,0.14), 0 0 40px ${activePortal.accent}0f`,
+              }}
+            />
+            <motion.div
               aria-hidden="true"
               animate={reducedMotion ? undefined : { opacity: [0.16, 0.3, 0.18], scale: [1, 1.08, 1] }}
               transition={{ duration: 11, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
@@ -284,6 +298,7 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
                   reducedMotion={Boolean(reducedMotion)}
                   delay={0.3}
                   titleClassName="chv-mobile-display tracking-[-0.055em]"
+                  crisp
                 />
               </h1>
             </div>
@@ -319,6 +334,7 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
 
               const content = (
                 <motion.div
+                  initial={reducedMotion ? false : { opacity: 0, y: 16, scale: 0.975, filter: "blur(8px)" }}
                   data-active={active}
                   animate={
                     reducedMotion
@@ -328,10 +344,21 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
                           rotateZ: active ? 0 : index % 2 === 0 ? -1.2 : 1.1,
                           scale: active ? 1.016 : 0.985,
                           opacity: active ? 1 : 0.82,
+                          filter: "blur(0px)",
                         }
                   }
                   whileTap={reducedMotion ? undefined : { scale: 0.992, y: -3 }}
-                  transition={{ type: "spring", stiffness: 240, damping: 26, mass: 0.8 }}
+                  transition={
+                    reducedMotion
+                      ? undefined
+                      : {
+                          type: "spring",
+                          stiffness: 220,
+                          damping: 24,
+                          mass: 0.82,
+                          delay: 0.88 + index * 0.06,
+                        }
+                  }
                   className="chv-mobile-signal-card relative mx-auto flex min-h-[76px] items-center overflow-visible px-0"
                   style={
                     {
