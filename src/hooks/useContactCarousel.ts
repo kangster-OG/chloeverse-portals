@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 
 const STEP_DEGREES = 72;
 const DRAG_SENSITIVITY = 0.34;
-const AUTO_ADVANCE_MS = 3200;
+const AUTO_ROTATION_DEGREES_PER_SECOND = 18;
 const INTERACTION_PAUSE_MS = 2400;
 
 function getActiveIndex(rotation: number, count: number) {
@@ -21,6 +21,7 @@ export function useContactCarousel(count: number, options?: { autoPlayEnabled?: 
 
   const controlsRef = useRef<AnimationPlaybackControls | null>(null);
   const pointerIdRef = useRef<number | null>(null);
+  const rotationRef = useRef(0);
   const startXRef = useRef(0);
   const startRotationRef = useRef(0);
   const lastXRef = useRef(0);
@@ -31,6 +32,7 @@ export function useContactCarousel(count: number, options?: { autoPlayEnabled?: 
 
   const syncRotation = useCallback(
     (nextRotation: number) => {
+      rotationRef.current = nextRotation;
       setRotation(nextRotation);
       setActiveIndex(getActiveIndex(nextRotation, count));
     },
@@ -41,21 +43,21 @@ export function useContactCarousel(count: number, options?: { autoPlayEnabled?: 
     (index: number) => {
       const targetRotation = -index * STEP_DEGREES;
       controlsRef.current?.stop();
-      controlsRef.current = animate(rotation, targetRotation, {
+      controlsRef.current = animate(rotationRef.current, targetRotation, {
         duration: 0.42,
         ease: [0.22, 1, 0.36, 1],
         onUpdate: syncRotation,
       });
     },
-    [rotation, syncRotation],
+    [syncRotation],
   );
 
   const finishDrag = useCallback(() => {
-    const projectedRotation = rotation + velocityRef.current * 28;
+    const projectedRotation = rotationRef.current + velocityRef.current * 28;
     const snappedIndex = getActiveIndex(projectedRotation, count);
     setIsDragging(false);
     snapToIndex(snappedIndex);
-  }, [count, rotation, snapToIndex]);
+  }, [count, snapToIndex]);
 
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
@@ -65,13 +67,13 @@ export function useContactCarousel(count: number, options?: { autoPlayEnabled?: 
       controlsRef.current?.stop();
       setIsDragging(true);
       startXRef.current = event.clientX;
-      startRotationRef.current = rotation;
+      startRotationRef.current = rotationRef.current;
       lastXRef.current = event.clientX;
       lastTimeRef.current = performance.now();
       velocityRef.current = 0;
       dragDistanceRef.current = 0;
     },
-    [rotation],
+    [],
   );
 
   const onPointerMove = useCallback(
@@ -106,11 +108,21 @@ export function useContactCarousel(count: number, options?: { autoPlayEnabled?: 
 
     const waitForInteractionPause = Math.max(interactionUntilRef.current - performance.now(), 0);
     const timeoutId = window.setTimeout(() => {
-      snapToIndex((activeIndex + 1) % count);
-    }, waitForInteractionPause + AUTO_ADVANCE_MS);
+      const startRotation = rotationRef.current;
+      controlsRef.current?.stop();
+      controlsRef.current = animate(startRotation, startRotation - 360, {
+        duration: 360 / AUTO_ROTATION_DEGREES_PER_SECOND,
+        ease: "linear",
+        repeat: Number.POSITIVE_INFINITY,
+        onUpdate: syncRotation,
+      });
+    }, waitForInteractionPause);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [activeIndex, autoPlayEnabled, count, isDragging, snapToIndex]);
+    return () => {
+      window.clearTimeout(timeoutId);
+      controlsRef.current?.stop();
+    };
+  }, [autoPlayEnabled, isDragging, syncRotation]);
 
   return {
     activeIndex,
