@@ -26,12 +26,12 @@ const monthMap: Record<string, number> = {
 };
 
 const cardLanes = [
-  { x: 0, width: 87, rotateZ: -1.4 },
-  { x: 10, width: 85, rotateZ: 1.8 },
-  { x: -8, width: 86, rotateZ: -1.7 },
-  { x: 12, width: 84, rotateZ: 1.6 },
-  { x: -11, width: 85, rotateZ: -1.4 },
-  { x: 6, width: 86, rotateZ: 1.1 },
+  { width: 84, offset: 0.08 },
+  { width: 84, offset: -0.06 },
+  { width: 83, offset: 0.05 },
+  { width: 85, offset: -0.05 },
+  { width: 84, offset: 0.03 },
+  { width: 84, offset: -0.03 },
 ] as const;
 
 const smokeVertexShader = `
@@ -120,6 +120,25 @@ function modulo(value: number, length: number) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function getFieldTransform(progress: number, velocity: number, laneOffset = 0) {
+  const clamped = clamp(progress, -1.22, 1.22);
+  const focus = 1 - clamp(Math.abs(clamped) / 0.92, 0, 1);
+  const bend = Math.sin(clamped * Math.PI * 0.46);
+  const drift = clamp(velocity * 3.2, -5.5, 5.5);
+
+  return {
+    focus,
+    x: bend * 6 + laneOffset * 8 - drift,
+    depth: clamp(122 - Math.abs(clamped) * 228, -88, 126),
+    scale: 0.8 + focus * 0.2,
+    opacity: 0.24 + focus * 0.76,
+    blur: clamp(Math.abs(clamped) * 0.32, 0, 0.54),
+    rotateX: clamp(clamped * 20, -20, 20),
+    rotateY: clamp(bend * -4.5 - laneOffset * 5 - velocity * 1.8, -8, 8),
+    rotateZ: bend * -0.35 + laneOffset * 0.7,
+  };
 }
 
 function seededNoise(seed: number) {
@@ -245,7 +264,7 @@ function useInfiniteSmoothScroll({
 
       const state = stateRef.current;
       const before = state.current;
-      const ease = reducedMotion ? 0.22 : 0.095;
+      const ease = reducedMotion ? 0.22 : 0.064;
       state.current += (state.target - state.current) * ease;
       state.velocity = (state.current - before) / Math.max(delta / 16.67, 0.001);
 
@@ -752,25 +771,19 @@ function IntroCard({
   viewportHeight: number;
   velocity: number;
 }) {
-  const center = y + viewportHeight * 0.28;
+  const center = y + viewportHeight * 0.32;
   const progress = (center - viewportHeight * 0.56) / viewportHeight;
-  const focus = 1 - clamp(Math.abs(progress) / 0.94, 0, 1);
-  const curve = Math.sin(progress * Math.PI * 0.72);
-  const x = curve * 18 - velocity * 6;
-  const depth = clamp(112 - Math.abs(progress) * 210, -84, 126);
-  const scale = 0.68 + focus * 0.34;
-  const opacity = 0.2 + focus * 0.8;
-  const blur = clamp(Math.abs(progress) * 0.7, 0, 1.05);
+  const field = getFieldTransform(progress, velocity, 0);
 
   return (
     <article
       className="absolute left-1/2 top-0 will-change-transform"
       style={{
-        width: "88%",
-        transform: `translate3d(calc(-50% + ${x}px), ${y}px, ${depth}px) scale(${scale}) rotateX(${clamp(progress * 18, -18, 18)}deg) rotateY(${clamp(curve * -9 + velocity * 5, -14, 14)}deg) rotateZ(${curve * -1.5}deg)`,
+        width: "84%",
+        transform: `translate3d(calc(-50% + ${field.x}px), ${y}px, ${field.depth}px) scale(${field.scale}) rotateX(${field.rotateX}deg) rotateY(${field.rotateY}deg) rotateZ(${field.rotateZ}deg)`,
         transformOrigin: "50% 35%",
-        opacity,
-        filter: `blur(${blur}px)`,
+        opacity: field.opacity,
+        filter: `blur(${field.blur}px)`,
       }}
     >
       <CardShell className="px-5 py-5">
@@ -811,15 +824,9 @@ function EntryCard({
 }) {
   const layout = cardLanes[index % cardLanes.length];
   const { company, role } = splitRoleTitle(entry.title);
-  const center = y + viewportHeight * 0.28;
+  const center = y + viewportHeight * 0.32;
   const progress = (center - viewportHeight * 0.56) / viewportHeight;
-  const focus = 1 - clamp(Math.abs(progress) / 0.98, 0, 1);
-  const curve = Math.sin(progress * Math.PI * 0.68);
-  const x = layout.x + curve * 18 - velocity * 6;
-  const depth = clamp(96 - Math.abs(progress) * 220 + focus * 12, -88, 118);
-  const scale = 0.74 + focus * 0.26;
-  const opacity = 0.18 + focus * 0.82;
-  const blur = clamp(Math.abs(progress) * 0.78, 0, 1.15);
+  const field = getFieldTransform(progress, velocity, layout.offset);
   const locationLine = normalizeLocation(entry.location);
 
   return (
@@ -827,10 +834,10 @@ function EntryCard({
       className="absolute left-1/2 top-0 will-change-transform"
       style={{
         width: `${layout.width}%`,
-        transform: `translate3d(calc(-50% + ${x}px), ${y}px, ${depth}px) scale(${scale}) rotateX(${clamp(progress * 18, -18, 18)}deg) rotateY(${clamp(curve * -8 + layout.x * 0.24 - velocity * 4, -16, 16)}deg) rotateZ(${layout.rotateZ + curve * 0.8}deg)`,
+        transform: `translate3d(calc(-50% + ${field.x}px), ${y}px, ${field.depth}px) scale(${field.scale}) rotateX(${field.rotateX}deg) rotateY(${field.rotateY}deg) rotateZ(${field.rotateZ}deg)`,
         transformOrigin: "50% 35%",
-        opacity,
-        filter: `blur(${blur}px)`,
+        opacity: field.opacity,
+        filter: `blur(${field.blur}px)`,
       }}
     >
       <CardShell className="px-5 pb-5 pt-4">
@@ -947,7 +954,7 @@ export function MobileWorkExperience() {
     [sortedEntries],
   );
 
-  const itemSpan = Math.max(360, viewportHeight * 0.66);
+  const itemSpan = Math.max(316, viewportHeight * 0.54);
   const loopLength = items.length * itemSpan;
   const { frame, scrollRef } = useInfiniteSmoothScroll({
     loopLength,
@@ -966,7 +973,7 @@ export function MobileWorkExperience() {
           item,
           index,
           key: `${copy}-${item.id}`,
-          y: viewportHeight * 0.22 + (copy * items.length + index) * itemSpan - frame.position,
+          y: viewportHeight * 0.26 + (copy * items.length + index) * itemSpan - frame.position,
         })),
       ),
     [frame.position, itemSpan, items, viewportHeight],
