@@ -48,30 +48,169 @@ export const HOME_PORTALS = [
   },
 ] as const;
 
-export const PROJECT_DEVICE_APPS = [
-  "Instagram",
-  "TikTok",
-  "YouTube Studio",
-  "CapCut",
-  "Canva",
-  "Notion",
-  "Gmail",
-  "Figma",
-] as const;
+export type MobileProjectReel = {
+  id: string;
+  instagramUrl: string;
+  username: string;
+  caption: string;
+  audioLabel: string;
+  coverImage: string;
+  videoSrc: string;
+  posterAlt: string;
+  durationLabel: string;
+  metrics?: {
+    likes?: string;
+    comments?: string;
+    shares?: string;
+  };
+};
 
-export const PROJECT_REELS = [
-  { id: "r1", permalink: "https://www.instagram.com/p/DR1MfgoDvzQ/", user: "edemmii" },
-  { id: "r2", permalink: "https://www.instagram.com/p/DTMwW_Pjv-P/", user: "edemmii" },
-  { id: "r3", permalink: "https://www.instagram.com/reel/DTZ2XtNkeNC/", user: "edemmii" },
-  { id: "r4", permalink: "https://www.instagram.com/reel/DR_GW1BkQci/", user: "edemmii" },
-  { id: "r5", permalink: "https://www.instagram.com/reel/DSitVRLkjEf/", user: "edemmii" },
-  { id: "r6", permalink: "https://www.instagram.com/reel/DOH8x_gk2Ew/", user: "edemmii" },
-  { id: "r7", permalink: "https://www.instagram.com/reel/DOQ-ZxuEzan/", user: "edemmii" },
-  { id: "r8", permalink: "https://www.instagram.com/reel/DObX6ceE-di/", user: "edemmii" },
-  { id: "r9", permalink: "https://www.instagram.com/reel/DOsvvxCkUxJ/", user: "edemmii" },
-  { id: "r10", permalink: "https://www.instagram.com/reel/DMLYWLOhTfg/", user: "edemmii" },
-  { id: "r11", permalink: "https://www.instagram.com/reel/DMxxlTEp98D/", user: "edemmii" },
-] as const;
+export const PROJECT_REELS: MobileProjectReel[] = [
+  {
+    id: "r3",
+    instagramUrl: "https://www.instagram.com/reel/DTZ2XtNkeNC/",
+    username: "imchloekang",
+    caption: "Original reel, now watchable directly inside Chloeverse.",
+    audioLabel: "Original audio",
+    coverImage: "/projects/reels/r3/cover.jpg",
+    videoSrc: "/projects/reels/r3/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DTZ2XtNkeNC.",
+    durationLabel: "1:03",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
+    id: "r4",
+    instagramUrl: "https://www.instagram.com/reel/DR_GW1BkQci/",
+    username: "imchloekang",
+    caption: "A vertical cut presented in a full-screen reel viewer instead of a generic route list.",
+    audioLabel: "Original audio",
+    coverImage: "/projects/reels/r4/cover.jpg",
+    videoSrc: "/projects/reels/r4/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DR_GW1BkQci.",
+    durationLabel: "0:19",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
+    id: "r5",
+    instagramUrl: "https://www.instagram.com/reel/DSitVRLkjEf/",
+    username: "imchloekang",
+    caption: "A published reel, kept native to the mobile projects experience.",
+    audioLabel: "Original audio",
+    coverImage: "/projects/reels/r5/cover.jpg",
+    videoSrc: "/projects/reels/r5/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DSitVRLkjEf.",
+    durationLabel: "0:16",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
+    id: "r6",
+    instagramUrl: "https://www.instagram.com/reel/DOH8x_gk2Ew/",
+    username: "imchloekang",
+    caption: "Another creator reel surfaced as part of a swipeable in-site feed.",
+    audioLabel: "Original audio",
+    coverImage: "/projects/reels/r6/cover.jpg",
+    videoSrc: "/projects/reels/r6/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DOH8x_gk2Ew.",
+    durationLabel: "0:07",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
+    id: "r7",
+    instagramUrl: "https://www.instagram.com/reel/DOQ-ZxuEzan/",
+    username: "imchloekang",
+    caption: "A reel-first project presentation with local playback and original source preserved.",
+    audioLabel: "Original audio",
+    coverImage: "/projects/reels/r7/cover.jpg",
+    videoSrc: "/projects/reels/r7/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DOQ-ZxuEzan.",
+    durationLabel: "0:14",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
+    id: "r8",
+    instagramUrl: "https://www.instagram.com/reel/DObX6ceE-di/",
+    username: "imchloekang",
+    caption: "The projects route now behaves like a real viewer instead of a card stack.",
+    audioLabel: "Original audio",
+    coverImage: "/projects/reels/r8/cover.jpg",
+    videoSrc: "/projects/reels/r8/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DObX6ceE-di.",
+    durationLabel: "0:21",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
+    id: "r9",
+    instagramUrl: "https://www.instagram.com/reel/DOsvvxCkUxJ/",
+    username: "imchloekang",
+    caption: "Published reel playback with a local poster, local video, and a direct source link.",
+    audioLabel: "Original audio",
+    coverImage: "/projects/reels/r9/cover.jpg",
+    videoSrc: "/projects/reels/r9/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DOsvvxCkUxJ.",
+    durationLabel: "0:18",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
+    id: "r10",
+    instagramUrl: "https://www.instagram.com/reel/DMLYWLOhTfg/",
+    username: "imchloekang",
+    caption: "A local reel slide with the same poster frame and in-site playback flow.",
+    audioLabel: "Original audio",
+    coverImage: "/projects/reels/r10/cover.jpg",
+    videoSrc: "/projects/reels/r10/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DMLYWLOhTfg.",
+    durationLabel: "0:14",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
+    id: "r11",
+    instagramUrl: "https://www.instagram.com/reel/DMxxlTEp98D/",
+    username: "imchloekang",
+    caption: "A reel viewer entry that keeps the mobile projects page focused and full-screen.",
+    audioLabel: "Original audio",
+    coverImage: "/projects/reels/r11/cover.jpg",
+    videoSrc: "/projects/reels/r11/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DMxxlTEp98D.",
+    durationLabel: "0:10",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+];
 
 export const WORK_ROLE_STACK = [
   "Creator",
@@ -182,6 +321,75 @@ export const CONTACT_DETAILS = {
   candy: "https://imchloekang.com",
 } as const;
 
+export type ContactJourneyStop = {
+  id: "instagram" | "tiktok" | "linkedin" | "x";
+  label: string;
+  href: string;
+  accent: string;
+  planetColor: string;
+  glowColor: string;
+  xPercent: number;
+  yVh: number;
+  hitProgress: number;
+  rocketXvw: number;
+  rocketYvh: number;
+};
+
+export const CONTACT_JOURNEY_STOPS: ContactJourneyStop[] = [
+  {
+    id: "instagram",
+    label: "Instagram",
+    href: CONTACT_DETAILS.instagram,
+    accent: "#f6a9ff",
+    planetColor: "#6d3f9d",
+    glowColor: "rgba(246,169,255,0.46)",
+    xPercent: 72,
+    yVh: 76,
+    hitProgress: 0.24,
+    rocketXvw: 68,
+    rocketYvh: 22,
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    href: CONTACT_DETAILS.tiktok,
+    accent: "#86ffe5",
+    planetColor: "#174f5f",
+    glowColor: "rgba(134,255,229,0.42)",
+    xPercent: 28,
+    yVh: 71,
+    hitProgress: 0.42,
+    rocketXvw: 30,
+    rocketYvh: 18,
+  },
+  {
+    id: "linkedin",
+    label: "LinkedIn",
+    href: CONTACT_DETAILS.linkedin,
+    accent: "#8cc8ff",
+    planetColor: "#214a8d",
+    glowColor: "rgba(140,200,255,0.4)",
+    xPercent: 70,
+    yVh: 59,
+    hitProgress: 0.6,
+    rocketXvw: 70,
+    rocketYvh: 14,
+  },
+  {
+    id: "x",
+    label: "X",
+    href: CONTACT_DETAILS.x,
+    accent: "#ffd1a8",
+    planetColor: "#57433a",
+    glowColor: "rgba(255,209,168,0.42)",
+    xPercent: 34,
+    yVh: 46,
+    hitProgress: 0.78,
+    rocketXvw: 36,
+    rocketYvh: 11,
+  },
+] as const;
+
 export const MEDIACARD_AUDIENCE = ["United States", "Canada", "Australia", "South Korea"] as const;
 
 export const MEDIACARD_METRICS = [
@@ -206,23 +414,6 @@ export const MEDIACARD_SERVICES = {
 } as const;
 
 export const MEDIACARD_COLLABS = ["Adobe", "Adidas", "Estee Lauder", "OpenAI"] as const;
-
-export function getProjectReelKind(permalink: string): "Reel" | "Post" {
-  return permalink.includes("/reel/") ? "Reel" : "Post";
-}
-
-export function getProjectPermalinkToken(permalink: string): string {
-  const match = permalink.match(/instagram\.com\/(?:p|reel)\/([^/]+)/i);
-  return match?.[1]?.toUpperCase() ?? permalink;
-}
-
-export function getProjectPathLabel(permalink: string): string {
-  return permalink.includes("/reel/") ? "instagram.com/reel" : "instagram.com/p";
-}
-
-export function formatProjectIndex(index: number): string {
-  return String(index + 1).padStart(2, "0");
-}
 
 export function getCollabBrandLabel(item: ReelItem): string {
   return item.title;
