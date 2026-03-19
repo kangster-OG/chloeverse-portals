@@ -155,21 +155,19 @@ export function MobileWorkExperience() {
       contentClassName="pb-[calc(env(safe-area-inset-bottom,0px)+4rem)]"
     >
       <section className="relative mt-8 [perspective:1600px]">
-        <div className="pointer-events-none absolute inset-x-3 top-6 bottom-[-1.4rem] rounded-[2.25rem] bg-[linear-gradient(180deg,rgba(10,26,16,0.82),rgba(3,8,5,0.24))] shadow-[0_48px_120px_rgba(0,0,0,0.44)]" />
-        <div className="pointer-events-none absolute inset-x-7 top-10 bottom-[-2.2rem] rounded-[2.35rem] border border-[#7cffb5]/8 bg-[linear-gradient(180deg,rgba(7,18,11,0.44),rgba(0,0,0,0.08))] opacity-90" />
-        <div className="pointer-events-none absolute bottom-[-2.8rem] left-1/2 h-24 w-[78%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(114,255,174,0.22),rgba(114,255,174,0.06)_42%,transparent_76%)] blur-2xl" />
         <motion.div
           initial={reducedMotion ? false : { opacity: 0, y: 22 }}
           animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-[2rem] border border-[#7cffb5]/18 bg-[linear-gradient(180deg,rgba(2,8,5,0.94),rgba(0,2,1,0.98))] shadow-[0_32px_120px_rgba(0,0,0,0.42),0_0_48px_rgba(114,255,174,0.08)]"
+          className="relative overflow-hidden rounded-[2rem] border border-[#7cffb5]/18 bg-[linear-gradient(180deg,rgba(2,8,5,0.94),rgba(0,2,1,0.98))] shadow-[0_26px_72px_rgba(0,0,0,0.32),0_0_40px_rgba(114,255,174,0.06)]"
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(142,255,192,0.08),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_22%)]" />
           <div className="absolute inset-[1px] rounded-[calc(2rem-1px)] border border-[#8effbd]/8" />
+          <div className="absolute inset-[8px] rounded-[calc(2rem-8px)] border border-[#a8ffd2]/[0.05]" />
           <div className="absolute left-0 top-0 h-full w-px bg-[linear-gradient(180deg,rgba(148,255,195,0.36),rgba(148,255,195,0))]" />
           <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.1),transparent_22%),linear-gradient(115deg,rgba(255,255,255,0.07)_0%,rgba(255,255,255,0.02)_12%,transparent_28%,transparent_72%,rgba(170,255,207,0.04)_92%,rgba(255,255,255,0.02)_100%)] opacity-60" />
           <div className="absolute inset-x-[8%] top-0 h-[22%] rounded-b-[100%] bg-[linear-gradient(180deg,rgba(219,255,232,0.18),rgba(219,255,232,0.02)_60%,transparent)] blur-xl opacity-60" />
-          <div className="absolute inset-0 rounded-[2rem] shadow-[inset_0_0_28px_rgba(120,255,177,0.08),inset_0_0_120px_rgba(0,0,0,0.26)]" />
+          <div className="absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),inset_0_0_28px_rgba(120,255,177,0.08),inset_0_0_120px_rgba(0,0,0,0.24)]" />
           <div
             className="absolute inset-0 opacity-[0.16]"
             style={{
@@ -302,16 +300,12 @@ function TerminalExperience({
     <article className="relative">
       <TerminalCommand command={`cat /experience/${entryToken}.log`} reducedMotion={true} />
 
-      <div className="relative mt-3">
-        <div className="pointer-events-none absolute inset-x-2 top-3 bottom-[-0.85rem] rounded-[1.55rem] bg-[linear-gradient(180deg,rgba(9,22,13,0.78),rgba(1,4,2,0.18))] shadow-[0_30px_70px_rgba(0,0,0,0.32)]" />
-        <div className="pointer-events-none absolute inset-x-5 top-6 bottom-[-1.2rem] rounded-[1.65rem] border border-[#7cffb5]/8 bg-[linear-gradient(180deg,rgba(7,18,11,0.32),rgba(0,0,0,0.04))]" />
-        <div className="pointer-events-none absolute bottom-[-1.4rem] left-1/2 h-10 w-[72%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(114,255,174,0.14),rgba(114,255,174,0.04)_44%,transparent_78%)] blur-xl" />
-
-        <div className="relative overflow-hidden rounded-[1.45rem] border border-[#7cffb5]/14 bg-[linear-gradient(180deg,rgba(8,16,11,0.82),rgba(2,5,4,0.96))] px-4 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(146,255,193,0.04)]">
+      <div className="relative mt-3 overflow-hidden rounded-[1.45rem] border border-[#7cffb5]/14 bg-[linear-gradient(180deg,rgba(8,16,11,0.82),rgba(2,5,4,0.96))] px-4 py-4 shadow-[0_14px_28px_rgba(0,0,0,0.16),0_0_0_1px_rgba(124,255,181,0.03),inset_0_1px_0_rgba(146,255,193,0.04)]">
           <div className="absolute inset-y-4 left-0 w-px bg-[linear-gradient(180deg,rgba(142,255,189,0),rgba(142,255,189,0.34),rgba(142,255,189,0))]" />
           <div className="absolute inset-y-0 right-0 w-[22%] bg-[linear-gradient(270deg,rgba(124,255,181,0.06),rgba(124,255,181,0))]" />
+          <div className="absolute inset-[1px] rounded-[calc(1.45rem-1px)] border border-[#afffd5]/[0.04]" />
           <div className="absolute inset-0 bg-[linear-gradient(112deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.018)_10%,transparent_22%,transparent_78%,rgba(158,255,200,0.03)_100%)] opacity-80" />
-          <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(218,255,231,0.04),inset_0_0_24px_rgba(121,255,177,0.06)]" />
+          <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(218,255,231,0.04),inset_0_-18px_48px_rgba(0,0,0,0.18),inset_0_0_24px_rgba(121,255,177,0.05)]" />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="chv-mobile-mono text-[0.62rem] uppercase tracking-[0.28em] text-[#8effbd]/52">
@@ -363,7 +357,6 @@ function TerminalExperience({
               ))}
             </div>
           </div>
-        </div>
       </div>
     </article>
   );
