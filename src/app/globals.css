@@ -1588,3 +1588,177 @@ body {
     animation: none;
   }
 }
+
+@keyframes chv-contact-orbit-twinkle {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+.chv-contact-orbit-nebula {
+  background:
+    radial-gradient(36% 28% at 22% 22%, rgba(255, 196, 145, 0.12), rgba(255, 196, 145, 0) 72%),
+    radial-gradient(34% 26% at 78% 18%, rgba(161, 191, 255, 0.16), rgba(161, 191, 255, 0) 76%),
+    radial-gradient(38% 28% at 50% 72%, rgba(230, 167, 255, 0.12), rgba(230, 167, 255, 0) 76%);
+  filter: blur(12px);
+}
+
+.chv-contact-orbit-vignette {
+  background:
+    radial-gradient(132% 104% at 50% 44%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.24) 80%, rgba(0, 0, 0, 0.58) 100%),
+    linear-gradient(180deg, rgba(5, 7, 12, 0.08), rgba(3, 4, 9, 0.48));
+}
+
+.chv-contact-orbit-title {
+  text-shadow:
+    0 0 18px rgba(255, 210, 177, 0.12),
+    0 18px 34px rgba(0, 0, 0, 0.34);
+}
+
+.chv-contact-orbit-rail {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.12);
+}
+
+.chv-contact-orbit-shell {
+  perspective: 1400px;
+}
+
+.chv-contact-orbit-scroll {
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chv-contact-orbit-card-wrap {
+  width: 10.4rem;
+}
+
+.chv-contact-orbit-card {
+  --orbit-accent: rgba(255, 255, 255, 0.5);
+  --orbit-glow: rgba(255, 255, 255, 0.3);
+  --orbit-surface: linear-gradient(180deg, #221f2d 0%, #111018 100%);
+  position: relative;
+  width: 10.4rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(18px);
+  transform-style: preserve-3d;
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease,
+    opacity 220ms ease;
+}
+
+.chv-contact-orbit-card.is-active {
+  border-color: color-mix(in srgb, var(--orbit-accent) 34%, rgba(255, 255, 255, 0.12));
+}
+
+.chv-contact-orbit-card__halo {
+  position: absolute;
+  inset: 12% 14% auto;
+  height: 4rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--orbit-glow) 0%, transparent 70%);
+  filter: blur(20px);
+}
+
+.chv-contact-orbit-card__surface {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02) 26%, rgba(0, 0, 0, 0) 60%),
+    var(--orbit-surface);
+}
+
+.chv-contact-orbit-card__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02) 28%, rgba(255, 255, 255, 0) 58%);
+  opacity: 0.76;
+}
+
+.chv-contact-orbit-card__inner {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 1.1rem 1rem 0;
+}
+
+.chv-contact-orbit-app-icon {
+  display: grid;
+  place-items: center;
+  width: 6.9rem;
+  height: 6.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.6rem;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+.chv-contact-orbit-card__label {
+  position: relative;
+  padding: 0.95rem 1rem 1.1rem;
+  text-align: center;
+}
+
+.chv-contact-card-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+    linear-gradient(180deg, rgba(12, 14, 24, 0.96), rgba(7, 8, 14, 0.98));
+}
+
+.chv-contact-orbit-link {
+  display: inline-block;
+  border-bottom: 1px solid rgba(255, 243, 224, 0.38);
+  padding-bottom: 0.2rem;
+  letter-spacing: -0.03em;
+}
+
+.chv-contact-orbit-star {
+  position: absolute;
+  display: block;
+  background: #fff7e6;
+  box-shadow: 0 0 18px rgba(255, 247, 230, 0.24);
+  animation: chv-contact-orbit-twinkle 2.8s steps(2, end) infinite;
+}
+
+.chv-contact-orbit-star--sm {
+  width: 3px;
+  height: 3px;
+}
+
+.chv-contact-orbit-star--md {
+  width: 5px;
+  height: 5px;
+}
+
+.chv-contact-orbit-star--lg {
+  width: 7px;
+  height: 7px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chv-contact-orbit-scroll {
+    scroll-behavior: auto;
+  }
+
+  .chv-contact-orbit-card,
+  .chv-contact-orbit-star {
+    transition: none !important;
+    animation: none;
+  }
+}

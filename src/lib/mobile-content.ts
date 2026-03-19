@@ -321,72 +321,60 @@ export const CONTACT_DETAILS = {
   candy: "https://imchloekang.com",
 } as const;
 
-export type ContactJourneyStop = {
-  id: "instagram" | "tiktok" | "linkedin" | "x";
+export type ContactCarouselItem = {
+  id: "contact" | "instagram" | "tiktok" | "linkedin" | "x";
   label: string;
-  href: string;
+  href?: string;
   accent: string;
-  planetColor: string;
-  glowColor: string;
-  xPercent: number;
-  yVh: number;
-  hitProgress: number;
-  rocketXvw: number;
-  rocketYvh: number;
+  glow: string;
+  surface: string;
+  icon: "contact" | "instagram" | "tiktok" | "linkedin" | "x";
 };
 
-export const CONTACT_JOURNEY_STOPS: ContactJourneyStop[] = [
+export const CONTACT_CAROUSEL_ITEMS: ContactCarouselItem[] = [
+  {
+    id: "contact",
+    label: "Contact Card",
+    accent: "#ffcfac",
+    glow: "rgba(255,207,172,0.45)",
+    surface: "linear-gradient(180deg,#2d2131_0%,#150f1f_100%)",
+    icon: "contact",
+  },
   {
     id: "instagram",
     label: "Instagram",
     href: CONTACT_DETAILS.instagram,
     accent: "#f6a9ff",
-    planetColor: "#6d3f9d",
-    glowColor: "rgba(246,169,255,0.46)",
-    xPercent: 72,
-    yVh: 76,
-    hitProgress: 0.24,
-    rocketXvw: 68,
-    rocketYvh: 22,
+    glow: "rgba(246,169,255,0.46)",
+    surface: "linear-gradient(180deg,#4d2758_0%,#27122e_100%)",
+    icon: "instagram",
   },
   {
     id: "tiktok",
     label: "TikTok",
     href: CONTACT_DETAILS.tiktok,
     accent: "#86ffe5",
-    planetColor: "#174f5f",
-    glowColor: "rgba(134,255,229,0.42)",
-    xPercent: 28,
-    yVh: 71,
-    hitProgress: 0.42,
-    rocketXvw: 30,
-    rocketYvh: 18,
+    glow: "rgba(134,255,229,0.42)",
+    surface: "linear-gradient(180deg,#17343f_0%,#0b151d_100%)",
+    icon: "tiktok",
   },
   {
     id: "linkedin",
     label: "LinkedIn",
     href: CONTACT_DETAILS.linkedin,
     accent: "#8cc8ff",
-    planetColor: "#214a8d",
-    glowColor: "rgba(140,200,255,0.4)",
-    xPercent: 70,
-    yVh: 59,
-    hitProgress: 0.6,
-    rocketXvw: 70,
-    rocketYvh: 14,
+    glow: "rgba(140,200,255,0.4)",
+    surface: "linear-gradient(180deg,#18355d_0%,#0c1625_100%)",
+    icon: "linkedin",
   },
   {
     id: "x",
     label: "X",
     href: CONTACT_DETAILS.x,
     accent: "#ffd1a8",
-    planetColor: "#57433a",
-    glowColor: "rgba(255,209,168,0.42)",
-    xPercent: 34,
-    yVh: 46,
-    hitProgress: 0.78,
-    rocketXvw: 36,
-    rocketYvh: 11,
+    glow: "rgba(255,209,168,0.42)",
+    surface: "linear-gradient(180deg,#312726_0%,#120f12_100%)",
+    icon: "x",
   },
 ] as const;
 
