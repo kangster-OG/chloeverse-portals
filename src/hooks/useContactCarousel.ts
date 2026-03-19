@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 
 const STEP_DEGREES = 72;
 const DRAG_SENSITIVITY = 0.34;
-const AUTO_ADVANCE_MS = 3200;
 const INTERACTION_PAUSE_MS = 2400;
+const IDLE_REVOLUTION_SECONDS = 18;
 
 function getActiveIndex(rotation: number, count: number) {
   const rawIndex = Math.round(-rotation / STEP_DEGREES);
@@ -20,7 +20,9 @@ export function useContactCarousel(count: number, options?: { autoPlayEnabled?: 
   const autoPlayEnabled = options?.autoPlayEnabled ?? true;
 
   const controlsRef = useRef<AnimationPlaybackControls | null>(null);
+  const idleTimeoutRef = useRef<number | null>(null);
   const pointerIdRef = useRef<number | null>(null);
+  const rotationRef = useRef(0);
   const startXRef = useRef(0);
   const startRotationRef = useRef(0);
   const lastXRef = useRef(0);
@@ -31,6 +33,7 @@ export function useContactCarousel(count: number, options?: { autoPlayEnabled?: 
 
   const syncRotation = useCallback(
     (nextRotation: number) => {
+      rotationRef.current = nextRotation;
       setRotation(nextRotation);
       setActiveIndex(getActiveIndex(nextRotation, count));
     },
@@ -41,13 +44,13 @@ export function useContactCarousel(count: number, options?: { autoPlayEnabled?: 
     (index: number) => {
       const targetRotation = -index * STEP_DEGREES;
       controlsRef.current?.stop();
-      controlsRef.current = animate(rotation, targetRotation, {
+      controlsRef.current = animate(rotationRef.current, targetRotation, {
         duration: 0.42,
         ease: [0.22, 1, 0.36, 1],
         onUpdate: syncRotation,
       });
     },
-    [rotation, syncRotation],
+    [syncRotation],
   );
 
   const finishDrag = useCallback(() => {
@@ -102,15 +105,35 @@ export function useContactCarousel(count: number, options?: { autoPlayEnabled?: 
   );
 
   useEffect(() => {
-    if (!autoPlayEnabled || isDragging) return;
+    if (idleTimeoutRef.current !== null) {
+      window.clearTimeout(idleTimeoutRef.current);
+      idleTimeoutRef.current = null;
+    }
+
+    if (!autoPlayEnabled || isDragging) {
+      controlsRef.current?.stop();
+      return;
+    }
 
     const waitForInteractionPause = Math.max(interactionUntilRef.current - performance.now(), 0);
-    const timeoutId = window.setTimeout(() => {
-      snapToIndex((activeIndex + 1) % count);
-    }, waitForInteractionPause + AUTO_ADVANCE_MS);
+    idleTimeoutRef.current = window.setTimeout(() => {
+      controlsRef.current?.stop();
+      controlsRef.current = animate(rotationRef.current, rotationRef.current - 360, {
+        duration: IDLE_REVOLUTION_SECONDS,
+        ease: "linear",
+        repeat: Number.POSITIVE_INFINITY,
+        repeatType: "loop",
+        onUpdate: syncRotation,
+      });
+    }, waitForInteractionPause);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [activeIndex, autoPlayEnabled, count, isDragging, snapToIndex]);
+    return () => {
+      if (idleTimeoutRef.current !== null) {
+        window.clearTimeout(idleTimeoutRef.current);
+        idleTimeoutRef.current = null;
+      }
+    };
+  }, [autoPlayEnabled, isDragging, syncRotation]);
 
   return {
     activeIndex,
