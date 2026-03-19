@@ -85,6 +85,10 @@ function normalizeMeta(value: string) {
   return value.replace(/\s{2,}/g, " • ");
 }
 
+function glowText(opacity: number) {
+  return `0 0 18px rgba(114,255,174,${opacity})`;
+}
+
 export function MobileWorkExperience() {
   const reducedMotion = useReducedMotion();
 
@@ -196,7 +200,12 @@ export function MobileWorkExperience() {
                   <p className="chv-mobile-mono">subject......... Chloe Kang</p>
                   <p className="chv-mobile-mono">status.......... online // reverse chronological</p>
                 </div>
-                <p className="mt-5 max-w-[16rem] text-[0.98rem] leading-7 text-[#e7ffef]/76">{WORK_INTRO_COPY}</p>
+                <p
+                  className="mt-5 max-w-[16rem] text-[0.96rem] leading-[1.95] tracking-[0.01em] text-[#ebfff2]/78"
+                  style={{ textShadow: glowText(0.06) }}
+                >
+                  {WORK_INTRO_COPY}
+                </p>
                 <p className="mt-4 chv-mobile-mono text-[0.68rem] uppercase tracking-[0.2em] text-[#92ffc2]/46">
                   {WORK_ROLE_STACK.join(" // ")}
                 </p>
@@ -260,9 +269,11 @@ function TerminalCommand({
   reducedMotion: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 text-[0.72rem] uppercase tracking-[0.22em] text-[#8effbd]/72">
+    <div className="flex items-center gap-3 text-[0.69rem] uppercase tracking-[0.24em] text-[#8effbd]/70">
       <span className="chv-mobile-mono text-[#78ffb1]">$</span>
-      <span className="chv-mobile-mono">{command}</span>
+      <span className="chv-mobile-mono" style={{ textShadow: glowText(0.08) }}>
+        {command}
+      </span>
       <motion.span
         aria-hidden="true"
         animate={reducedMotion ? undefined : { opacity: [0.28, 1, 0.28] }}
@@ -298,14 +309,25 @@ function TerminalExperience({
             <p className="chv-mobile-mono text-[0.62rem] uppercase tracking-[0.28em] text-[#8effbd]/52">
               experience {String(index + 1).padStart(2, "0")}
             </p>
-            <h2 className="mt-3 break-words font-medium leading-[1.45] text-[#ecfff2] chv-mobile-mono text-[1.05rem]">
+            <h2
+              className="mt-3 break-words chv-mobile-mono text-[1.01rem] font-medium uppercase tracking-[0.08em] leading-[1.55] text-[#f0fff5]"
+              style={{ textShadow: glowText(0.1) }}
+            >
               {role}
             </h2>
-            <p className="mt-2 break-words text-[0.88rem] leading-6 text-[#97ffc4]/76 chv-mobile-mono">{company}</p>
+            <p
+              className="mt-2 break-words chv-mobile-mono text-[0.8rem] uppercase tracking-[0.16em] leading-6 text-[#a4ffcb]/66"
+              style={{ textShadow: glowText(0.05) }}
+            >
+              {company}
+            </p>
           </div>
 
           {isCurrentRole ? (
-            <span className="chv-mobile-mono shrink-0 rounded-full border border-[#8dffc0]/20 bg-[rgba(114,255,174,0.08)] px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.2em] text-[#a4ffcb]/70">
+            <span
+              className="chv-mobile-mono shrink-0 rounded-full border border-[#8dffc0]/20 bg-[rgba(114,255,174,0.08)] px-2.5 py-1 text-[0.56rem] uppercase tracking-[0.24em] text-[#b4ffd4]/76"
+              style={{ boxShadow: "0 0 18px rgba(114,255,174,0.08)" }}
+            >
               current
             </span>
           ) : null}
@@ -321,8 +343,13 @@ function TerminalExperience({
           <p className="chv-mobile-mono text-[0.62rem] uppercase tracking-[0.24em] text-[#8effbd]/54">notes</p>
           <div className="mt-3 space-y-2.5">
             {entry.bullets.map((bullet) => (
-              <p key={bullet} className="flex gap-3 text-[0.92rem] leading-7 text-[#defee7]/74">
-                <span className="chv-mobile-mono mt-[0.18rem] text-[#86ffb8]/72">&gt;</span>
+              <p key={bullet} className="flex gap-3 text-[0.9rem] leading-[1.9] tracking-[0.005em] text-[#e1ffea]/72">
+                <span
+                  className="chv-mobile-mono mt-[0.18rem] text-[#86ffb8]/72"
+                  style={{ textShadow: glowText(0.08) }}
+                >
+                  &gt;
+                </span>
                 <span>{bullet}</span>
               </p>
             ))}
@@ -335,9 +362,9 @@ function TerminalExperience({
 
 function TerminalRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[4.85rem_minmax(0,1fr)] gap-3 text-[0.76rem] leading-6 text-[#d4ffdf]/72">
+    <div className="grid grid-cols-[4.85rem_minmax(0,1fr)] gap-3 text-[0.74rem] leading-[1.8] text-[#d8ffe2]/70">
       <span className="chv-mobile-mono uppercase tracking-[0.2em] text-[#84ffb7]/48">{label}</span>
-      <span className="break-words chv-mobile-mono">{value}</span>
+      <span className="break-words chv-mobile-mono tracking-[0.03em]">{value}</span>
     </div>
   );
 }
