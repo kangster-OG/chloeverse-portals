@@ -21,8 +21,9 @@ const FACE_OFFSET = CUBE_UNIT / 2 + 0.02;
 const BASE_YAW = -Math.PI / 4;
 const BASE_PITCH = -0.48;
 const BASE_ROLL = 0.56;
-const MIN_PITCH = -0.72;
-const MAX_PITCH = -0.18;
+const MIN_PITCH = -1.2;
+const MAX_PITCH = 0.5;
+const IDLE_RESUME_DELAY_MS = 900;
 const DRAG_ROTATION_FACTOR = 0.0095;
 const TAP_DISTANCE_THRESHOLD = 10;
 
@@ -291,7 +292,8 @@ export function MobileMediaCardExperience() {
   const [hoveredFaceId, setHoveredFaceId] = useState<FaceId | null>(null);
   const [manualRotation, setManualRotation] = useState({ pitch: BASE_PITCH, yaw: BASE_YAW });
   const [isDraggingCube, setIsDraggingCube] = useState(false);
-  const [hasPositionedCube, setHasPositionedCube] = useState(false);
+  const [lastInteractionAt, setLastInteractionAt] = useState(0);
+  const visibleRotationRef = useRef({ pitch: BASE_PITCH, yaw: BASE_YAW });
 
   const activeFace = useMemo(
     () => SIDE_FACES.find((face) => face.id === activeFaceId) ?? null,
@@ -299,10 +301,29 @@ export function MobileMediaCardExperience() {
   );
 
   const highlightedFaceId = activeFaceId ?? hoveredFaceId;
+  const handleCubeInteractionStart = () => {
+    if (activeFaceId) return;
+
+    setIsDraggingCube(true);
+    setLastInteractionAt(performance.now());
+    setManualRotation({
+      pitch: visibleRotationRef.current.pitch,
+      yaw: visibleRotationRef.current.yaw,
+    });
+  };
+
+  const handleCubeInteractionEnd = () => {
+    setIsDraggingCube(false);
+    setLastInteractionAt(performance.now());
+    setManualRotation({
+      pitch: visibleRotationRef.current.pitch,
+      yaw: visibleRotationRef.current.yaw,
+    });
+  };
+
   const handleRotateCube = (deltaX: number, deltaY: number) => {
     if (activeFaceId) return;
 
-    setHasPositionedCube(true);
     setManualRotation((value) => ({
       pitch: THREE.MathUtils.clamp(value.pitch - deltaY * DRAG_ROTATION_FACTOR, MIN_PITCH, MAX_PITCH),
       yaw: value.yaw + deltaX * DRAG_ROTATION_FACTOR,
@@ -343,10 +364,15 @@ export function MobileMediaCardExperience() {
             <CrystalCubeViewport
               activeFaceId={activeFaceId}
               highlightedFaceId={highlightedFaceId}
-              hasPositionedCube={hasPositionedCube}
               isDraggingCube={isDraggingCube}
+              lastInteractionAt={lastInteractionAt}
               manualRotation={manualRotation}
               reducedMotion={Boolean(reducedMotion)}
+              onCubeInteractionEnd={handleCubeInteractionEnd}
+              onCubeInteractionStart={handleCubeInteractionStart}
+              onVisibleRotationChange={(pitch, yaw) => {
+                visibleRotationRef.current = { pitch, yaw };
+              }}
               onHoverFaceChange={setHoveredFaceId}
               onDragStateChange={setIsDraggingCube}
               onRotateCube={handleRotateCube}
@@ -414,10 +440,13 @@ export function MobileMediaCardExperience() {
 function CrystalCubeViewport({
   activeFaceId,
   highlightedFaceId,
-  hasPositionedCube,
   isDraggingCube,
+  lastInteractionAt,
   manualRotation,
   reducedMotion,
+  onCubeInteractionEnd,
+  onCubeInteractionStart,
+  onVisibleRotationChange,
   onHoverFaceChange,
   onDragStateChange,
   onRotateCube,
@@ -425,10 +454,13 @@ function CrystalCubeViewport({
 }: {
   activeFaceId: FaceId | null;
   highlightedFaceId: FaceId | null;
-  hasPositionedCube: boolean;
   isDraggingCube: boolean;
+  lastInteractionAt: number;
   manualRotation: { pitch: number; yaw: number };
   reducedMotion: boolean;
+  onCubeInteractionEnd: () => void;
+  onCubeInteractionStart: () => void;
+  onVisibleRotationChange: (pitch: number, yaw: number) => void;
   onHoverFaceChange: (faceId: FaceId | null) => void;
   onDragStateChange: (isDragging: boolean) => void;
   onRotateCube: (deltaX: number, deltaY: number) => void;
@@ -464,10 +496,13 @@ function CrystalCubeViewport({
       <CrystalCubeStage
         activeFaceId={activeFaceId}
         highlightedFaceId={highlightedFaceId}
-        hasPositionedCube={hasPositionedCube}
         isDraggingCube={isDraggingCube}
+        lastInteractionAt={lastInteractionAt}
         manualRotation={manualRotation}
         reducedMotion={reducedMotion}
+        onCubeInteractionEnd={onCubeInteractionEnd}
+        onCubeInteractionStart={onCubeInteractionStart}
+        onVisibleRotationChange={onVisibleRotationChange}
         onHoverFaceChange={onHoverFaceChange}
         onDragStateChange={onDragStateChange}
         onRotateCube={onRotateCube}
@@ -480,10 +515,13 @@ function CrystalCubeViewport({
 function CrystalCubeStage({
   activeFaceId,
   highlightedFaceId,
-  hasPositionedCube,
   isDraggingCube,
+  lastInteractionAt,
   manualRotation,
   reducedMotion,
+  onCubeInteractionEnd,
+  onCubeInteractionStart,
+  onVisibleRotationChange,
   onHoverFaceChange,
   onDragStateChange,
   onRotateCube,
@@ -491,10 +529,13 @@ function CrystalCubeStage({
 }: {
   activeFaceId: FaceId | null;
   highlightedFaceId: FaceId | null;
-  hasPositionedCube: boolean;
   isDraggingCube: boolean;
+  lastInteractionAt: number;
   manualRotation: { pitch: number; yaw: number };
   reducedMotion: boolean;
+  onCubeInteractionEnd: () => void;
+  onCubeInteractionStart: () => void;
+  onVisibleRotationChange: (pitch: number, yaw: number) => void;
   onHoverFaceChange: (faceId: FaceId | null) => void;
   onDragStateChange: (isDragging: boolean) => void;
   onRotateCube: (deltaX: number, deltaY: number) => void;
@@ -505,18 +546,32 @@ function CrystalCubeStage({
   const shellMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
   const auraMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
   const beamMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
+  const idleYawOffsetRef = useRef(0);
   const currentYawRef = useRef(manualRotation.yaw);
   const currentPitchRef = useRef(manualRotation.pitch);
   const energyRef = useRef(0);
+
+  useEffect(() => {
+    if (isDraggingCube) {
+      idleYawOffsetRef.current = 0;
+    }
+  }, [isDraggingCube]);
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.033);
     const elapsed = state.clock.getElapsedTime();
     const paused = Boolean(activeFaceId);
     const energized = highlightedFaceId !== null;
+    const idleElapsed = Math.max(performance.now() - lastInteractionAt, 0);
+    const shouldIdle = !reducedMotion && !paused && !isDraggingCube && idleElapsed > IDLE_RESUME_DELAY_MS;
+    const idleBlend = shouldIdle ? THREE.MathUtils.clamp((idleElapsed - IDLE_RESUME_DELAY_MS) / 900, 0, 1) : 0;
 
-    const desiredYaw = manualRotation.yaw;
-    const desiredPitch = manualRotation.pitch;
+    if (shouldIdle) {
+      idleYawOffsetRef.current += dt * 0.3;
+    }
+
+    const desiredYaw = manualRotation.yaw + idleYawOffsetRef.current;
+    const desiredPitch = THREE.MathUtils.lerp(manualRotation.pitch, BASE_PITCH, idleBlend);
     currentYawRef.current = THREE.MathUtils.damp(currentYawRef.current, desiredYaw, paused ? 7 : isDraggingCube ? 12 : 2.4, dt);
     currentPitchRef.current = THREE.MathUtils.damp(currentPitchRef.current, desiredPitch, isDraggingCube ? 12 : 3.4, dt);
     energyRef.current = THREE.MathUtils.damp(energyRef.current, energized ? 1 : 0, 4.2, dt);
@@ -532,6 +587,8 @@ function CrystalCubeStage({
       groupRef.current.rotation.y = currentYawRef.current;
       groupRef.current.position.y = 0;
     }
+
+    onVisibleRotationChange(currentPitchRef.current, currentYawRef.current);
 
     const shaderTime = elapsed;
     const energy = energyRef.current;
@@ -655,6 +712,8 @@ function CrystalCubeStage({
 
       <CubeInteractionShell
         activeFaceId={activeFaceId}
+        onCubeInteractionEnd={onCubeInteractionEnd}
+        onCubeInteractionStart={onCubeInteractionStart}
         onDragStateChange={onDragStateChange}
         onHoverFaceChange={onHoverFaceChange}
         onRotateCube={onRotateCube}
@@ -675,12 +734,16 @@ function CrystalCubeStage({
 
 function CubeInteractionShell({
   activeFaceId,
+  onCubeInteractionEnd,
+  onCubeInteractionStart,
   onDragStateChange,
   onHoverFaceChange,
   onRotateCube,
   onSelectFace,
 }: {
   activeFaceId: FaceId | null;
+  onCubeInteractionEnd: () => void;
+  onCubeInteractionStart: () => void;
   onDragStateChange: (isDragging: boolean) => void;
   onHoverFaceChange: (faceId: FaceId | null) => void;
   onRotateCube: (deltaX: number, deltaY: number) => void;
@@ -740,6 +803,7 @@ function CubeInteractionShell({
     pointerStateRef.current.lastX = event.clientX;
     pointerStateRef.current.lastY = event.clientY;
     pointerStateRef.current.distance = 0;
+    onCubeInteractionStart();
     onHoverFaceChange(resolveFaceFromEvent(event));
     capturePointer(event);
   };
@@ -772,6 +836,7 @@ function CubeInteractionShell({
     const wasTap = pointerStateRef.current.distance < TAP_DISTANCE_THRESHOLD;
     const tappedFace = resolveFaceFromEvent(event);
     resetPointerState();
+    onCubeInteractionEnd();
     onHoverFaceChange(tappedFace);
 
     if (wasTap && tappedFace) {
@@ -785,6 +850,7 @@ function CubeInteractionShell({
     event.stopPropagation();
     releasePointer(event);
     resetPointerState();
+    onCubeInteractionEnd();
     onHoverFaceChange(null);
   };
 
