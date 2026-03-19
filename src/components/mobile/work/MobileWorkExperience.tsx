@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { MobileRouteFrame } from "@/components/mobile/shared/MobileRouteFrame";
 import { WORK_ENTRIES, WORK_ROLE_STACK, type WorkEntry } from "@/lib/mobile-content";
 
-const WORK_ACCENT = "#a9f4d6";
+const WORK_ACCENT = "#bbfff1";
 
 const monthMap: Record<string, number> = {
   Jan: 0,
@@ -26,15 +26,15 @@ const monthMap: Record<string, number> = {
 };
 
 const cardLayouts = [
-  { x: -16, rotateZ: -5, rotateY: 7, width: 88, glow: "#c1f8ff" },
-  { x: 12, rotateZ: 4, rotateY: -6, width: 84, glow: "#9ee3ff" },
-  { x: -4, rotateZ: -2.5, rotateY: 4, width: 90, glow: "#daf6ff" },
-  { x: 15, rotateZ: 5.5, rotateY: -7, width: 83, glow: "#aef3de" },
-  { x: -12, rotateZ: -4.5, rotateY: 6.5, width: 86, glow: "#b4fbff" },
-  { x: 8, rotateZ: 2.5, rotateY: -4.5, width: 89, glow: "#e9ffff" },
+  { x: -24, width: 90, rotateY: 10, rotateZ: -6 },
+  { x: 20, width: 84, rotateY: -11, rotateZ: 5 },
+  { x: -10, width: 88, rotateY: 8, rotateZ: -3 },
+  { x: 24, width: 82, rotateY: -10, rotateZ: 6 },
+  { x: -18, width: 86, rotateY: 9, rotateZ: -5 },
+  { x: 14, width: 89, rotateY: -8, rotateZ: 4 },
 ] as const;
 
-const shatteredVertexShader = `
+const fractureVertexShader = `
 varying vec2 vUv;
 
 void main() {
@@ -43,24 +43,25 @@ void main() {
 }
 `;
 
-const shatteredFragmentShader = `
+const fractureFragmentShader = `
 precision highp float;
 
 uniform float uTime;
 uniform vec2 uResolution;
+uniform vec2 uDrift;
 uniform float uMotion;
 
 varying vec2 vUv;
 
 float hash21(vec2 p) {
-  p = fract(p * vec2(123.34, 345.45));
+  p = fract(p * vec2(234.34, 435.345));
   p += dot(p, p + 34.23);
   return fract(p.x * p.y);
 }
 
 vec2 hash22(vec2 p) {
   float n = hash21(p);
-  return fract(vec2(n, n * 19.19) * vec2(421.12, 371.73));
+  return fract(vec2(n, n * 12.34) * vec2(533.3, 371.3));
 }
 
 float noise(vec2 p) {
@@ -82,93 +83,100 @@ float fbm(vec2 p) {
 
   for (int i = 0; i < 5; i++) {
     value += amplitude * noise(p);
-    p = p * 2.04 + vec2(9.2, -6.7);
+    p = p * 2.03 + vec2(8.7, -5.3);
     amplitude *= 0.52;
   }
 
   return value;
 }
 
-vec3 spectrum(float t) {
-  vec3 silver = vec3(0.72, 0.78, 0.84);
-  vec3 cyan = vec3(0.54, 0.9, 1.0);
-  vec3 mint = vec3(0.71, 1.0, 0.86);
-  vec3 lilac = vec3(0.78, 0.78, 0.96);
-
-  if (t < 0.33) return mix(silver, cyan, smoothstep(0.0, 0.33, t));
-  if (t < 0.66) return mix(cyan, mint, smoothstep(0.33, 0.66, t));
-  return mix(mint, lilac, smoothstep(0.66, 1.0, t));
-}
-
-vec3 shardField(vec2 uv) {
+void main() {
   vec2 aspect = vec2(uResolution.x / max(uResolution.y, 1.0), 1.0);
-  vec2 p = (uv - 0.5) * aspect;
-  float time = uTime * 0.08 * uMotion;
+  vec2 uv = vUv;
+  vec2 p = (uv - 0.5) * aspect * 1.25;
+  float time = uTime * 0.12 * uMotion;
+  p += uDrift * vec2(0.18, 0.1);
+  p += vec2(sin(time + p.y * 1.4), cos(time * 0.8 + p.x * 1.2)) * 0.02;
 
-  p.x += sin(p.y * 3.1 + time) * 0.04;
-  p.y += cos(p.x * 2.6 - time * 1.4) * 0.03;
+  vec2 lattice = p * 8.2;
+  vec2 cell = floor(lattice);
+  vec2 local = fract(lattice);
 
-  vec2 cellPos = p * 7.5;
-  vec2 cell = floor(cellPos);
-  vec2 fractPos = fract(cellPos);
-
-  float minDist = 10.0;
-  float secondDist = 10.0;
-  vec2 nearest = vec2(0.0);
+  float nearest = 10.0;
+  float secondNearest = 10.0;
+  vec2 nearestVec = vec2(0.0);
 
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
-      vec2 neighbor = vec2(float(x), float(y));
-      vec2 point = 0.14 + 0.74 * hash22(cell + neighbor);
+      vec2 offset = vec2(float(x), float(y));
+      vec2 point = 0.18 + 0.68 * hash22(cell + offset);
       point += vec2(
-        sin(time + dot(cell + neighbor, vec2(1.7, 2.4))) * 0.015,
-        cos(time * 1.2 + dot(cell + neighbor, vec2(2.9, 1.3))) * 0.015
+        sin(time * 0.7 + dot(cell + offset, vec2(1.9, 2.7))) * 0.012,
+        cos(time * 0.8 + dot(cell + offset, vec2(2.2, 1.5))) * 0.012
       );
+      vec2 delta = offset + point - local;
+      float dist = dot(delta, delta);
 
-      vec2 diff = neighbor + point - fractPos;
-      float dist = dot(diff, diff);
-
-      if (dist < minDist) {
-        secondDist = minDist;
-        minDist = dist;
-        nearest = diff;
-      } else if (dist < secondDist) {
-        secondDist = dist;
+      if (dist < nearest) {
+        secondNearest = nearest;
+        nearest = dist;
+        nearestVec = delta;
+      } else if (dist < secondNearest) {
+        secondNearest = dist;
       }
     }
   }
 
-  float edges = smoothstep(0.0, 0.05, secondDist - minDist);
-  float ridge = 1.0 - edges;
-  float glaze = fbm(p * 5.8 + nearest * 1.4);
-  float crackle = pow(1.0 - smoothstep(0.0, 0.2, length(nearest)), 1.6);
+  float ridge = 1.0 - smoothstep(0.0, 0.028, secondNearest - nearest);
+  float bodyNoise = fbm(p * 5.5 + nearestVec * 1.8);
+  float dust = fbm(p * 14.0 - vec2(time * 0.6, -time * 0.4));
+  float refraction = fbm(p * 3.8 - nearestVec * 2.4);
 
-  vec3 base = mix(vec3(0.015, 0.02, 0.035), vec3(0.08, 0.11, 0.17), glaze * 0.7 + 0.15);
-  vec3 tint = spectrum(fract(glaze * 0.8 + ridge * 0.35 + uv.y * 0.24));
-  vec3 color = mix(base, tint * 0.34 + vec3(0.12, 0.18, 0.24), 0.42);
-  color += ridge * vec3(0.42, 0.62, 0.74);
-  color += crackle * vec3(0.18, 0.28, 0.34);
+  vec3 base = mix(vec3(0.01, 0.015, 0.026), vec3(0.05, 0.08, 0.13), bodyNoise * 0.72 + 0.12);
+  vec3 cold = vec3(0.74, 0.92, 1.0);
+  vec3 mint = vec3(0.76, 1.0, 0.92);
+  vec3 violet = vec3(0.7, 0.75, 0.9);
 
-  float highlightA = pow(max(0.0, 1.0 - length(p - vec2(-0.18, 0.12)) * 1.45), 3.2);
-  float highlightB = pow(max(0.0, 1.0 - length(p - vec2(0.26, -0.28)) * 1.7), 3.8);
-  color += highlightA * vec3(0.18, 0.26, 0.32);
-  color += highlightB * vec3(0.16, 0.22, 0.28);
+  vec3 color = base;
+  color += mix(cold, mint, refraction) * ridge * 0.82;
+  color += violet * pow(max(0.0, 1.0 - length(p - vec2(0.28, -0.16)) * 1.35), 3.0) * 0.1;
+  color += cold * pow(max(0.0, 1.0 - length(p - vec2(-0.22, 0.08)) * 1.7), 3.5) * 0.14;
+  color += vec3(dust) * 0.035;
 
-  float vignette = smoothstep(1.18, 0.12, length((uv - 0.5) * aspect));
-  color *= mix(0.48, 1.0, vignette);
+  float shardCore = pow(max(0.0, 1.0 - length(nearestVec) * 1.8), 2.4);
+  color += mix(cold, mint, bodyNoise) * shardCore * 0.16;
 
-  return pow(clamp(color, 0.0, 1.3), vec3(0.92));
-}
+  float vignette = smoothstep(1.2, 0.12, length((uv - 0.5) * aspect));
+  color *= mix(0.42, 1.0, vignette);
+  color = pow(clamp(color, 0.0, 1.2), vec3(0.92));
 
-void main() {
-  vec3 color = shardField(vUv);
   gl_FragColor = vec4(color, 1.0);
 }
 `;
 
+type ScrollSnapshot = {
+  position: number;
+  velocity: number;
+};
+
+type WorkSceneItem =
+  | {
+      kind: "intro";
+      id: string;
+    }
+  | {
+      kind: "entry";
+      id: string;
+      entry: WorkEntry;
+    };
+
 function modulo(value: number, length: number) {
   if (length === 0) return 0;
   return ((value % length) + length) % length;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function parseResumeDate(dateRange: string) {
@@ -200,13 +208,42 @@ function normalizeLocation(location: string) {
   return location.replace(/\s{2,}/g, " • ");
 }
 
-function ShatteredGlassPlane({ reducedMotion }: { reducedMotion: boolean }) {
+function seededNoise(seed: number) {
+  const x = Math.sin(seed * 127.1) * 43758.5453123;
+  return x - Math.floor(x);
+}
+
+function makeShardShape(seed: number) {
+  const pointCount = 3 + Math.floor(seededNoise(seed + 1) * 4);
+  const points: THREE.Vector2[] = [];
+
+  for (let index = 0; index < pointCount; index += 1) {
+    const angle = (index / pointCount) * Math.PI * 2 + seededNoise(seed + index * 4.13) * 0.4;
+    const radius = 0.55 + seededNoise(seed * 2.11 + index * 1.73) * 0.9;
+    points.push(new THREE.Vector2(Math.cos(angle) * radius, Math.sin(angle) * radius));
+  }
+
+  const shape = new THREE.Shape();
+  shape.moveTo(points[0]!.x, points[0]!.y);
+  points.slice(1).forEach((point) => shape.lineTo(point.x, point.y));
+  shape.closePath();
+  return shape;
+}
+
+function FractureField({
+  reducedMotion,
+  scrollRef,
+}: {
+  reducedMotion: boolean;
+  scrollRef: React.MutableRefObject<ScrollSnapshot>;
+}) {
   const materialRef = useRef<THREE.ShaderMaterial | null>(null);
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
       uResolution: { value: new THREE.Vector2(1, 1) },
-      uMotion: { value: reducedMotion ? 0.25 : 1 },
+      uDrift: { value: new THREE.Vector2(0, 0) },
+      uMotion: { value: reducedMotion ? 0.35 : 1 },
     }),
     [reducedMotion],
   );
@@ -220,55 +257,181 @@ function ShatteredGlassPlane({ reducedMotion }: { reducedMotion: boolean }) {
     const material = materialRef.current;
     if (!material) return;
 
+    const driftX = clamp(scrollRef.current.velocity * 0.0012, -0.12, 0.12);
+    const driftY = modulo(scrollRef.current.position, 1200) / 1200 - 0.5;
+
     material.uniforms.uTime.value = state.clock.getElapsedTime();
     material.uniforms.uResolution.value.set(state.size.width, state.size.height);
+    material.uniforms.uDrift.value.set(driftX, driftY);
   });
 
   return (
-    <mesh>
-      <planeGeometry args={[2, 2]} />
-      <shaderMaterial ref={materialRef} uniforms={uniforms} vertexShader={shatteredVertexShader} fragmentShader={shatteredFragmentShader} />
+    <mesh position={[0, 0, -14]}>
+      <planeGeometry args={[24, 36]} />
+      <shaderMaterial ref={materialRef} uniforms={uniforms} vertexShader={fractureVertexShader} fragmentShader={fractureFragmentShader} />
     </mesh>
   );
 }
 
-function ShatteredGlassBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
+function GlassShard({
+  seed,
+  scrollRef,
+}: {
+  seed: number;
+  scrollRef: React.MutableRefObject<ScrollSnapshot>;
+}) {
+  const groupRef = useRef<THREE.Group | null>(null);
+  const edgeRef = useRef<THREE.LineSegments | null>(null);
+  const shape = useMemo(() => makeShardShape(seed), [seed]);
+  const geometry = useMemo(() => new THREE.ShapeGeometry(shape), [shape]);
+  const edgeGeometry = useMemo(() => new THREE.EdgesGeometry(geometry, 14), [geometry]);
+
+  const config = useMemo(
+    () => ({
+      x: (seededNoise(seed * 1.9) - 0.5) * 14,
+      y: (seededNoise(seed * 2.7) - 0.5) * 28,
+      z: -2 - seededNoise(seed * 4.1) * 12,
+      scale: 0.42 + seededNoise(seed * 5.3) * 1.2,
+      rotX: -0.8 + seededNoise(seed * 6.1) * 1.6,
+      rotY: -0.9 + seededNoise(seed * 7.3) * 1.8,
+      rotZ: seededNoise(seed * 8.7) * Math.PI * 2,
+      opacity: 0.02 + seededNoise(seed * 9.9) * 0.06,
+    }),
+    [seed],
+  );
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      edgeGeometry.dispose();
+    };
+  }, [edgeGeometry, geometry]);
+
+  useFrame((state) => {
+    const group = groupRef.current;
+    const edge = edgeRef.current;
+    if (!group || !edge) return;
+
+    const time = state.clock.getElapsedTime();
+    const loop = modulo(scrollRef.current.position, 2200) / 2200;
+    const drift = clamp(scrollRef.current.velocity * 0.003, -0.25, 0.25);
+
+    group.position.x = config.x + Math.sin(time * 0.18 + seed) * 0.16 + drift * (config.z + 8) * -0.18;
+    group.position.y = config.y + Math.cos(time * 0.14 + seed * 0.73 + loop * Math.PI * 2) * 0.3;
+    group.rotation.x = config.rotX + Math.sin(time * 0.11 + seed * 0.4) * 0.08;
+    group.rotation.y = config.rotY + Math.cos(time * 0.09 + seed * 0.27 + drift * 2.4) * 0.1;
+    group.rotation.z = config.rotZ + loop * 0.22 + Math.sin(time * 0.07 + seed) * 0.04;
+
+    const material = edge.material as THREE.LineBasicMaterial;
+    material.opacity = clamp(0.16 + (10 - Math.abs(config.z)) * 0.02, 0.14, 0.34);
+  });
+
+  return (
+    <group ref={groupRef} position={[config.x, config.y, config.z]} scale={config.scale}>
+      <mesh>
+        <shapeGeometry args={[shape]} />
+        <meshPhysicalMaterial
+          color="#daf6ff"
+          emissive="#88d6ff"
+          emissiveIntensity={0.04}
+          transparent
+          opacity={config.opacity}
+          roughness={0.12}
+          metalness={0.04}
+          transmission={0.88}
+          thickness={0.9}
+          ior={1.08}
+          clearcoat={1}
+          clearcoatRoughness={0.12}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh scale={1.02} position={[0, 0, -0.02]}>
+        <shapeGeometry args={[shape]} />
+        <meshBasicMaterial color="#d9ffff" transparent opacity={0.035} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <lineSegments ref={edgeRef} geometry={edgeGeometry}>
+        <lineBasicMaterial color="#d7f7ff" transparent opacity={0.18} />
+      </lineSegments>
+    </group>
+  );
+}
+
+function DebrisRig({
+  reducedMotion,
+  scrollRef,
+}: {
+  reducedMotion: boolean;
+  scrollRef: React.MutableRefObject<ScrollSnapshot>;
+}) {
+  const shards = useMemo(() => Array.from({ length: 42 }, (_, index) => index + 1), []);
+  const cameraRigRef = useRef<THREE.Group | null>(null);
+
+  useFrame((state) => {
+    const rig = cameraRigRef.current;
+    if (!rig) return;
+
+    const time = state.clock.getElapsedTime();
+    const velocity = clamp(scrollRef.current.velocity * 0.0015, -0.16, 0.16);
+    rig.position.x += ((velocity * 0.8 + Math.sin(time * 0.08) * 0.06) - rig.position.x) * 0.08;
+    rig.position.y += ((Math.cos(time * 0.09) * 0.08) - rig.position.y) * 0.08;
+    rig.rotation.z += ((velocity * -0.1) - rig.rotation.z) * 0.08;
+  });
+
+  return (
+    <group ref={cameraRigRef}>
+      <FractureField reducedMotion={reducedMotion} scrollRef={scrollRef} />
+      {shards.map((seed) => (
+        <GlassShard key={seed} seed={seed} scrollRef={scrollRef} />
+      ))}
+    </group>
+  );
+}
+
+function GlassDebrisScene({
+  reducedMotion,
+  scrollRef,
+}: {
+  reducedMotion: boolean;
+  scrollRef: React.MutableRefObject<ScrollSnapshot>;
+}) {
   return (
     <div className="pointer-events-none absolute inset-0">
       <Canvas
-        dpr={[1, 1.5]}
-        gl={{ alpha: false, antialias: false, powerPreference: "high-performance" }}
-        orthographic
-        camera={{ position: [0, 0, 1], zoom: 1 }}
+        dpr={[1, 1.6]}
+        gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
+        camera={{ position: [0, 0, 8], fov: 36, near: 0.1, far: 60 }}
         className="absolute inset-0 h-full w-full"
       >
-        <ShatteredGlassPlane reducedMotion={reducedMotion} />
+        <color attach="background" args={["#03060b"]} />
+        <fog attach="fog" args={["#02050a", 8, 20]} />
+        <ambientLight intensity={0.45} color="#a7d4ff" />
+        <directionalLight position={[3, 4, 6]} intensity={1.15} color="#e7fbff" />
+        <pointLight position={[-4, -2, 4]} intensity={0.95} color="#7be7ff" />
+        <pointLight position={[4, 3, 3]} intensity={0.82} color="#c8fff2" />
+        <DebrisRig reducedMotion={reducedMotion} scrollRef={scrollRef} />
       </Canvas>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(222,255,248,0.18),transparent_30%),radial-gradient(circle_at_15%_25%,rgba(122,244,221,0.12),transparent_26%),radial-gradient(circle_at_85%_80%,rgba(136,204,255,0.12),transparent_28%),linear-gradient(180deg,rgba(4,6,10,0.1)_0%,rgba(3,4,8,0.34)_44%,rgba(2,3,5,0.74)_100%)]" />
-      <div className="absolute -left-[14%] top-[10%] h-[14rem] w-[12rem] rotate-[-14deg] rounded-[2rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0.02))] opacity-70 blur-[1px]" style={{ clipPath: "polygon(8% 0%, 100% 14%, 88% 100%, 0% 86%)" }} />
-      <div className="absolute right-[-12%] top-[30%] h-[19rem] w-[13rem] rotate-[12deg] rounded-[2.5rem] border border-cyan-100/10 bg-[linear-gradient(180deg,rgba(214,255,255,0.12),rgba(255,255,255,0.02))] opacity-60 blur-[0.5px]" style={{ clipPath: "polygon(18% 0%, 100% 12%, 74% 100%, 0% 84%)" }} />
-      <div className="absolute bottom-[-6%] left-[8%] h-[15rem] w-[17rem] rotate-[8deg] rounded-[2rem] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] opacity-55 blur-[1.5px]" style={{ clipPath: "polygon(0% 10%, 88% 0%, 100% 84%, 16% 100%)" }} />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_0%,transparent_16%,transparent_84%,rgba(255,255,255,0.04)_100%)] mix-blend-screen opacity-40" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,transparent_24%,transparent_76%,rgba(255,255,255,0.03)_100%)] opacity-35" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_8%,rgba(222,255,253,0.16),transparent_28%),radial-gradient(circle_at_18%_24%,rgba(150,224,255,0.16),transparent_24%),radial-gradient(circle_at_80%_70%,rgba(193,255,236,0.12),transparent_26%),linear-gradient(180deg,rgba(2,6,10,0.22)_0%,rgba(3,6,10,0.08)_26%,rgba(2,5,9,0.42)_70%,rgba(2,3,7,0.84)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,transparent_18%,transparent_82%,rgba(255,255,255,0.03)_100%)] mix-blend-screen opacity-45" />
     </div>
   );
 }
 
 function useLoopingField({
-  itemCount,
-  itemSpan,
+  totalSpan,
   reducedMotion,
+  scrollRef,
 }: {
-  itemCount: number;
-  itemSpan: number;
+  totalSpan: number;
   reducedMotion: boolean;
+  scrollRef: React.MutableRefObject<ScrollSnapshot>;
 }) {
-  const totalSpan = Math.max(itemCount * itemSpan, 1);
-  const [position, setPosition] = useState(0);
+  const [frame, setFrame] = useState<ScrollSnapshot>({ position: 0, velocity: 0 });
   const targetRef = useRef(0);
   const currentRef = useRef(0);
-  const draggingRef = useRef(false);
   const velocityRef = useRef(0);
+  const draggingRef = useRef(false);
   const pointerRef = useRef<{ id: number | null; y: number; lastDelta: number }>({
     id: null,
     y: 0,
@@ -279,151 +442,207 @@ function useLoopingField({
     let frameId = 0;
     let previous = performance.now();
 
-    const update = (now: number) => {
-      const delta = Math.min(now - previous, 32);
+    const tick = (now: number) => {
+      const delta = Math.min(now - previous, 34);
       previous = now;
 
       if (!draggingRef.current) {
         targetRef.current += velocityRef.current * (delta / 16.67);
-        velocityRef.current *= reducedMotion ? 0.72 : 0.9;
-        if (Math.abs(velocityRef.current) < 0.02) velocityRef.current = 0;
+        velocityRef.current *= reducedMotion ? 0.86 : 0.935;
+        if (Math.abs(velocityRef.current) < 0.015) velocityRef.current = 0;
       }
 
-      const lerp = reducedMotion ? 0.24 : 0.12;
-      currentRef.current += (targetRef.current - currentRef.current) * lerp;
+      const previousCurrent = currentRef.current;
+      const easing = reducedMotion ? 0.18 : 0.092;
+      currentRef.current += (targetRef.current - currentRef.current) * easing;
 
-      setPosition(modulo(currentRef.current, totalSpan));
-      frameId = window.requestAnimationFrame(update);
+      const velocity = currentRef.current - previousCurrent;
+      const position = modulo(currentRef.current, totalSpan);
+      const snapshot = { position, velocity };
+
+      scrollRef.current = snapshot;
+      setFrame(snapshot);
+      frameId = window.requestAnimationFrame(tick);
     };
 
-    frameId = window.requestAnimationFrame(update);
+    frameId = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frameId);
-  }, [reducedMotion, totalSpan]);
+  }, [reducedMotion, scrollRef, totalSpan]);
 
-  const push = (delta: number) => {
+  const nudge = (delta: number, momentum = delta * 0.32) => {
     targetRef.current += delta;
+    velocityRef.current = momentum;
   };
 
   return {
-    position,
-    onWheel: (event: React.WheelEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      push(event.deltaY);
-      velocityRef.current = event.deltaY * 0.08;
-    },
-    onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
-      draggingRef.current = true;
-      pointerRef.current = { id: event.pointerId, y: event.clientY, lastDelta: 0 };
-      velocityRef.current = 0;
-      event.currentTarget.setPointerCapture(event.pointerId);
-    },
-    onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!draggingRef.current || pointerRef.current.id !== event.pointerId) return;
-      const delta = event.clientY - pointerRef.current.y;
-      pointerRef.current.y = event.clientY;
-      pointerRef.current.lastDelta = delta;
-      push(-delta * 1.2);
-    },
-    onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => {
-      if (pointerRef.current.id !== event.pointerId) return;
-      draggingRef.current = false;
-      velocityRef.current = -pointerRef.current.lastDelta * 0.9;
-      pointerRef.current = { id: null, y: 0, lastDelta: 0 };
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    },
-    onPointerCancel: (event: React.PointerEvent<HTMLDivElement>) => {
-      if (pointerRef.current.id !== event.pointerId) return;
-      draggingRef.current = false;
-      velocityRef.current = 0;
-      pointerRef.current = { id: null, y: 0, lastDelta: 0 };
-      event.currentTarget.releasePointerCapture(event.pointerId);
+    frame,
+    handlers: {
+      onWheel: (event: React.WheelEvent<HTMLDivElement>) => {
+        nudge(event.deltaY * 1.05, event.deltaY * 0.42);
+      },
+      onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
+        draggingRef.current = true;
+        velocityRef.current = 0;
+        pointerRef.current = { id: event.pointerId, y: event.clientY, lastDelta: 0 };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      },
+      onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
+        if (!draggingRef.current || pointerRef.current.id !== event.pointerId) return;
+        const delta = event.clientY - pointerRef.current.y;
+        pointerRef.current = { id: event.pointerId, y: event.clientY, lastDelta: delta };
+        targetRef.current -= delta * 1.58;
+      },
+      onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => {
+        if (pointerRef.current.id !== event.pointerId) return;
+        draggingRef.current = false;
+        velocityRef.current = -pointerRef.current.lastDelta * 1.3;
+        pointerRef.current = { id: null, y: 0, lastDelta: 0 };
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      },
+      onPointerCancel: (event: React.PointerEvent<HTMLDivElement>) => {
+        if (pointerRef.current.id !== event.pointerId) return;
+        draggingRef.current = false;
+        velocityRef.current = 0;
+        pointerRef.current = { id: null, y: 0, lastDelta: 0 };
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      },
     },
   };
 }
 
-function GlassResumeCard({
+function WorkIntroCard({
+  y,
+  viewportHeight,
+  velocity,
+}: {
+  y: number;
+  viewportHeight: number;
+  velocity: number;
+}) {
+  const center = y + viewportHeight * 0.38;
+  const progress = (center - viewportHeight * 0.52) / viewportHeight;
+  const focus = 1 - clamp(Math.abs(progress) / 1.2, 0, 1);
+  const scale = 0.88 + focus * 0.18;
+  const opacity = 0.18 + focus * 0.82;
+  const translateX = progress * 34 - velocity * 24;
+  const rotateX = progress * 16 - velocity * 18;
+  const rotateY = -progress * 13 + velocity * 14;
+  const rotateZ = progress * -4;
+  const blur = clamp(Math.abs(progress) * 1.1, 0, 1.8);
+
+  return (
+    <article
+      className="absolute left-1/2 top-0 will-change-transform"
+      style={{
+        width: "90%",
+        transform: `translate3d(calc(-50% + ${translateX}px), ${y}px, ${120 + focus * 120}px) scale(${scale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`,
+        opacity,
+        filter: `blur(${blur}px)`,
+      }}
+    >
+      <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_50%_12%,rgba(215,255,247,0.34),transparent_56%)] blur-3xl" />
+      <div className="absolute inset-x-[16%] -bottom-8 h-12 rounded-full bg-black/45 blur-3xl" />
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/18 bg-[linear-gradient(180deg,rgba(238,252,255,0.26),rgba(220,246,255,0.14)_22%,rgba(54,90,110,0.1)_58%,rgba(7,14,22,0.22)_100%)] px-5 py-5 shadow-[0_28px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.42),inset_0_-1px_0_rgba(182,255,239,0.16)] backdrop-blur-[28px]">
+        <div className="absolute inset-0 bg-[linear-gradient(128deg,rgba(255,255,255,0.28)_0%,rgba(255,255,255,0.08)_34%,transparent_60%,rgba(180,255,234,0.12)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(255,255,255,0.24),transparent_18%),radial-gradient(circle_at_86%_74%,rgba(160,255,238,0.12),transparent_22%)]" />
+        <div className="relative">
+          <p className="chv-mobile-mono text-[0.58rem] uppercase tracking-[0.34em] text-[rgba(224,253,249,0.76)]">
+            Work dossier
+          </p>
+          <div className="mt-4">
+            <h1 className="text-[1.52rem] leading-[0.92] tracking-[-0.06em] text-white">Chloe Kang</h1>
+            <p className="mt-3 max-w-[14rem] text-[0.88rem] leading-6 text-[rgba(224,241,246,0.76)]">
+              A continuous field of roles, contracts, and growth chapters.
+            </p>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            {WORK_ROLE_STACK.map((role) => (
+              <span
+                key={role}
+                className="rounded-full border border-white/16 bg-white/[0.07] px-3 py-2 text-[0.56rem] uppercase tracking-[0.22em] text-white/72"
+              >
+                {role}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function WorkEntryCard({
   entry,
   index,
   y,
   viewportHeight,
-  reducedMotion,
+  velocity,
 }: {
   entry: WorkEntry;
   index: number;
   y: number;
   viewportHeight: number;
-  reducedMotion: boolean;
+  velocity: number;
 }) {
   const layout = cardLayouts[index % cardLayouts.length];
   const { company, role } = splitRoleTitle(entry.title);
+  const center = y + viewportHeight * 0.38;
+  const progress = (center - viewportHeight * 0.54) / viewportHeight;
+  const focus = 1 - clamp(Math.abs(progress) / 1.18, 0, 1);
+  const scale = 0.86 + focus * 0.18;
+  const opacity = 0.16 + focus * 0.86;
+  const translateX = layout.x + Math.sin(progress * 1.8 + index * 0.5) * 18 - velocity * 22;
+  const rotateX = progress * 18 - velocity * 20;
+  const rotateY = layout.rotateY - progress * 13 + velocity * 16;
+  const rotateZ = layout.rotateZ + Math.sin(progress * 2.2) * 2.2;
+  const depth = -100 + focus * 220;
+  const blur = clamp(Math.abs(progress) * 1.2, 0, 1.9);
   const locationLine = normalizeLocation(entry.location);
-  const center = y + viewportHeight * 0.32;
-  const progress = (center - viewportHeight * 0.5) / viewportHeight;
-  const distance = Math.min(Math.abs(progress), 1.4);
-  const focus = 1 - Math.min(distance / 1.2, 1);
-  const scale = reducedMotion ? 1 : 0.9 + focus * 0.12;
-  const opacity = 0.28 + focus * 0.72;
-  const x = layout.x + progress * 18;
-  const rotateZ = reducedMotion ? 0 : layout.rotateZ + progress * 8;
-  const rotateY = reducedMotion ? 0 : layout.rotateY - progress * 9;
-  const translateZ = reducedMotion ? 0 : -70 + focus * 120;
-  const blur = reducedMotion ? 0 : distance * 0.7;
 
   return (
     <article
-      className="absolute left-1/2 top-0"
+      className="absolute left-1/2 top-0 will-change-transform"
       style={{
         width: `${layout.width}%`,
-        transform: `translate3d(calc(-50% + ${x}px), ${y}px, ${translateZ}px) scale(${scale}) rotateZ(${rotateZ}deg) rotateY(${rotateY}deg)`,
+        transform: `translate3d(calc(-50% + ${translateX}px), ${y}px, ${depth}px) scale(${scale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`,
         opacity,
         filter: `blur(${blur}px)`,
       }}
     >
-      <div
-        className="absolute inset-0 rounded-[2rem] blur-2xl"
-        style={{
-          background: `radial-gradient(circle at 50% 0%, ${layout.glow}26 0%, transparent 68%)`,
-          transform: "translate3d(0, 22px, -1px) scale(0.94)",
-        }}
-      />
-      <div className="absolute inset-x-[8%] -bottom-5 h-10 rounded-full bg-black/35 blur-2xl" />
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/18 bg-[linear-gradient(180deg,rgba(240,255,255,0.24)_0%,rgba(226,248,255,0.12)_20%,rgba(133,178,196,0.08)_58%,rgba(8,16,26,0.18)_100%)] shadow-[0_24px_56px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.38),inset_0_-1px_0_rgba(210,255,255,0.12)] backdrop-blur-[24px]">
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.26)_0%,rgba(255,255,255,0.06)_28%,transparent_60%,rgba(187,244,255,0.1)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.28),transparent_24%),radial-gradient(circle_at_78%_88%,rgba(136,236,255,0.14),transparent_28%)]" />
-        <div className="absolute inset-y-0 left-[12%] w-px bg-white/20 blur-[1px]" />
-        <div className="absolute right-[14%] top-0 h-24 w-24 rounded-full bg-white/10 blur-3xl" />
+      <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_50%_6%,rgba(200,255,245,0.26),transparent_56%)] blur-3xl" />
+      <div className="absolute inset-x-[10%] -bottom-7 h-11 rounded-full bg-black/45 blur-3xl" />
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/18 bg-[linear-gradient(180deg,rgba(245,253,255,0.26)_0%,rgba(229,247,255,0.14)_20%,rgba(120,176,198,0.08)_52%,rgba(8,16,26,0.2)_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.38),inset_0_-1px_0_rgba(184,247,255,0.14)] backdrop-blur-[28px]">
+        <div className="absolute inset-0 bg-[linear-gradient(132deg,rgba(255,255,255,0.3)_0%,rgba(255,255,255,0.1)_28%,transparent_58%,rgba(186,255,245,0.1)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_12%,rgba(255,255,255,0.25),transparent_18%),radial-gradient(circle_at_80%_84%,rgba(154,247,255,0.14),transparent_24%)]" />
+        <div className="absolute left-[11%] top-0 h-full w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.3),transparent_20%,transparent_78%,rgba(255,255,255,0.16))]" />
         <div className="relative px-5 pb-5 pt-4">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="chv-mobile-mono text-[0.58rem] uppercase tracking-[0.32em] text-[rgba(235,255,252,0.76)]">
+              <p className="chv-mobile-mono text-[0.58rem] uppercase tracking-[0.32em] text-[rgba(233,255,252,0.76)]">
                 {entry.date}
               </p>
-              <h2 className="mt-3 text-[1.2rem] font-medium leading-[1.02] tracking-[-0.05em] text-white">
-                {role}
-              </h2>
-              <p className="mt-1 text-[0.84rem] uppercase tracking-[0.18em] text-[rgba(219,248,255,0.7)]">
-                {company}
-              </p>
+              <h2 className="mt-3 text-[1.22rem] leading-[1] tracking-[-0.05em] text-white">{role}</h2>
+              <p className="mt-1 text-[0.82rem] uppercase tracking-[0.18em] text-[rgba(222,249,255,0.72)]">{company}</p>
             </div>
             {entry.type ? (
-              <span className="rounded-full border border-white/16 bg-white/8 px-2.5 py-1 text-[0.56rem] uppercase tracking-[0.24em] text-white/70">
+              <span className="rounded-full border border-white/14 bg-white/[0.08] px-2.5 py-1 text-[0.54rem] uppercase tracking-[0.24em] text-white/70">
                 {entry.type}
               </span>
             ) : null}
           </div>
 
-          <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,12,18,0.16),rgba(5,12,18,0.05))] px-3.5 py-3">
-            <p className="chv-mobile-mono text-[0.55rem] uppercase tracking-[0.26em] text-white/50">location</p>
-            <p className="mt-1 text-[0.8rem] leading-6 text-[rgba(230,244,247,0.78)]">{locationLine}</p>
+          <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,16,24,0.18),rgba(6,12,18,0.08))] px-3.5 py-3">
+            <p className="chv-mobile-mono text-[0.55rem] uppercase tracking-[0.28em] text-white/48">location</p>
+            <p className="mt-1 text-[0.82rem] leading-6 text-[rgba(232,243,247,0.8)]">{locationLine}</p>
           </div>
 
           <div className="mt-4 space-y-2.5">
             {entry.bullets.map((bullet) => (
               <div
                 key={bullet}
-                className="rounded-[1.15rem] border border-white/10 bg-[linear-gradient(180deg,rgba(6,16,25,0.18),rgba(4,10,16,0.08))] px-3.5 py-3.5"
+                className="rounded-[1.15rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,20,30,0.2),rgba(6,12,18,0.08))] px-3.5 py-3.5"
               >
-                <p className="text-[0.88rem] leading-6 text-[rgba(240,248,250,0.9)]">{bullet}</p>
+                <p className="text-[0.9rem] leading-6 text-[rgba(243,248,250,0.92)]">{bullet}</p>
               </div>
             ))}
           </div>
@@ -433,9 +652,30 @@ function GlassResumeCard({
   );
 }
 
+function renderSceneItem({
+  item,
+  y,
+  viewportHeight,
+  velocity,
+  index,
+}: {
+  item: WorkSceneItem;
+  y: number;
+  viewportHeight: number;
+  velocity: number;
+  index: number;
+}) {
+  if (item.kind === "intro") {
+    return <WorkIntroCard y={y} viewportHeight={viewportHeight} velocity={velocity} />;
+  }
+
+  return <WorkEntryCard entry={item.entry} index={index} y={y} viewportHeight={viewportHeight} velocity={velocity} />;
+}
+
 export function MobileWorkExperience() {
   const reducedMotion = useReducedMotion() ?? false;
   const [viewportHeight, setViewportHeight] = useState(820);
+  const scrollRef = useRef<ScrollSnapshot>({ position: 0, velocity: 0 });
 
   useEffect(() => {
     const update = () => setViewportHeight(window.innerHeight);
@@ -456,24 +696,40 @@ export function MobileWorkExperience() {
     [],
   );
 
-  const cardSpan = Math.max(360, viewportHeight * 0.72);
-  const field = useLoopingField({
-    itemCount: sortedEntries.length,
-    itemSpan: cardSpan,
+  const items = useMemo<WorkSceneItem[]>(
+    () => [
+      {
+        kind: "intro",
+        id: "intro",
+      },
+      ...sortedEntries.map((entry) => ({
+        kind: "entry" as const,
+        id: entry.title,
+        entry,
+      })),
+    ],
+    [sortedEntries],
+  );
+
+  const itemSpan = Math.max(370, viewportHeight * 0.78);
+  const totalSpan = items.length * itemSpan;
+  const { frame, handlers } = useLoopingField({
+    totalSpan,
     reducedMotion,
+    scrollRef,
   });
 
-  const repeatedCards = useMemo(
+  const repeatedItems = useMemo(
     () =>
       [-1, 0, 1].flatMap((copy) =>
-        sortedEntries.map((entry, index) => ({
-          entry,
+        items.map((item, index) => ({
+          item,
           index,
-          key: `${copy}-${entry.title}`,
-          y: viewportHeight * 0.2 + (copy * sortedEntries.length + index) * cardSpan - field.position,
+          key: `${copy}-${item.id}`,
+          y: viewportHeight * 0.16 + (copy * items.length + index) * itemSpan - frame.position,
         })),
       ),
-    [cardSpan, field.position, sortedEntries, viewportHeight],
+    [frame.position, itemSpan, items, viewportHeight],
   );
 
   return (
@@ -484,64 +740,23 @@ export function MobileWorkExperience() {
       description="Scroll the work timeline."
       accent={WORK_ACCENT}
       showHeader={false}
-      ambient={<ShatteredGlassBackdrop reducedMotion={reducedMotion} />}
+      ambient={<GlassDebrisScene reducedMotion={reducedMotion} scrollRef={scrollRef} />}
       contentClassName="h-[100svh] !px-0 !pb-0 !pt-0"
     >
       <section
         className="relative h-[100svh] overflow-hidden touch-none"
-        style={{ perspective: "1400px" }}
-        {...field}
+        style={{ perspective: "1800px", transformStyle: "preserve-3d" }}
+        {...handlers}
       >
-        <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+4.8rem)] z-20 px-5">
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-white/12 bg-[linear-gradient(180deg,rgba(238,252,255,0.18),rgba(220,246,255,0.08)_26%,rgba(10,18,28,0.24)_100%)] px-4 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.22)] backdrop-blur-[22px]">
-            <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.18),transparent_36%,rgba(255,255,255,0.08)_68%,transparent_100%)]" />
-            <p className="chv-mobile-mono relative text-[0.58rem] uppercase tracking-[0.34em] text-[rgba(224,253,249,0.72)]">
-              Work dossier
-            </p>
-            <div className="relative mt-3 flex items-start justify-between gap-4">
-              <div>
-                <h1 className="text-[1.35rem] leading-[0.95] tracking-[-0.06em] text-white">Chloe Kang</h1>
-                <p className="mt-2 max-w-[14rem] text-[0.82rem] leading-5 text-[rgba(222,242,247,0.72)]">
-                  Swipe through an endless, reverse-chronological resume loop.
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-1.5">
-                {WORK_ROLE_STACK.map((role) => (
-                  <span
-                    key={role}
-                    className="rounded-full border border-white/14 bg-white/[0.07] px-2.5 py-1 text-[0.54rem] uppercase tracking-[0.24em] text-white/68"
-                  >
-                    {role}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(3,5,9,0.08)_44%,rgba(2,4,7,0.54)_100%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-40 bg-[linear-gradient(180deg,rgba(2,5,9,0.92)_0%,rgba(2,5,9,0.72)_26%,rgba(2,5,9,0.0)_100%)]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-44 bg-[linear-gradient(180deg,rgba(2,5,9,0.0)_0%,rgba(2,5,9,0.82)_68%,rgba(2,5,9,0.96)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 z-20 opacity-30 mix-blend-screen" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)", backgroundSize: "100% 22px", maskImage: "linear-gradient(180deg,transparent 0%,rgba(0,0,0,0.72) 16%,rgba(0,0,0,0.78) 84%,transparent 100%)" }} />
 
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-44 bg-[linear-gradient(180deg,#02050a_0%,rgba(2,5,10,0.88)_22%,rgba(2,5,10,0.0)_100%)]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-48 bg-[linear-gradient(180deg,rgba(2,5,10,0.0)_0%,rgba(2,5,10,0.82)_70%,#010204_100%)]" />
-        <div className="pointer-events-none absolute inset-0 z-0 opacity-45" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "100% 18px", maskImage: "linear-gradient(180deg,transparent 0%,rgba(0,0,0,0.8) 22%,rgba(0,0,0,0.85) 78%,transparent 100%)" }} />
-
-        <div className="absolute inset-0 z-[5]">
-          {repeatedCards.map(({ entry, index, key, y }) => (
-            <GlassResumeCard
-              key={key}
-              entry={entry}
-              index={index}
-              y={y}
-              viewportHeight={viewportHeight}
-              reducedMotion={reducedMotion}
-            />
+        <div className="absolute inset-0 z-30" style={{ transform: `translate3d(0, 0, ${clamp(Math.abs(frame.velocity) * 180, 0, 120)}px)` }}>
+          {repeatedItems.map(({ item, index, key, y }) => (
+            <div key={key}>{renderSceneItem({ item, y, viewportHeight, velocity: frame.velocity, index })}</div>
           ))}
-        </div>
-
-        <div className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] left-1/2 z-20 -translate-x-1/2">
-          <div className="rounded-full border border-white/10 bg-black/28 px-3.5 py-2 backdrop-blur-xl">
-            <p className="chv-mobile-mono text-[0.52rem] uppercase tracking-[0.28em] text-white/52">
-              continuous loop
-            </p>
-          </div>
         </div>
       </section>
     </MobileRouteFrame>
