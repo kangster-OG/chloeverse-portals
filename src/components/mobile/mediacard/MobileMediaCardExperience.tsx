@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { Decal, RoundedBox, Sparkles } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { AnimatePresence, motion, useReducedMotion, type PanInfo } from "framer-motion";
+import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import * as THREE from "three";
 
@@ -19,6 +19,10 @@ const ACCENT = "#f4eee6";
 const CUBE_UNIT = 2.28;
 const FACE_OFFSET = CUBE_UNIT / 2 + 0.02;
 const BASE_YAW = -Math.PI / 4;
+const BASE_PITCH = -0.48;
+const BASE_ROLL = 0.56;
+const DRAG_ROTATION_FACTOR = 0.0095;
+const TAP_DISTANCE_THRESHOLD = 10;
 
 type FaceId = "metrics" | "markets" | "collabs" | "terms";
 
@@ -267,7 +271,8 @@ export function MobileMediaCardExperience() {
   const reducedMotion = useReducedMotion();
   const [activeFaceId, setActiveFaceId] = useState<FaceId | null>(null);
   const [hoveredFaceId, setHoveredFaceId] = useState<FaceId | null>(null);
-  const [manualTurns, setManualTurns] = useState(0);
+  const [manualRotation, setManualRotation] = useState({ pitch: 0, yaw: 0 });
+  const [isDraggingCube, setIsDraggingCube] = useState(false);
 
   const activeFace = useMemo(
     () => SIDE_FACES.find((face) => face.id === activeFaceId) ?? null,
@@ -275,14 +280,13 @@ export function MobileMediaCardExperience() {
   );
 
   const highlightedFaceId = activeFaceId ?? hoveredFaceId;
-
-  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleRotateCube = (deltaX: number, deltaY: number) => {
     if (activeFaceId) return;
 
-    const shouldRotate = Math.abs(info.offset.x) > 40 || Math.abs(info.velocity.x) > 360;
-    if (!shouldRotate) return;
-
-    setManualTurns((value) => value + (info.offset.x < 0 || info.velocity.x < 0 ? -1 : 1));
+    setManualRotation((value) => ({
+      pitch: THREE.MathUtils.clamp(value.pitch - deltaY * DRAG_ROTATION_FACTOR, -0.95, 0.95),
+      yaw: value.yaw + deltaX * DRAG_ROTATION_FACTOR,
+    }));
   };
 
   const pagePadding = {
@@ -320,20 +324,18 @@ export function MobileMediaCardExperience() {
 
       <section className="relative z-10 flex min-h-[100svh] items-center justify-center px-4" style={pagePadding}>
         <motion.div
-          drag={reducedMotion ? false : "x"}
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.12}
-          onDragEnd={handleDragEnd}
-          whileDrag={activeFaceId ? undefined : { scale: 1.01 }}
           className="relative h-[31rem] w-full max-w-[23rem] touch-none"
         >
           <div className="absolute inset-0 overflow-hidden rounded-[2.4rem]">
             <CrystalCubeViewport
               activeFaceId={activeFaceId}
               highlightedFaceId={highlightedFaceId}
-              manualTurns={manualTurns}
+              isDraggingCube={isDraggingCube}
+              manualRotation={manualRotation}
               reducedMotion={Boolean(reducedMotion)}
               onHoverFaceChange={setHoveredFaceId}
+              onDragStateChange={setIsDraggingCube}
+              onRotateCube={handleRotateCube}
               onSelectFace={setActiveFaceId}
             />
           </div>
@@ -398,16 +400,22 @@ export function MobileMediaCardExperience() {
 function CrystalCubeViewport({
   activeFaceId,
   highlightedFaceId,
-  manualTurns,
+  isDraggingCube,
+  manualRotation,
   reducedMotion,
   onHoverFaceChange,
+  onDragStateChange,
+  onRotateCube,
   onSelectFace,
 }: {
   activeFaceId: FaceId | null;
   highlightedFaceId: FaceId | null;
-  manualTurns: number;
+  isDraggingCube: boolean;
+  manualRotation: { pitch: number; yaw: number };
   reducedMotion: boolean;
   onHoverFaceChange: (faceId: FaceId | null) => void;
+  onDragStateChange: (isDragging: boolean) => void;
+  onRotateCube: (deltaX: number, deltaY: number) => void;
   onSelectFace: (faceId: FaceId) => void;
 }) {
   return (
@@ -440,9 +448,12 @@ function CrystalCubeViewport({
       <CrystalCubeStage
         activeFaceId={activeFaceId}
         highlightedFaceId={highlightedFaceId}
-        manualTurns={manualTurns}
+        isDraggingCube={isDraggingCube}
+        manualRotation={manualRotation}
         reducedMotion={reducedMotion}
         onHoverFaceChange={onHoverFaceChange}
+        onDragStateChange={onDragStateChange}
+        onRotateCube={onRotateCube}
         onSelectFace={onSelectFace}
       />
     </Canvas>
@@ -452,16 +463,22 @@ function CrystalCubeViewport({
 function CrystalCubeStage({
   activeFaceId,
   highlightedFaceId,
-  manualTurns,
+  isDraggingCube,
+  manualRotation,
   reducedMotion,
   onHoverFaceChange,
+  onDragStateChange,
+  onRotateCube,
   onSelectFace,
 }: {
   activeFaceId: FaceId | null;
   highlightedFaceId: FaceId | null;
-  manualTurns: number;
+  isDraggingCube: boolean;
+  manualRotation: { pitch: number; yaw: number };
   reducedMotion: boolean;
   onHoverFaceChange: (faceId: FaceId | null) => void;
+  onDragStateChange: (isDragging: boolean) => void;
+  onRotateCube: (deltaX: number, deltaY: number) => void;
   onSelectFace: (faceId: FaceId) => void;
 }) {
   const groupRef = useRef<THREE.Group | null>(null);
@@ -469,14 +486,10 @@ function CrystalCubeStage({
   const shellMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
   const auraMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
   const beamMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
-  const targetRotationRef = useRef(manualTurns * (Math.PI / 2));
   const autoRotationRef = useRef(0);
-  const currentRotationRef = useRef(manualTurns * (Math.PI / 2));
+  const currentYawRef = useRef(BASE_YAW + manualRotation.yaw);
+  const currentPitchRef = useRef(BASE_PITCH + manualRotation.pitch);
   const energyRef = useRef(0);
-
-  useEffect(() => {
-    targetRotationRef.current = manualTurns * (Math.PI / 2);
-  }, [manualTurns]);
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.033);
@@ -488,25 +501,22 @@ function CrystalCubeStage({
       autoRotationRef.current += dt * 0.34;
     }
 
-    const desiredRotation = BASE_YAW + targetRotationRef.current + (reducedMotion || paused ? 0 : autoRotationRef.current);
-    currentRotationRef.current = THREE.MathUtils.damp(currentRotationRef.current, desiredRotation, paused ? 7 : 2.4, dt);
+    const desiredYaw = BASE_YAW + manualRotation.yaw + (reducedMotion || paused || isDraggingCube ? 0 : autoRotationRef.current);
+    const desiredPitch = BASE_PITCH + manualRotation.pitch;
+    currentYawRef.current = THREE.MathUtils.damp(currentYawRef.current, desiredYaw, paused ? 7 : isDraggingCube ? 12 : 2.4, dt);
+    currentPitchRef.current = THREE.MathUtils.damp(currentPitchRef.current, desiredPitch, isDraggingCube ? 12 : 3.4, dt);
     energyRef.current = THREE.MathUtils.damp(energyRef.current, energized ? 1 : 0, 4.2, dt);
 
     if (groupRef.current) {
-      groupRef.current.rotation.x = THREE.MathUtils.damp(
-        groupRef.current.rotation.x,
-        -0.48 + (reducedMotion ? 0 : Math.sin(elapsed * 0.58) * 0.025),
-        2.8,
-        dt,
-      );
+      groupRef.current.rotation.x = THREE.MathUtils.damp(groupRef.current.rotation.x, currentPitchRef.current, 3.6, dt);
       groupRef.current.rotation.z = THREE.MathUtils.damp(
         groupRef.current.rotation.z,
-        0.56 + (reducedMotion ? 0 : Math.cos(elapsed * 0.52) * 0.025),
+        BASE_ROLL + (reducedMotion || isDraggingCube ? 0 : Math.cos(elapsed * 0.52) * 0.025),
         2.8,
         dt,
       );
-      groupRef.current.rotation.y = currentRotationRef.current;
-      groupRef.current.position.y = reducedMotion ? 0 : Math.sin(elapsed * 0.76) * 0.05;
+      groupRef.current.rotation.y = currentYawRef.current;
+      groupRef.current.position.y = reducedMotion || isDraggingCube ? 0 : Math.sin(elapsed * 0.76) * 0.05;
     }
 
     const shaderTime = elapsed;
@@ -632,9 +642,13 @@ function CrystalCubeStage({
       {SIDE_FACES.map((face) => (
         <InteractiveFace
           key={face.id}
+          activeFaceId={activeFaceId}
           face={face}
           highlighted={highlightedFaceId === face.id}
+          isDraggingCube={isDraggingCube}
           onHoverFaceChange={onHoverFaceChange}
+          onDragStateChange={onDragStateChange}
+          onRotateCube={onRotateCube}
           onSelectFace={onSelectFace}
         />
       ))}
@@ -643,19 +657,42 @@ function CrystalCubeStage({
 }
 
 function InteractiveFace({
+  activeFaceId,
   face,
   highlighted,
+  isDraggingCube,
   onHoverFaceChange,
+  onDragStateChange,
+  onRotateCube,
   onSelectFace,
 }: {
+  activeFaceId: FaceId | null;
   face: CubeFace;
   highlighted: boolean;
+  isDraggingCube: boolean;
   onHoverFaceChange: (faceId: FaceId | null) => void;
+  onDragStateChange: (isDragging: boolean) => void;
+  onRotateCube: (deltaX: number, deltaY: number) => void;
   onSelectFace: (faceId: FaceId) => void;
 }) {
   const groupRef = useRef<THREE.Group | null>(null);
   const plateMaterialRef = useRef<THREE.MeshPhysicalMaterial | null>(null);
   const glowMaterialRef = useRef<THREE.MeshBasicMaterial | null>(null);
+  const pointerStateRef = useRef<{
+    pointerId: number | null;
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastY: number;
+    distance: number;
+  }>({
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    distance: 0,
+  });
   const labelTexture = useMemo(() => createFaceLabelTexture(face.label), [face.label]);
 
   useEffect(() => {
@@ -703,9 +740,92 @@ function InteractiveFace({
     }
 
     if (glowMaterialRef.current) {
-      glowMaterialRef.current.opacity = THREE.MathUtils.damp(glowMaterialRef.current.opacity, highlighted ? 0.14 : 0.04, 4, dt);
+      glowMaterialRef.current.opacity = THREE.MathUtils.damp(
+        glowMaterialRef.current.opacity,
+        highlighted || isDraggingCube ? 0.14 : 0.04,
+        4,
+        dt,
+      );
     }
   });
+
+  const resetPointerState = () => {
+    pointerStateRef.current.pointerId = null;
+    pointerStateRef.current.distance = 0;
+    onDragStateChange(false);
+  };
+
+  const capturePointer = (event: ThreeEvent<PointerEvent>) => {
+    const target = event.nativeEvent.target;
+
+    if (target instanceof Element) {
+      target.setPointerCapture(event.pointerId);
+    }
+  };
+
+  const releasePointer = (event: ThreeEvent<PointerEvent>) => {
+    const target = event.nativeEvent.target;
+
+    if (target instanceof Element && target.hasPointerCapture(event.pointerId)) {
+      target.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+
+    if (activeFaceId) return;
+
+    pointerStateRef.current.pointerId = event.pointerId;
+    pointerStateRef.current.startX = event.clientX;
+    pointerStateRef.current.startY = event.clientY;
+    pointerStateRef.current.lastX = event.clientX;
+    pointerStateRef.current.lastY = event.clientY;
+    pointerStateRef.current.distance = 0;
+    onHoverFaceChange(face.id);
+    capturePointer(event);
+  };
+
+  const handlePointerMove = (event: ThreeEvent<PointerEvent>) => {
+    if (pointerStateRef.current.pointerId !== event.pointerId || activeFaceId) return;
+
+    event.stopPropagation();
+
+    const deltaX = event.clientX - pointerStateRef.current.lastX;
+    const deltaY = event.clientY - pointerStateRef.current.lastY;
+    pointerStateRef.current.lastX = event.clientX;
+    pointerStateRef.current.lastY = event.clientY;
+    pointerStateRef.current.distance += Math.hypot(deltaX, deltaY);
+
+    if (pointerStateRef.current.distance > 2) {
+      onDragStateChange(true);
+      onRotateCube(deltaX, deltaY);
+    }
+  };
+
+  const handlePointerUp = (event: ThreeEvent<PointerEvent>) => {
+    if (pointerStateRef.current.pointerId !== event.pointerId) return;
+
+    event.stopPropagation();
+    releasePointer(event);
+
+    const wasTap = pointerStateRef.current.distance < TAP_DISTANCE_THRESHOLD;
+    resetPointerState();
+    onHoverFaceChange(wasTap ? face.id : null);
+
+    if (wasTap && !activeFaceId) {
+      onSelectFace(face.id);
+    }
+  };
+
+  const handlePointerCancel = (event: ThreeEvent<PointerEvent>) => {
+    if (pointerStateRef.current.pointerId !== event.pointerId) return;
+
+    event.stopPropagation();
+    releasePointer(event);
+    resetPointerState();
+    onHoverFaceChange(null);
+  };
 
   return (
     <group ref={groupRef} position={face.position} rotation={face.rotation}>
@@ -757,16 +877,20 @@ function InteractiveFace({
         position={[0, 0, 0.045]}
         onPointerOver={(event) => {
           event.stopPropagation();
-          onHoverFaceChange(face.id);
+          if (pointerStateRef.current.pointerId === null) {
+            onHoverFaceChange(face.id);
+          }
         }}
         onPointerOut={(event) => {
           event.stopPropagation();
-          onHoverFaceChange(null);
+          if (pointerStateRef.current.pointerId === null) {
+            onHoverFaceChange(null);
+          }
         }}
-        onClick={(event) => {
-          event.stopPropagation();
-          onSelectFace(face.id);
-        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
       >
         <planeGeometry args={[1.58, 1.58]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
