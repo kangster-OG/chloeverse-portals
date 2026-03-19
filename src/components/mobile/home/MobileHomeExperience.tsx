@@ -353,9 +353,6 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
                       <h2 className="chv-mobile-display mt-0.5 text-[1.16rem] leading-[0.94] tracking-[-0.03em] text-[#f7f1e9]">
                         {item.displayTitle}
                       </h2>
-                      <p className="chv-mobile-body mt-1 text-[0.58rem] italic tracking-[0.02em] text-white/42">
-                        {item.subtitle}
-                      </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-2 self-stretch py-1">
                       <span className="chv-mobile-body text-[0.54rem] italic tracking-[0.04em] text-white/36">
