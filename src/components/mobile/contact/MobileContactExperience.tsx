@@ -9,19 +9,7 @@ import { useContactCarousel } from "@/hooks/useContactCarousel";
 import { CONTACT_CAROUSEL_ITEMS, CONTACT_DETAILS, type ContactCarouselItem } from "@/lib/mobile-content";
 
 const ACCENT = "#ffcfac";
-const STAR_LAYER = [
-  { left: "8%", top: "12%", size: "sm", delay: "0.1s" },
-  { left: "18%", top: "24%", size: "md", delay: "0.5s" },
-  { left: "32%", top: "10%", size: "sm", delay: "1.1s" },
-  { left: "46%", top: "20%", size: "lg", delay: "0.7s" },
-  { left: "64%", top: "14%", size: "md", delay: "1.4s" },
-  { left: "82%", top: "22%", size: "sm", delay: "0.9s" },
-  { left: "12%", top: "58%", size: "sm", delay: "0.3s" },
-  { left: "27%", top: "72%", size: "md", delay: "1.7s" },
-  { left: "44%", top: "66%", size: "sm", delay: "0.8s" },
-  { left: "63%", top: "78%", size: "lg", delay: "1.3s" },
-  { left: "84%", top: "64%", size: "md", delay: "0.2s" },
-] as const;
+const CAROUSEL_RADIUS = 118;
 
 export function MobileContactExperience() {
   const [copied, setCopied] = useState(false);
@@ -47,46 +35,41 @@ export function MobileContactExperience() {
   };
 
   return (
-    <main className="chv-mobile-root relative min-h-[100svh] overflow-hidden bg-[#04050a] text-white">
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,#070b14_0%,#04050b_46%,#020207_100%)]" />
-      <div className="chv-contact-space-nebula absolute inset-0" />
-      <div className="chv-contact-space-vignette absolute inset-0" />
-      <PixelStarField stars={STAR_LAYER} />
-      <div className="chv-mobile-grain pointer-events-none absolute inset-0 z-10 opacity-24" />
+    <main className="chv-mobile-root relative min-h-[100svh] overflow-hidden bg-black text-white">
+      <div className="absolute inset-0 bg-black" />
 
       <MobileRouteLink
         href="/"
         accent={ACCENT}
         label="Chloeverse"
         aria-label="Return to the Chloeverse"
-        className="fixed left-4 top-[calc(env(safe-area-inset-top,0px)+0.9rem)] z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0.04))] text-white/84 backdrop-blur-xl"
+        className="fixed left-4 top-[calc(env(safe-area-inset-top,0px)+0.9rem)] z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-[rgba(10,10,12,0.84)] text-white/84 backdrop-blur-xl"
       >
         <span aria-hidden="true" className="text-[1.25rem] leading-none">
           &#x2039;
         </span>
       </MobileRouteLink>
 
-      <motion.div
-        key={activeItem.id}
-        className="pointer-events-none absolute left-1/2 top-[42%] z-10 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
-        initial={{ opacity: 0.28, scale: 0.9 }}
-        animate={{ opacity: 0.58, scale: 1.04 }}
-        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-        style={{ background: `radial-gradient(circle, ${activeItem.glow} 0%, transparent 70%)` }}
-      />
-
       <section className="absolute inset-0 flex items-center justify-center overflow-hidden">
         <div
-          className="chv-contact-ring-stage relative h-[20rem] w-full touch-none"
+          className="chv-contact-ring-stage relative h-[21rem] w-[21rem] max-w-[92vw] touch-none"
           style={{ touchAction: "none" }}
           onPointerDown={bind.onPointerDown}
           onPointerMove={bind.onPointerMove}
           onPointerUp={bind.onPointerUp}
           onPointerCancel={bind.onPointerUp}
         >
+          <motion.div
+            key={activeItem.id}
+            className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-[11.5rem] w-[11.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[58px]"
+            initial={{ opacity: 0.12, scale: 0.88 }}
+            animate={{ opacity: 0.26, scale: 1 }}
+            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+            style={{ background: `radial-gradient(circle, ${activeItem.glow} 0%, transparent 74%)` }}
+          />
           <div
-            className="chv-contact-ring absolute left-1/2 top-1/2 h-[15rem] w-[15rem] -translate-x-1/2 -translate-y-1/2"
-            style={{ transform: `translate(-50%, -50%) rotateX(-10deg) rotateY(${rotation}deg)` }}
+            className="chv-contact-ring absolute inset-0"
+            aria-hidden="true"
           >
             {CONTACT_CAROUSEL_ITEMS.map((item, index) => (
               <RingIcon
@@ -94,6 +77,7 @@ export function MobileContactExperience() {
                 index={index}
                 item={item}
                 rotation={rotation}
+                radius={CAROUSEL_RADIUS}
               />
             ))}
           </div>
@@ -160,27 +144,30 @@ function RingIcon({
   index,
   item,
   rotation,
+  radius,
 }: {
   index: number;
   item: ContactCarouselItem;
   rotation: number;
+  radius: number;
 }) {
   const step = 360 / CONTACT_CAROUSEL_ITEMS.length;
   const currentAngle = index * step + rotation;
-  const radians = (Math.abs(currentAngle) * Math.PI) / 180;
-  const frontness = Math.max(0, Math.cos(radians));
-  const scale = 0.74 + frontness * 0.34;
-  const opacity = 0.14 + frontness * 0.96;
+  const radians = (currentAngle * Math.PI) / 180;
+  const frontness = (Math.cos(radians) + 1) / 2;
+  const x = Math.sin(radians) * radius;
+  const y = (1 - frontness) * 14;
+  const scale = 0.56 + frontness * 0.46;
+  const opacity = 0.16 + frontness * 0.84;
   const zIndex = Math.round(frontness * 100);
   const iconStyle = {
     opacity,
     zIndex,
-    transform: `translate(-50%, -50%) rotateY(${index * step}deg) translateZ(8.75rem)`,
+    transform: `translate(-50%, -50%) translateX(${x}px) translateY(${y}px) scale(${scale})`,
   } as CSSProperties;
 
   const bubbleStyle = {
-    filter: `drop-shadow(0 ${10 + frontness * 16}px ${18 + frontness * 22}px rgba(0,0,0,0.32)) drop-shadow(0 0 ${10 + frontness * 24}px ${item.glow})`,
-    transform: `scale(${scale})`,
+    filter: `drop-shadow(0 ${8 + frontness * 16}px ${16 + frontness * 20}px rgba(0,0,0,0.58)) drop-shadow(0 0 ${4 + frontness * 14}px ${item.glow})`,
   } as CSSProperties;
 
   const iconBubble = (
@@ -212,7 +199,7 @@ function CenteredAction({
         onPointerDown={(event) => event.stopPropagation()}
         onPointerMove={(event) => event.stopPropagation()}
         onPointerUp={(event) => event.stopPropagation()}
-        className="absolute left-1/2 top-1/2 z-20 h-[8.5rem] w-[8.5rem] -translate-x-1/2 -translate-y-1/2 rounded-[2.5rem] focus:outline-none"
+        className="absolute left-1/2 top-1/2 z-20 h-[7.9rem] w-[7.9rem] -translate-x-1/2 -translate-y-1/2 rounded-[2.3rem] focus:outline-none"
       />
     );
   }
@@ -226,26 +213,8 @@ function CenteredAction({
       onPointerDown={(event) => event.stopPropagation()}
       onPointerMove={(event) => event.stopPropagation()}
       onPointerUp={(event) => event.stopPropagation()}
-      className="absolute left-1/2 top-1/2 z-20 block h-[8.5rem] w-[8.5rem] -translate-x-1/2 -translate-y-1/2 rounded-[2.5rem] focus:outline-none"
+      className="absolute left-1/2 top-1/2 z-20 block h-[7.9rem] w-[7.9rem] -translate-x-1/2 -translate-y-1/2 rounded-[2.3rem] focus:outline-none"
     />
-  );
-}
-
-function PixelStarField({
-  stars,
-}: {
-  stars: readonly { left: string; top: string; size: "sm" | "md" | "lg"; delay: string }[];
-}) {
-  return (
-    <div className="pointer-events-none absolute inset-0 z-0 opacity-90">
-      {stars.map((star) => (
-        <span
-          key={`${star.left}:${star.top}`}
-          className={`chv-contact-space-star chv-contact-space-star--${star.size}`}
-          style={{ left: star.left, top: star.top, animationDelay: star.delay }}
-        />
-      ))}
-    </div>
   );
 }
 
@@ -256,61 +225,189 @@ function AppIcon({
   icon: ContactCarouselItem["icon"];
   accent: string;
 }) {
-  const className = "h-[6.8rem] w-[6.8rem] [shape-rendering:geometricPrecision]";
+  const className = "h-[7.25rem] w-[7.25rem] [shape-rendering:geometricPrecision]";
+  const suffix = icon;
 
+  return (
+    <svg viewBox="0 0 120 120" className={className}>
+      <defs>
+        <linearGradient id={`frameOuter-${suffix}`} x1="0.12" y1="0.08" x2="0.86" y2="0.94">
+          <stop offset="0%" stopColor="#38363d" />
+          <stop offset="42%" stopColor="#16181f" />
+          <stop offset="100%" stopColor="#050608" />
+        </linearGradient>
+        <linearGradient id={`frameInner-${suffix}`} x1="0.18" y1="0.08" x2="0.82" y2="0.94">
+          <stop offset="0%" stopColor="#1d2128" />
+          <stop offset="48%" stopColor="#0d1015" />
+          <stop offset="100%" stopColor="#030406" />
+        </linearGradient>
+        <linearGradient id={`glass-${suffix}`} x1="0.18" y1="0.08" x2="0.84" y2="0.86">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.28)" />
+          <stop offset="28%" stopColor="rgba(255,255,255,0.11)" />
+          <stop offset="55%" stopColor="rgba(255,255,255,0.03)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </linearGradient>
+        <linearGradient id={`edge-${suffix}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.36)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
+        </linearGradient>
+        <radialGradient id={`ambient-${suffix}`} cx="0.32" cy="0.2" r="0.9">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.18)" />
+          <stop offset="42%" stopColor="rgba(255,255,255,0.05)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </radialGradient>
+        {renderIconGradients(icon, suffix, accent)}
+      </defs>
+
+      <rect x="7" y="7" width="106" height="106" rx="33" fill={`url(#frameOuter-${suffix})`} />
+      <rect x="12" y="12" width="96" height="96" rx="29" fill={`url(#frameInner-${suffix})`} />
+      <rect x="16" y="16" width="88" height="88" rx="26" fill={`url(#surface-${suffix})`} />
+      <rect x="16" y="16" width="88" height="88" rx="26" fill={`url(#ambient-${suffix})`} />
+      <path
+        d="M26 20h54c9.5 0 14.3 0 18.2 2.2 2.4 1.3 4.3 3.2 5.7 5.6C106 31.5 106 36.3 106 46H14c0-9.6 0-14.4 2.2-18.2 1.4-2.4 3.3-4.3 5.7-5.6C25.8 20 30.6 20 40.2 20z"
+        fill={`url(#glass-${suffix})`}
+        opacity="0.92"
+      />
+      <rect x="17.5" y="17.5" width="85" height="85" rx="24.5" fill="none" stroke={`url(#edge-${suffix})`} strokeWidth="1.5" />
+      <path d="M29 87c11 8 47 8 62 0" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="5.5" strokeLinecap="round" />
+
+      {renderIconMark(icon, suffix, accent)}
+    </svg>
+  );
+}
+
+function renderIconGradients(icon: ContactCarouselItem["icon"], suffix: string, accent: string) {
   if (icon === "contact") {
     return (
-      <svg viewBox="0 0 96 96" className={className}>
-        <defs>
-          <linearGradient id="contactGradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#fff5e8" />
-            <stop offset="100%" stopColor={accent} />
-          </linearGradient>
-        </defs>
-        <rect x="14" y="14" width="68" height="68" rx="22" fill="#151720" opacity="0.92" />
-        <rect x="22" y="26" width="44" height="30" rx="10" fill="url(#contactGradient)" opacity="0.98" />
-        <path d="M27 33h34.5v3.5L44.2 48.8 27 36.5z" fill="#261b2a" opacity="0.92" />
-        <circle cx="63" cy="60" r="11" fill="#fff7ea" />
-        <path d="M63 53l1.8 4.8 5.2 1.2-4 3.1 1.2 5.1-4.2-2.8-4.2 2.8 1.2-5.1-4-3 5.2-1.2z" fill={accent} />
-      </svg>
+      <>
+        <linearGradient id={`surface-${suffix}`} x1="0.15" y1="0.12" x2="0.9" y2="0.92">
+          <stop offset="0%" stopColor="#fff5e6" />
+          <stop offset="38%" stopColor="#f6d8b6" />
+          <stop offset="100%" stopColor="#8d633f" />
+        </linearGradient>
+        <radialGradient id={`core-${suffix}`} cx="0.3" cy="0.22" r="0.92">
+          <stop offset="0%" stopColor="#fffaf2" />
+          <stop offset="100%" stopColor={accent} />
+        </radialGradient>
+      </>
     );
   }
 
   if (icon === "instagram") {
     return (
-      <svg viewBox="0 0 96 96" className={className}>
-        <rect x="18" y="18" width="60" height="60" rx="18" fill={accent} opacity="0.94" />
-        <rect x="27" y="27" width="42" height="42" rx="13" fill="none" stroke="#fff6ee" strokeWidth="6" />
-        <circle cx="48" cy="48" r="10.5" fill="none" stroke="#fff6ee" strokeWidth="6" />
-        <circle cx="63" cy="33" r="4" fill="#fff6ee" />
-      </svg>
+      <>
+        <linearGradient id={`surface-${suffix}`} x1="0.1" y1="0.08" x2="0.9" y2="0.92">
+          <stop offset="0%" stopColor="#ffd776" />
+          <stop offset="25%" stopColor="#ff8a3d" />
+          <stop offset="58%" stopColor="#ef2f8a" />
+          <stop offset="82%" stopColor="#8e37ff" />
+          <stop offset="100%" stopColor="#4657ff" />
+        </linearGradient>
+        <radialGradient id={`core-${suffix}`} cx="0.28" cy="0.22" r="0.88">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.34)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </radialGradient>
+      </>
     );
   }
 
   if (icon === "tiktok") {
     return (
-      <svg viewBox="0 0 96 96" className={className}>
-        <rect x="16" y="16" width="64" height="64" rx="18" fill={accent} opacity="0.94" />
-        <path d="M56 26c3 8 8 12 15 13v10c-6 0-11-1.8-15-5.2V60c0 9-6 15-15 15-8.3 0-14-6-14-13.8C27 53.6 33 48 41 48c1.4 0 2.3.1 4 .5v11.3c-1.1-.8-2.2-1.1-3.8-1.1-2.8 0-5 2.1-5 4.8 0 3.1 2.4 5.3 5.3 5.3 3.7 0 5.5-2.5 5.5-6.2V26z" fill="#fff8f1" />
-      </svg>
+      <>
+        <linearGradient id={`surface-${suffix}`} x1="0.2" y1="0.12" x2="0.86" y2="0.92">
+          <stop offset="0%" stopColor="#111318" />
+          <stop offset="100%" stopColor="#030305" />
+        </linearGradient>
+        <radialGradient id={`core-${suffix}`} cx="0.72" cy="0.26" r="0.74">
+          <stop offset="0%" stopColor="rgba(255,78,107,0.44)" />
+          <stop offset="100%" stopColor="rgba(255,78,107,0)" />
+        </radialGradient>
+      </>
     );
   }
 
   if (icon === "linkedin") {
     return (
-      <svg viewBox="0 0 96 96" className={className}>
-        <rect x="16" y="16" width="64" height="64" rx="18" fill={accent} opacity="0.94" />
-        <circle cx="34" cy="35" r="5" fill="#fff7ef" />
-        <rect x="29" y="44" width="10" height="24" fill="#fff7ef" />
-        <path d="M46 44h10v4c2.2-3.1 5.4-4.8 10.4-4.8 8.2 0 12.6 5.1 12.6 14.4V68H68V59c0-4.6-1.6-7.1-5.4-7.1-4.1 0-6.1 2.7-6.1 8.1V68H46z" fill="#fff7ef" />
-      </svg>
+      <>
+        <linearGradient id={`surface-${suffix}`} x1="0.14" y1="0.12" x2="0.88" y2="0.92">
+          <stop offset="0%" stopColor="#3b91ff" />
+          <stop offset="42%" stopColor="#0a66c2" />
+          <stop offset="100%" stopColor="#063f81" />
+        </linearGradient>
+        <radialGradient id={`core-${suffix}`} cx="0.26" cy="0.2" r="0.88">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.22)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </radialGradient>
+      </>
     );
   }
 
   return (
-    <svg viewBox="0 0 96 96" className={className}>
-      <rect x="16" y="16" width="64" height="64" rx="18" fill={accent} opacity="0.94" />
-      <path d="M29 30h10.4L48 41.4 56.6 30H67L53.8 47.8 69 67H58.4L47.2 52.8 36.8 67H26.4l14.8-20.4z" fill="#fff7ef" />
-    </svg>
+    <>
+      <linearGradient id={`surface-${suffix}`} x1="0.12" y1="0.08" x2="0.9" y2="0.94">
+        <stop offset="0%" stopColor="#2a2e36" />
+        <stop offset="48%" stopColor="#0b0c10" />
+        <stop offset="100%" stopColor="#000000" />
+      </linearGradient>
+      <radialGradient id={`core-${suffix}`} cx="0.26" cy="0.2" r="0.88">
+        <stop offset="0%" stopColor="rgba(255,255,255,0.18)" />
+        <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+      </radialGradient>
+    </>
+  );
+}
+
+function renderIconMark(icon: ContactCarouselItem["icon"], suffix: string, accent: string) {
+  if (icon === "contact") {
+    return (
+      <>
+        <rect x="29" y="35" width="44" height="32" rx="11" fill={`url(#core-${suffix})`} opacity="0.98" />
+        <path d="M34 42h34v3.8L51 58 34 45.8z" fill="#2c1f17" opacity="0.86" />
+        <circle cx="77" cy="73" r="10" fill="#120e0d" opacity="0.18" />
+        <circle cx="76" cy="72" r="10" fill="#fff9f1" />
+        <path d="M76 65.5l1.7 4.5 4.8 1.2-3.7 2.9 1.1 4.8-3.9-2.6-3.9 2.6 1.1-4.8-3.7-2.9 4.8-1.2z" fill={accent} />
+      </>
+    );
+  }
+
+  if (icon === "instagram") {
+    return (
+      <>
+        <rect x="31" y="31" width="38" height="38" rx="12" fill="none" stroke="#fffaf4" strokeWidth="5.5" />
+        <circle cx="50" cy="50" r="10.5" fill="none" stroke="#fffaf4" strokeWidth="5.5" />
+        <circle cx="64" cy="36" r="3.8" fill="#fffaf4" />
+        <rect x="16" y="16" width="88" height="88" rx="26" fill={`url(#core-${suffix})`} />
+      </>
+    );
+  }
+
+  if (icon === "tiktok") {
+    return (
+      <>
+        <path d="M67 36c3.1 7.9 8.3 11.8 15 12.6v9.5c-6 0-11.2-1.7-15-4.9v15.3c0 9.1-6.4 15.5-15.5 15.5-8.4 0-14.8-6.1-14.8-14.2C36.7 61.8 43 56 51.3 56c1.4 0 2.6.1 4.3.5v10.7c-1.2-.7-2.5-1.1-4-1.1-3 0-5.4 2.2-5.4 5.1 0 3.1 2.5 5.5 5.6 5.5 4 0 5.9-2.7 5.9-6.8V36z" fill="#ffffff" />
+        <path d="M62.5 39.5c2.6 5.6 6.4 8.9 11.7 10.4" fill="none" stroke="#24f5e3" strokeWidth="4.2" strokeLinecap="round" opacity="0.96" />
+        <path d="M55.2 55.5V70c0 5.7-2.5 9-7.1 9-3.4 0-6.1-2.6-6.1-6.1 0-3.4 2.7-5.8 6.3-5.8 1.5 0 2.6.2 4.1.8" fill="none" stroke="#ff4f70" strokeWidth="4.2" strokeLinecap="round" opacity="0.88" />
+        <rect x="16" y="16" width="88" height="88" rx="26" fill={`url(#core-${suffix})`} opacity="0.48" />
+      </>
+    );
+  }
+
+  if (icon === "linkedin") {
+    return (
+      <>
+        <circle cx="39" cy="42" r="5.6" fill="#ffffff" />
+        <rect x="34" y="50" width="10.5" height="26" rx="2.5" fill="#ffffff" />
+        <path d="M52 50h10v4.3c2.3-3.1 5.8-4.9 10.8-4.9 8.5 0 13.2 5.3 13.2 14.8V76H75V66.7c0-4.8-1.7-7.4-5.7-7.4-4.3 0-6.4 2.8-6.4 8.4V76H52z" fill="#ffffff" />
+        <rect x="16" y="16" width="88" height="88" rx="26" fill={`url(#core-${suffix})`} opacity="0.4" />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <path d="M36 34h11.5l12.2 17 12-17H83L64.5 60 85 87H73.5L58.7 67.2 44.5 87H33.1L53.8 59.5z" fill="#f5f7fb" />
+      <path d="M36 34h11.5l12.2 17 12-17H83L64.5 60 85 87H73.5L58.7 67.2 44.5 87H33.1L53.8 59.5z" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5" />
+      <rect x="16" y="16" width="88" height="88" rx="26" fill={`url(#core-${suffix})`} opacity="0.32" />
+    </>
   );
 }
