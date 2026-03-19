@@ -1,115 +1,114 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { animate, type AnimationPlaybackControls } from "framer-motion";
+import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
-type CarouselMetric = {
-  focus: number;
-  offset: number;
-};
+const STEP_DEGREES = 72;
+const DRAG_SENSITIVITY = 0.34;
+
+function getActiveIndex(rotation: number, count: number) {
+  const rawIndex = Math.round(-rotation / STEP_DEGREES);
+  return ((rawIndex % count) + count) % count;
+}
 
 export function useContactCarousel(count: number) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const frameRef = useRef<number | null>(null);
+  const [rotation, setRotation] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [metrics, setMetrics] = useState<CarouselMetric[]>(() =>
-    Array.from({ length: count }, (_, index) => ({
-      focus: index === 0 ? 1 : 0,
-      offset: index,
-    })),
-  );
+  const [isDragging, setIsDragging] = useState(false);
 
-  const measure = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
+  const controlsRef = useRef<AnimationPlaybackControls | null>(null);
+  const pointerIdRef = useRef<number | null>(null);
+  const startXRef = useRef(0);
+  const startRotationRef = useRef(0);
+  const lastXRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const velocityRef = useRef(0);
+  const dragDistanceRef = useRef(0);
+  const ignoreClickUntilRef = useRef(0);
 
-    const containerRect = container.getBoundingClientRect();
-    const containerCenter = containerRect.left + containerRect.width / 2;
-    const nextMetrics: CarouselMetric[] = [];
-    let nearestIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    for (let index = 0; index < count; index += 1) {
-      const node = itemRefs.current[index];
-      if (!node) {
-        nextMetrics.push({ focus: 0, offset: 1.4 });
-        continue;
-      }
-
-      const rect = node.getBoundingClientRect();
-      const itemCenter = rect.left + rect.width / 2;
-      const distance = itemCenter - containerCenter;
-      const normalizedOffset = distance / Math.max(containerRect.width * 0.36, 1);
-      const focus = Math.max(0, 1 - Math.min(1.18, Math.abs(normalizedOffset)));
-      nextMetrics.push({ focus, offset: normalizedOffset });
-
-      if (Math.abs(distance) < nearestDistance) {
-        nearestDistance = Math.abs(distance);
-        nearestIndex = index;
-      }
-    }
-
-    setMetrics(nextMetrics);
-    setActiveIndex(nearestIndex);
-  }, [count]);
-
-  const requestMeasure = useCallback(() => {
-    if (frameRef.current !== null) {
-      window.cancelAnimationFrame(frameRef.current);
-    }
-
-    frameRef.current = window.requestAnimationFrame(() => {
-      frameRef.current = null;
-      measure();
-    });
-  }, [measure]);
-
-  useEffect(() => {
-    requestMeasure();
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    container.addEventListener("scroll", requestMeasure, { passive: true });
-    window.addEventListener("resize", requestMeasure);
-
-    return () => {
-      container.removeEventListener("scroll", requestMeasure);
-      window.removeEventListener("resize", requestMeasure);
-      if (frameRef.current !== null) {
-        window.cancelAnimationFrame(frameRef.current);
-      }
-    };
-  }, [requestMeasure]);
-
-  const setItemRef = useCallback(
-    (index: number) => (node: HTMLDivElement | null) => {
-      itemRefs.current[index] = node;
-      requestMeasure();
+  const syncRotation = useCallback(
+    (nextRotation: number) => {
+      setRotation(nextRotation);
+      setActiveIndex(getActiveIndex(nextRotation, count));
     },
-    [requestMeasure],
+    [count],
   );
 
-  const scrollToIndex = useCallback((index: number) => {
-    const container = containerRef.current;
-    const node = itemRefs.current[index];
-    if (!container || !node) return;
-
-    const left = node.offsetLeft - container.clientWidth / 2 + node.clientWidth / 2;
-    container.scrollTo({
-      left,
-      behavior: "smooth",
-    });
-  }, []);
-
-  return useMemo(
-    () => ({
-      activeIndex,
-      containerRef,
-      metrics,
-      scrollToIndex,
-      setItemRef,
-    }),
-    [activeIndex, metrics, scrollToIndex, setItemRef],
+  const snapToIndex = useCallback(
+    (index: number) => {
+      const targetRotation = -index * STEP_DEGREES;
+      controlsRef.current?.stop();
+      controlsRef.current = animate(rotation, targetRotation, {
+        duration: 0.42,
+        ease: [0.22, 1, 0.36, 1],
+        onUpdate: syncRotation,
+      });
+    },
+    [rotation, syncRotation],
   );
+
+  const finishDrag = useCallback(() => {
+    const projectedRotation = rotation + velocityRef.current * 28;
+    const snappedIndex = getActiveIndex(projectedRotation, count);
+    setIsDragging(false);
+    snapToIndex(snappedIndex);
+  }, [count, rotation, snapToIndex]);
+
+  const onPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      pointerIdRef.current = event.pointerId;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      controlsRef.current?.stop();
+      setIsDragging(true);
+      startXRef.current = event.clientX;
+      startRotationRef.current = rotation;
+      lastXRef.current = event.clientX;
+      lastTimeRef.current = performance.now();
+      velocityRef.current = 0;
+      dragDistanceRef.current = 0;
+    },
+    [rotation],
+  );
+
+  const onPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      if (pointerIdRef.current !== event.pointerId) return;
+
+      const dx = event.clientX - startXRef.current;
+      const nextRotation = startRotationRef.current + dx * DRAG_SENSITIVITY;
+      const now = performance.now();
+      const elapsed = Math.max(now - lastTimeRef.current, 1);
+      velocityRef.current = (event.clientX - lastXRef.current) / elapsed;
+      lastXRef.current = event.clientX;
+      lastTimeRef.current = now;
+      dragDistanceRef.current = Math.max(dragDistanceRef.current, Math.abs(dx));
+      syncRotation(nextRotation);
+    },
+    [syncRotation],
+  );
+
+  const onPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      if (pointerIdRef.current !== event.pointerId) return;
+      pointerIdRef.current = null;
+      if (dragDistanceRef.current > 8) {
+        ignoreClickUntilRef.current = performance.now() + 220;
+      }
+      finishDrag();
+    },
+    [finishDrag],
+  );
+
+  return {
+    activeIndex,
+    bind: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+    },
+    isDragging,
+    rotation,
+    shouldIgnoreClick: () => performance.now() < ignoreClickUntilRef.current,
+    snapToIndex,
+  };
 }

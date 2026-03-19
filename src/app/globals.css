@@ -1762,3 +1762,92 @@ body {
     animation: none;
   }
 }
+
+@keyframes chv-contact-space-twinkle {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+.chv-contact-space-nebula {
+  background:
+    radial-gradient(34% 26% at 24% 22%, rgba(255, 202, 158, 0.11), rgba(255, 202, 158, 0) 72%),
+    radial-gradient(30% 24% at 78% 18%, rgba(161, 191, 255, 0.14), rgba(161, 191, 255, 0) 76%),
+    radial-gradient(42% 30% at 52% 76%, rgba(215, 168, 255, 0.1), rgba(215, 168, 255, 0) 78%);
+  filter: blur(16px);
+}
+
+.chv-contact-space-vignette {
+  background:
+    radial-gradient(132% 108% at 50% 48%, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.22) 80%, rgba(0, 0, 0, 0.58) 100%),
+    linear-gradient(180deg, rgba(5, 7, 12, 0.08), rgba(3, 4, 8, 0.42));
+}
+
+.chv-contact-space-star {
+  position: absolute;
+  display: block;
+  background: #fff7e8;
+  box-shadow: 0 0 18px rgba(255, 247, 232, 0.22);
+  animation: chv-contact-space-twinkle 2.8s steps(2, end) infinite;
+}
+
+.chv-contact-space-star--sm {
+  width: 3px;
+  height: 3px;
+}
+
+.chv-contact-space-star--md {
+  width: 5px;
+  height: 5px;
+}
+
+.chv-contact-space-star--lg {
+  width: 7px;
+  height: 7px;
+}
+
+.chv-contact-ring-stage {
+  perspective: 1400px;
+}
+
+.chv-contact-ring {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.chv-contact-app-glyph {
+  position: relative;
+  display: grid;
+  place-items: center;
+  transition:
+    transform 220ms ease,
+    filter 220ms ease,
+    opacity 220ms ease;
+}
+
+.chv-contact-overlay-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+    linear-gradient(180deg, rgba(11, 14, 24, 0.96), rgba(7, 8, 14, 0.98));
+}
+
+.chv-contact-overlay-link {
+  display: inline-block;
+  border-bottom: 1px solid rgba(255, 244, 226, 0.4);
+  padding-bottom: 0.2rem;
+  letter-spacing: -0.03em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chv-contact-space-star,
+  .chv-contact-app-glyph {
+    animation: none;
+    transition: none !important;
+  }
+}
