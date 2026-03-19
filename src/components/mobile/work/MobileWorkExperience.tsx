@@ -159,15 +159,15 @@ export function MobileWorkExperience() {
           initial={reducedMotion ? false : { opacity: 0, y: 22 }}
           animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-[2rem] border border-[#7cffb5]/18 bg-[linear-gradient(180deg,rgba(2,8,5,0.94),rgba(0,2,1,0.98))] shadow-[0_26px_72px_rgba(0,0,0,0.32),0_0_40px_rgba(114,255,174,0.06)]"
+          className="relative overflow-hidden rounded-[2rem] border border-[#7cffb5]/16 bg-[linear-gradient(180deg,rgba(2,8,5,0.94),rgba(0,2,1,0.98))] shadow-[0_18px_42px_rgba(0,0,0,0.22),0_0_28px_rgba(114,255,174,0.04)]"
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(142,255,192,0.08),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_22%)]" />
           <div className="absolute inset-[1px] rounded-[calc(2rem-1px)] border border-[#8effbd]/8" />
-          <div className="absolute inset-[8px] rounded-[calc(2rem-8px)] border border-[#a8ffd2]/[0.05]" />
+          <div className="absolute inset-[8px] rounded-[calc(2rem-8px)] border border-[#a8ffd2]/[0.045]" />
           <div className="absolute left-0 top-0 h-full w-px bg-[linear-gradient(180deg,rgba(148,255,195,0.36),rgba(148,255,195,0))]" />
-          <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.1),transparent_22%),linear-gradient(115deg,rgba(255,255,255,0.07)_0%,rgba(255,255,255,0.02)_12%,transparent_28%,transparent_72%,rgba(170,255,207,0.04)_92%,rgba(255,255,255,0.02)_100%)] opacity-60" />
-          <div className="absolute inset-x-[8%] top-0 h-[22%] rounded-b-[100%] bg-[linear-gradient(180deg,rgba(219,255,232,0.18),rgba(219,255,232,0.02)_60%,transparent)] blur-xl opacity-60" />
-          <div className="absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),inset_0_0_28px_rgba(120,255,177,0.08),inset_0_0_120px_rgba(0,0,0,0.24)]" />
+          <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.08),transparent_22%),linear-gradient(115deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.018)_12%,transparent_28%,transparent_72%,rgba(170,255,207,0.03)_92%,rgba(255,255,255,0.018)_100%)] opacity-60" />
+          <div className="absolute inset-x-[10%] top-0 h-[18%] rounded-b-[100%] bg-[linear-gradient(180deg,rgba(219,255,232,0.14),rgba(219,255,232,0.02)_60%,transparent)] blur-xl opacity-52" />
+          <div className="absolute inset-0 rounded-[2rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.035),inset_0_0_18px_rgba(120,255,177,0.06),inset_0_0_84px_rgba(0,0,0,0.18)]" />
           <div
             className="absolute inset-0 opacity-[0.16]"
             style={{
@@ -188,8 +188,8 @@ export function MobileWorkExperience() {
               </p>
             </div>
 
-            <div className="mt-5 space-y-6">
-              <section className="relative overflow-hidden rounded-[1.5rem] border border-[#7cffb5]/14 bg-[linear-gradient(180deg,rgba(10,20,13,0.64),rgba(2,8,5,0.84))] px-4 py-4 shadow-[inset_0_1px_0_rgba(153,255,198,0.06)]">
+            <div className="mt-5 space-y-7">
+              <section className="relative overflow-hidden rounded-[1.5rem] border border-[#7cffb5]/12 bg-[linear-gradient(180deg,rgba(10,20,13,0.64),rgba(2,8,5,0.84))] px-4 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(153,255,198,0.05)]">
                 <div className="absolute inset-y-0 left-0 w-px bg-[linear-gradient(180deg,rgba(142,255,189,0),rgba(142,255,189,0.42),rgba(142,255,189,0))]" />
                 <div className="absolute inset-y-0 right-0 w-[28%] bg-[linear-gradient(270deg,rgba(124,255,181,0.08),rgba(124,255,181,0))]" />
                 <div className="absolute inset-0 bg-[linear-gradient(112deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.012)_12%,transparent_26%,transparent_80%,rgba(158,255,200,0.03)_100%)] opacity-80" />
@@ -300,12 +300,13 @@ function TerminalExperience({
     <article className="relative">
       <TerminalCommand command={`cat /experience/${entryToken}.log`} reducedMotion={true} />
 
-      <div className="relative mt-3 overflow-hidden rounded-[1.45rem] border border-[#7cffb5]/14 bg-[linear-gradient(180deg,rgba(8,16,11,0.82),rgba(2,5,4,0.96))] px-4 py-4 shadow-[0_14px_28px_rgba(0,0,0,0.16),0_0_0_1px_rgba(124,255,181,0.03),inset_0_1px_0_rgba(146,255,193,0.04)]">
+      <div className="relative mt-3 overflow-hidden rounded-[1.45rem] border border-[#7cffb5]/12 bg-[linear-gradient(180deg,rgba(8,16,11,0.82),rgba(2,5,4,0.96))] px-4 py-4 shadow-[0_10px_20px_rgba(0,0,0,0.12),0_0_0_1px_rgba(124,255,181,0.02),inset_0_1px_0_rgba(146,255,193,0.035)]">
           <div className="absolute inset-y-4 left-0 w-px bg-[linear-gradient(180deg,rgba(142,255,189,0),rgba(142,255,189,0.34),rgba(142,255,189,0))]" />
           <div className="absolute inset-y-0 right-0 w-[22%] bg-[linear-gradient(270deg,rgba(124,255,181,0.06),rgba(124,255,181,0))]" />
           <div className="absolute inset-[1px] rounded-[calc(1.45rem-1px)] border border-[#afffd5]/[0.04]" />
-          <div className="absolute inset-0 bg-[linear-gradient(112deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.018)_10%,transparent_22%,transparent_78%,rgba(158,255,200,0.03)_100%)] opacity-80" />
-          <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(218,255,231,0.04),inset_0_-18px_48px_rgba(0,0,0,0.18),inset_0_0_24px_rgba(121,255,177,0.05)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(112deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.015)_10%,transparent_22%,transparent_78%,rgba(158,255,200,0.025)_100%)] opacity-80" />
+          <div className="absolute inset-x-[8%] top-0 h-[16%] rounded-b-[100%] bg-[linear-gradient(180deg,rgba(218,255,231,0.12),rgba(218,255,231,0.01)_62%,transparent)] blur-lg opacity-42" />
+          <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(218,255,231,0.035),inset_0_-12px_28px_rgba(0,0,0,0.12),inset_0_0_18px_rgba(121,255,177,0.04)]" />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="chv-mobile-mono text-[0.62rem] uppercase tracking-[0.28em] text-[#8effbd]/52">
