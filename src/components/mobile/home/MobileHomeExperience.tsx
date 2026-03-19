@@ -281,19 +281,20 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
                   initial={reducedMotion ? false : { opacity: 0, scale: 0.96, y: 4 }}
                   animate={reducedMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
                   transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                  className="pointer-events-none absolute inset-0 z-0 rounded-[999px]"
+                  className="pointer-events-none absolute inset-0 z-0"
                   style={
                     {
                       "--signal-accent": activePortal.accent,
                       "--signal-bloom-x": "50%",
+                      "--signal-radius": "44px 58px 38px 54px / 30px 42px 28px 40px",
                     } as CSSProperties
                   }
                 >
-                  <div className="chv-mobile-signal-card__core absolute inset-0 rounded-[inherit]" />
-                  <div className="chv-mobile-signal-card__wash absolute inset-0 rounded-[inherit]" />
-                  <div className="chv-mobile-signal-card__shine absolute inset-0 rounded-[inherit]" />
+                  <div className="chv-mobile-signal-card__core absolute inset-0 rounded-[var(--signal-radius)]" />
+                  <div className="chv-mobile-signal-card__wash absolute inset-0 rounded-[var(--signal-radius)]" />
+                  <div className="chv-mobile-signal-card__shine absolute inset-0 rounded-[var(--signal-radius)]" />
                   <div
-                    className="absolute inset-0 rounded-[inherit] border border-white/10"
+                    className="absolute inset-0 rounded-[var(--signal-radius)] border border-white/10"
                     style={{
                       boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 24px 70px rgba(0,0,0,0.14), 0 0 34px ${activePortal.accent}10`,
                     }}
@@ -317,8 +318,25 @@ export function MobileHomeExperience(_: MobileHomeExperienceProps) {
                 </h1>
                 <motion.p
                   initial={reducedMotion ? false : { opacity: 0, y: 8 }}
-                  animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
-                  transition={{ duration: 0.55, delay: 0.85, ease: [0.22, 1, 0.36, 1] }}
+                  animate={
+                    reducedMotion
+                      ? undefined
+                      : {
+                          opacity: [1, 1, 0.08, 1],
+                          y: [0, 0, 0, 0],
+                        }
+                  }
+                  transition={
+                    reducedMotion
+                      ? { duration: 0.55, delay: 0.85, ease: [0.22, 1, 0.36, 1] }
+                      : {
+                          duration: 1,
+                          delay: 0.85,
+                          repeat: Number.POSITIVE_INFINITY,
+                          ease: "linear",
+                          times: [0, 0.58, 0.74, 1],
+                        }
+                  }
                   className="chv-mobile-body relative z-10 mt-1.5 whitespace-nowrap text-[0.88rem] italic leading-7 tracking-[0.01em] text-white/74"
                 >
                   where storytelling meets tomorrow
