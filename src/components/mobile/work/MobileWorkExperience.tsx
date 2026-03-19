@@ -25,15 +25,6 @@ const monthMap: Record<string, number> = {
   Dec: 11,
 };
 
-const cardLanes = [
-  { width: 84, offset: 0.08 },
-  { width: 84, offset: -0.06 },
-  { width: 83, offset: 0.05 },
-  { width: 85, offset: -0.05 },
-  { width: 84, offset: 0.03 },
-  { width: 84, offset: -0.03 },
-] as const;
-
 const smokeVertexShader = `
 varying vec2 vUv;
 
@@ -109,10 +100,6 @@ type ScrollSnapshot = {
   velocity: number;
 };
 
-type WorkSceneItem =
-  | { kind: "intro"; id: string }
-  | { kind: "entry"; id: string; entry: WorkEntry };
-
 function modulo(value: number, length: number) {
   if (length === 0) return 0;
   return ((value % length) + length) % length;
@@ -120,25 +107,6 @@ function modulo(value: number, length: number) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-function getFieldTransform(progress: number, velocity: number, laneOffset = 0) {
-  const clamped = clamp(progress, -1.22, 1.22);
-  const focus = 1 - clamp(Math.abs(clamped) / 0.92, 0, 1);
-  const bend = Math.sin(clamped * Math.PI * 0.46);
-  const drift = clamp(velocity * 3.2, -5.5, 5.5);
-
-  return {
-    focus,
-    x: bend * 6 + laneOffset * 8 - drift,
-    depth: clamp(122 - Math.abs(clamped) * 228, -88, 126),
-    scale: 0.8 + focus * 0.2,
-    opacity: 0.24 + focus * 0.76,
-    blur: clamp(Math.abs(clamped) * 0.32, 0, 0.54),
-    rotateX: clamp(clamped * 20, -20, 20),
-    rotateY: clamp(bend * -4.5 - laneOffset * 5 - velocity * 1.8, -8, 8),
-    rotateZ: bend * -0.35 + laneOffset * 0.7,
-  };
 }
 
 function seededNoise(seed: number) {
@@ -737,30 +705,78 @@ function ShatteredGlassOverlay({
   );
 }
 
-function IntroCard({
-  y,
+function RollingCard({
+  children,
+  railOffset,
   viewportHeight,
-  velocity,
+  order,
 }: {
-  y: number;
+  children: React.ReactNode;
+  railOffset: number;
   viewportHeight: number;
-  velocity: number;
+  order: number;
 }) {
-  const center = y + viewportHeight * 0.32;
-  const progress = (center - viewportHeight * 0.56) / viewportHeight;
-  const field = getFieldTransform(progress, velocity, 0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [metrics, setMetrics] = useState({ top: 0, height: 0 });
+
+  useEffect(() => {
+    const element = rootRef.current;
+    if (!element) return;
+
+    const update = () => {
+      setMetrics({
+        top: element.offsetTop,
+        height: element.offsetHeight,
+      });
+    };
+
+    update();
+
+    const observer = new ResizeObserver(() => update());
+    observer.observe(element);
+    if (element.parentElement) observer.observe(element.parentElement);
+    window.addEventListener("resize", update);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  const cardCenter = railOffset + metrics.top + metrics.height / 2;
+  const progress = metrics.height
+    ? (cardCenter - viewportHeight * 0.53) / (viewportHeight * 0.5)
+    : 0;
+  const distance = clamp(Math.abs(progress), 0, 1.45);
+  const flatten = clamp((distance - 0.06) / 1.08, 0, 1);
+  const rotateX = progress * -20;
+  const scale = 1 - flatten * 0.12;
+  const depth = (1 - flatten) * 74 - flatten * 42;
+  const yShift = progress * flatten * 18;
+  const blur = Math.max(distance - 0.18, 0) * 1.8;
+  const opacity = clamp(1.02 - flatten * 0.78, 0.12, 1);
 
   return (
-    <article
-      className="absolute left-1/2 top-0 will-change-transform"
+    <div
+      ref={rootRef}
+      className="relative will-change-transform"
       style={{
-        width: "84%",
-        transform: `translate3d(calc(-50% + ${field.x}px), ${y}px, ${field.depth}px) scale(${field.scale}) rotateX(${field.rotateX}deg) rotateY(${field.rotateY}deg) rotateZ(${field.rotateZ}deg)`,
-        transformOrigin: "50% 35%",
-        opacity: field.opacity,
-        filter: `blur(${field.blur}px)`,
+        opacity,
+        filter: `blur(${blur}px) saturate(${1.04 - flatten * 0.08})`,
+        transform: `translate3d(0, ${yShift}px, ${depth}px) rotateX(${rotateX}deg) scale(${scale})`,
+        transformOrigin: progress < 0 ? "50% 100%" : "50% 0%",
+        transformStyle: "preserve-3d",
+        zIndex: 200 - order,
       }}
     >
+      {children}
+    </div>
+  );
+}
+
+function IntroCard() {
+  return (
+    <article className="will-change-transform">
       <CardShell className="px-5 py-5">
         <p className="chv-mobile-mono text-[0.58rem] uppercase tracking-[0.34em] text-[rgba(228,251,250,0.72)]">
           Work dossier
@@ -786,35 +802,14 @@ function IntroCard({
 
 function EntryCard({
   entry,
-  index,
-  y,
-  viewportHeight,
-  velocity,
 }: {
   entry: WorkEntry;
-  index: number;
-  y: number;
-  viewportHeight: number;
-  velocity: number;
 }) {
-  const layout = cardLanes[index % cardLanes.length];
   const { company, role } = splitRoleTitle(entry.title);
-  const center = y + viewportHeight * 0.32;
-  const progress = (center - viewportHeight * 0.56) / viewportHeight;
-  const field = getFieldTransform(progress, velocity, layout.offset);
   const locationLine = normalizeLocation(entry.location);
 
   return (
-    <article
-      className="absolute left-1/2 top-0 will-change-transform"
-      style={{
-        width: `${layout.width}%`,
-        transform: `translate3d(calc(-50% + ${field.x}px), ${y}px, ${field.depth}px) scale(${field.scale}) rotateX(${field.rotateX}deg) rotateY(${field.rotateY}deg) rotateZ(${field.rotateZ}deg)`,
-        transformOrigin: "50% 35%",
-        opacity: field.opacity,
-        filter: `blur(${field.blur}px)`,
-      }}
-    >
+    <article className="will-change-transform">
       <CardShell className="px-5 pb-5 pt-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -862,7 +857,7 @@ function CardShell({
     <div className="relative">
       <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_50%_6%,rgba(210,255,244,0.24),transparent_52%)] blur-3xl" />
       <div className="absolute inset-x-[14%] -bottom-5 h-9 rounded-full bg-black/34 blur-3xl" />
-      <div className={`relative overflow-hidden rounded-[2rem] border border-white/22 bg-[linear-gradient(180deg,rgba(252,255,255,0.36)_0%,rgba(232,247,255,0.22)_18%,rgba(150,192,208,0.12)_46%,rgba(10,18,27,0.36)_100%)] shadow-[0_28px_90px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_rgba(255,255,255,0.42),inset_0_-1px_0_rgba(196,248,255,0.12)] backdrop-blur-[34px] ${className}`}>
+      <div className={`relative overflow-hidden rounded-[2rem] border border-white/22 bg-[linear-gradient(180deg,rgba(252,255,255,0.38)_0%,rgba(232,247,255,0.22)_16%,rgba(150,192,208,0.12)_42%,rgba(10,18,27,0.42)_100%)] shadow-[0_22px_72px_rgba(0,0,0,0.28),0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_rgba(255,255,255,0.42),inset_0_-1px_0_rgba(196,248,255,0.12)] backdrop-blur-[34px] ${className}`}>
         <div className="absolute inset-0 bg-[linear-gradient(126deg,rgba(255,255,255,0.36)_0%,rgba(255,255,255,0.14)_18%,transparent_44%,rgba(165,240,255,0.14)_74%,rgba(255,255,255,0.08)_100%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.3),transparent_16%),radial-gradient(circle_at_84%_88%,rgba(176,255,243,0.14),transparent_24%)]" />
         <div className="absolute inset-x-[6%] top-[7%] h-[26%] rounded-[1.8rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.0))] opacity-70 blur-2xl" />
@@ -873,29 +868,11 @@ function CardShell({
   );
 }
 
-function renderSceneItem({
-  item,
-  y,
-  viewportHeight,
-  velocity,
-  index,
-}: {
-  item: WorkSceneItem;
-  y: number;
-  viewportHeight: number;
-  velocity: number;
-  index: number;
-}) {
-  if (item.kind === "intro") {
-    return <IntroCard y={y} viewportHeight={viewportHeight} velocity={velocity} />;
-  }
-
-  return <EntryCard entry={item.entry} index={index} y={y} viewportHeight={viewportHeight} velocity={velocity} />;
-}
-
 export function MobileWorkExperience() {
   const reducedMotion = useReducedMotion() ?? false;
   const [viewportHeight, setViewportHeight] = useState(820);
+  const [contentHeight, setContentHeight] = useState(0);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const sceneScrollRef = useRef<ScrollSnapshot>({ position: 0, velocity: 0 });
 
   useEffect(() => {
@@ -917,20 +894,6 @@ export function MobileWorkExperience() {
     [],
   );
 
-  const items = useMemo<WorkSceneItem[]>(
-    () => [
-      { kind: "intro", id: "intro" },
-      ...sortedEntries.map((entry) => ({
-        kind: "entry" as const,
-        id: entry.title,
-        entry,
-      })),
-    ],
-    [sortedEntries],
-  );
-
-  const itemSpan = Math.max(330, viewportHeight * 0.58);
-  const contentLength = items.length * itemSpan;
   const { frame, scrollRef } = useSmoothSceneScroll({
     reducedMotion,
   });
@@ -939,19 +902,23 @@ export function MobileWorkExperience() {
     sceneScrollRef.current = frame;
   }, [frame]);
 
-  const sceneItems = useMemo(
-    () =>
-      items.map((item, index) => ({
-        item,
-        index,
-        key: item.id,
-        y: viewportHeight * 0.28 + index * itemSpan - frame.position,
-      })),
-    [frame.position, itemSpan, items, viewportHeight],
-  );
+  useEffect(() => {
+    const element = contentRef.current;
+    if (!element) return;
+
+    const update = () => setContentHeight(element.getBoundingClientRect().height);
+    update();
+
+    const observer = new ResizeObserver(() => update());
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [sortedEntries]);
+
+  const railOffset = viewportHeight * 0.22 - frame.position;
 
   const scrollGhostStyle = {
-    height: `${contentLength + viewportHeight * 1.2}px`,
+    height: `${Math.max(contentHeight + viewportHeight * 0.9, viewportHeight * 1.6)}px`,
   } satisfies CSSProperties;
 
   return (
@@ -983,20 +950,33 @@ export function MobileWorkExperience() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-44 bg-[linear-gradient(180deg,rgba(2,5,9,0.0)_0%,rgba(2,5,9,0.78)_70%,rgba(2,5,9,0.95)_100%)]" />
 
         <div
-          className="pointer-events-none absolute inset-0 z-30"
-          style={{ perspective: "2200px", transformStyle: "preserve-3d" }}
+          className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
+          style={{
+            perspective: "1200px",
+            perspectiveOrigin: "50% 48%",
+            maskImage: "linear-gradient(180deg, transparent 0%, black 12%, black 82%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(180deg, transparent 0%, black 12%, black 82%, transparent 100%)",
+          }}
         >
-          {sceneItems.map(({ item, index, key, y }) => (
-            <div key={key}>
-              {renderSceneItem({
-                item,
-                y,
-                viewportHeight,
-                velocity: frame.velocity,
-                index,
-              })}
+          <div
+            className="absolute inset-x-0 top-0"
+            style={{
+              transform: `translate3d(0, ${railOffset}px, 0)`,
+              willChange: "transform",
+              transformStyle: "preserve-3d",
+            }}
+          >
+            <div ref={contentRef} className="mx-auto flex w-full max-w-[27rem] flex-col gap-3 px-5 pb-[32svh] pt-[16svh]">
+              <RollingCard railOffset={railOffset} viewportHeight={viewportHeight} order={0}>
+                <IntroCard />
+              </RollingCard>
+              {sortedEntries.map((entry, index) => (
+                <RollingCard key={entry.title} railOffset={railOffset} viewportHeight={viewportHeight} order={index + 1}>
+                  <EntryCard entry={entry} />
+                </RollingCard>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </section>
     </MobileRouteFrame>
