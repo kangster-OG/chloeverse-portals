@@ -373,9 +373,9 @@ function renderIconMark(icon: ContactCarouselItem["icon"], suffix: string, accen
   if (icon === "instagram") {
     return (
       <>
-        <rect x="31" y="31" width="38" height="38" rx="12" fill="none" stroke="#fffaf4" strokeWidth="5.5" />
-        <circle cx="50" cy="50" r="10.5" fill="none" stroke="#fffaf4" strokeWidth="5.5" />
-        <circle cx="64" cy="36" r="3.8" fill="#fffaf4" />
+        <rect x="36" y="36" width="48" height="48" rx="15" fill="none" stroke="#fffaf4" strokeWidth="5.5" />
+        <circle cx="60" cy="60" r="12.5" fill="none" stroke="#fffaf4" strokeWidth="5.5" />
+        <circle cx="76" cy="44" r="4.2" fill="#fffaf4" />
         <rect x="16" y="16" width="88" height="88" rx="26" fill={`url(#core-${suffix})`} />
       </>
     );
