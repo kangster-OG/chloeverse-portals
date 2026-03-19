@@ -125,6 +125,7 @@ export function MobileWorkExperience() {
             className="absolute left-1/2 top-[4.5rem] h-[18rem] w-[18rem] -translate-x-1/2 rounded-full blur-3xl"
             style={{ background: "radial-gradient(circle, rgba(114,255,174,0.2) 0%, rgba(114,255,174,0.02) 58%, transparent 76%)" }}
           />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_42%,rgba(0,0,0,0.12)_72%,rgba(0,0,0,0.3)_100%)]" />
           <MatrixRain reducedMotion={Boolean(reducedMotion)} />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08)_0%,rgba(0,0,0,0.24)_100%)]" />
         </>
@@ -160,6 +161,9 @@ export function MobileWorkExperience() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(142,255,192,0.08),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_22%)]" />
           <div className="absolute inset-[1px] rounded-[calc(2rem-1px)] border border-[#8effbd]/8" />
           <div className="absolute left-0 top-0 h-full w-px bg-[linear-gradient(180deg,rgba(148,255,195,0.36),rgba(148,255,195,0))]" />
+          <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.1),transparent_22%),linear-gradient(115deg,rgba(255,255,255,0.07)_0%,rgba(255,255,255,0.02)_12%,transparent_28%,transparent_72%,rgba(170,255,207,0.04)_92%,rgba(255,255,255,0.02)_100%)] opacity-60" />
+          <div className="absolute inset-x-[8%] top-0 h-[22%] rounded-b-[100%] bg-[linear-gradient(180deg,rgba(219,255,232,0.18),rgba(219,255,232,0.02)_60%,transparent)] blur-xl opacity-60" />
+          <div className="absolute inset-0 rounded-[2rem] shadow-[inset_0_0_28px_rgba(120,255,177,0.08),inset_0_0_120px_rgba(0,0,0,0.26)]" />
           <div
             className="absolute inset-0 opacity-[0.16]"
             style={{
@@ -188,26 +192,14 @@ export function MobileWorkExperience() {
                   command="boot work --mobile --mode=premium-terminal"
                   reducedMotion={Boolean(reducedMotion)}
                 />
-                <div className="mt-4 grid gap-2 border-t border-[#7cffb5]/10 pt-4 text-[0.7rem] uppercase tracking-[0.18em] text-[#8fffbf]/52 sm:grid-cols-2">
+                <div className="mt-4 grid gap-2 border-t border-[#7cffb5]/10 pt-4 text-[0.7rem] uppercase tracking-[0.18em] text-[#8fffbf]/52">
                   <p className="chv-mobile-mono">subject......... Chloe Kang</p>
-                  <p className="chv-mobile-mono">surface......... premium matrix</p>
+                  <p className="chv-mobile-mono">status.......... online // reverse chronological</p>
                 </div>
-                <div className="mt-4 space-y-2 text-[0.72rem] uppercase tracking-[0.18em] text-[#8bffbb]/58">
-                  <p className="chv-mobile-mono">status......... online</p>
-                  <p className="chv-mobile-mono">interface...... matrix archive</p>
-                  <p className="chv-mobile-mono">sequence....... reverse chronological</p>
-                </div>
-                <p className="mt-5 text-[0.98rem] leading-7 text-[#deffe9]/74">{WORK_INTRO_COPY}</p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {WORK_ROLE_STACK.map((role) => (
-                    <span
-                      key={role}
-                      className="chv-mobile-mono rounded-full border border-[#7cffb5]/16 bg-[rgba(114,255,174,0.05)] px-3 py-1.5 text-[0.66rem] uppercase tracking-[0.18em] text-[#98ffc4]/68"
-                    >
-                      {role}
-                    </span>
-                  ))}
-                </div>
+                <p className="mt-5 max-w-[16rem] text-[0.98rem] leading-7 text-[#e7ffef]/76">{WORK_INTRO_COPY}</p>
+                <p className="mt-4 chv-mobile-mono text-[0.68rem] uppercase tracking-[0.2em] text-[#92ffc2]/46">
+                  {WORK_ROLE_STACK.join(" // ")}
+                </p>
               </section>
 
               <section className="space-y-5">
@@ -299,6 +291,8 @@ function TerminalExperience({
       <div className="relative mt-3 overflow-hidden rounded-[1.45rem] border border-[#7cffb5]/14 bg-[linear-gradient(180deg,rgba(8,16,11,0.82),rgba(2,5,4,0.96))] px-4 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(146,255,193,0.04)]">
         <div className="absolute inset-y-4 left-0 w-px bg-[linear-gradient(180deg,rgba(142,255,189,0),rgba(142,255,189,0.34),rgba(142,255,189,0))]" />
         <div className="absolute inset-y-0 right-0 w-[22%] bg-[linear-gradient(270deg,rgba(124,255,181,0.06),rgba(124,255,181,0))]" />
+        <div className="absolute inset-0 bg-[linear-gradient(112deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.018)_10%,transparent_22%,transparent_78%,rgba(158,255,200,0.03)_100%)] opacity-80" />
+        <div className="absolute inset-0 shadow-[inset_0_1px_0_rgba(218,255,231,0.04),inset_0_0_24px_rgba(121,255,177,0.06)]" />
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="chv-mobile-mono text-[0.62rem] uppercase tracking-[0.28em] text-[#8effbd]/52">
