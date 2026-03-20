@@ -41,7 +41,7 @@ const CONTACT = {
   instagram: "https://instagram.com/imchloekang",
   tiktok: "https://www.tiktok.com/@imchloekang",
   linkedin: "https://www.linkedin.com/in/chloe-kang-234292250/",
-  x: "https://x.com/imchloekang",
+  x: "https://x.com/ChloeKa39867633",
   portals: "/",
   candy: "https://imchloekang.com",
 } as const;
