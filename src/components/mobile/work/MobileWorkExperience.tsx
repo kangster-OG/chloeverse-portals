@@ -293,14 +293,19 @@ function makeGlassGeometry(shape: THREE.Shape, depth: number, bevelSize: number)
 
 function useSmoothSceneScroll({
   reducedMotion,
+  snapPointsRef,
 }: {
   reducedMotion: boolean;
+  snapPointsRef: React.MutableRefObject<number[]>;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const stateRef = useRef({
     target: 0,
     current: 0,
     velocity: 0,
+    isTouching: false,
+    lastScrollAt: 0,
+    snappingTo: null as number | null,
   });
   const [frame, setFrame] = useState<ScrollSnapshot>({ position: 0, velocity: 0 });
 
@@ -312,9 +317,46 @@ function useSmoothSceneScroll({
     stateRef.current.target = 0;
     stateRef.current.current = 0;
     stateRef.current.velocity = 0;
+    stateRef.current.isTouching = false;
+    stateRef.current.lastScrollAt = performance.now();
+    stateRef.current.snappingTo = null;
+
+    const nearestSnapPoint = (value: number) => {
+      const snapPoints = snapPointsRef.current;
+      if (!snapPoints.length) return value;
+
+      let nearest = snapPoints[0] ?? value;
+      let smallestDistance = Math.abs(nearest - value);
+
+      for (let index = 1; index < snapPoints.length; index += 1) {
+        const point = snapPoints[index] ?? value;
+        const distance = Math.abs(point - value);
+        if (distance < smallestDistance) {
+          nearest = point;
+          smallestDistance = distance;
+        }
+      }
+
+      const maxScroll = Math.max(element.scrollHeight - element.clientHeight, 0);
+      return clamp(nearest, 0, maxScroll);
+    };
 
     const handleScroll = () => {
       stateRef.current.target = element.scrollTop;
+      stateRef.current.lastScrollAt = performance.now();
+      if (stateRef.current.snappingTo !== null && Math.abs(element.scrollTop - stateRef.current.snappingTo) < 1.5) {
+        stateRef.current.snappingTo = null;
+      }
+    };
+
+    const handleTouchStart = () => {
+      stateRef.current.isTouching = true;
+      stateRef.current.snappingTo = null;
+    };
+
+    const handleTouchEnd = () => {
+      stateRef.current.isTouching = false;
+      stateRef.current.lastScrollAt = performance.now();
     };
 
     let frameId = 0;
@@ -326,8 +368,22 @@ function useSmoothSceneScroll({
 
       const state = stateRef.current;
       const before = state.current;
+      if (!state.isTouching && state.snappingTo === null && now - state.lastScrollAt > 85) {
+        const snapTarget = nearestSnapPoint(element.scrollTop);
+        if (Math.abs(element.scrollTop - snapTarget) > 6) {
+          state.snappingTo = snapTarget;
+          element.scrollTo({
+            top: snapTarget,
+            behavior: reducedMotion ? "auto" : "smooth",
+          });
+          state.target = snapTarget;
+        } else {
+          state.target = snapTarget;
+        }
+      }
+
       const diff = state.target - state.current;
-      const ease = reducedMotion ? 0.44 : 0.2;
+      const ease = reducedMotion ? 0.5 : 0.26;
       state.current += diff * ease;
       if (Math.abs(state.target - state.current) < 0.45) {
         state.current = state.target;
@@ -346,13 +402,19 @@ function useSmoothSceneScroll({
     };
 
     element.addEventListener("scroll", handleScroll, { passive: true });
+    element.addEventListener("touchstart", handleTouchStart, { passive: true });
+    element.addEventListener("touchend", handleTouchEnd, { passive: true });
+    element.addEventListener("touchcancel", handleTouchEnd, { passive: true });
     frameId = window.requestAnimationFrame(tick);
 
     return () => {
       element.removeEventListener("scroll", handleScroll);
+      element.removeEventListener("touchstart", handleTouchStart);
+      element.removeEventListener("touchend", handleTouchEnd);
+      element.removeEventListener("touchcancel", handleTouchEnd);
       window.cancelAnimationFrame(frameId);
     };
-  }, [reducedMotion]);
+  }, [reducedMotion, snapPointsRef]);
 
   return { frame, scrollRef };
 }
@@ -1126,6 +1188,7 @@ export function MobileWorkExperience() {
   const [viewportHeight, setViewportHeight] = useState(820);
   const [contentHeight, setContentHeight] = useState(0);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const snapPointsRef = useRef<number[]>([]);
   const sceneScrollRef = useRef<ScrollSnapshot>({ position: 0, velocity: 0 });
 
   useEffect(() => {
@@ -1149,6 +1212,7 @@ export function MobileWorkExperience() {
 
   const { frame, scrollRef } = useSmoothSceneScroll({
     reducedMotion,
+    snapPointsRef,
   });
 
   useEffect(() => {
@@ -1159,14 +1223,28 @@ export function MobileWorkExperience() {
     const element = contentRef.current;
     if (!element) return;
 
-    const update = () => setContentHeight(element.getBoundingClientRect().height);
+    const update = () => {
+      setContentHeight(element.getBoundingClientRect().height);
+
+      const snapPoints = Array.from(element.children)
+        .map((child) => {
+          const card = child as HTMLDivElement;
+          const center = card.offsetTop + card.offsetHeight / 2;
+          return Math.max(0, center - viewportHeight * 0.31);
+        })
+        .sort((a, b) => a - b);
+
+      snapPointsRef.current = snapPoints;
+    };
+
     update();
 
     const observer = new ResizeObserver(() => update());
     observer.observe(element);
+    Array.from(element.children).forEach((child) => observer.observe(child as Element));
 
     return () => observer.disconnect();
-  }, [sortedEntries]);
+  }, [sortedEntries, viewportHeight]);
 
   const railOffset = viewportHeight * 0.22 - frame.position;
 
