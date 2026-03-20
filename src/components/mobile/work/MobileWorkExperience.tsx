@@ -157,6 +157,12 @@ function useSmoothSceneScroll({
     isTouching: false,
     lastScrollAt: 0,
     snappingTo: null as number | null,
+    lockedTo: null as number | null,
+    activeIndex: 0,
+    gestureStartY: 0,
+    gestureStartIndex: 0,
+    gestureDeltaY: 0,
+    lastWheelStepAt: 0,
   });
   const [frame, setFrame] = useState<ScrollSnapshot>({ position: 0, velocity: 0 });
 
@@ -171,43 +177,135 @@ function useSmoothSceneScroll({
     stateRef.current.isTouching = false;
     stateRef.current.lastScrollAt = performance.now();
     stateRef.current.snappingTo = null;
+    stateRef.current.lockedTo = 0;
+    stateRef.current.activeIndex = 0;
+    stateRef.current.gestureStartY = 0;
+    stateRef.current.gestureStartIndex = 0;
+    stateRef.current.gestureDeltaY = 0;
+    stateRef.current.lastWheelStepAt = 0;
 
-    const nearestSnapPoint = (value: number) => {
+    const clampSnapIndex = (value: number) => {
       const snapPoints = snapPointsRef.current;
-      if (!snapPoints.length) return value;
+      return clamp(value, 0, Math.max(snapPoints.length - 1, 0));
+    };
 
-      let nearest = snapPoints[0] ?? value;
-      let smallestDistance = Math.abs(nearest - value);
+    const nearestSnapIndex = (value: number) => {
+      const snapPoints = snapPointsRef.current;
+      if (!snapPoints.length) return 0;
+
+      let nearestIndex = 0;
+      let smallestDistance = Math.abs((snapPoints[0] ?? value) - value);
 
       for (let index = 1; index < snapPoints.length; index += 1) {
         const point = snapPoints[index] ?? value;
         const distance = Math.abs(point - value);
         if (distance < smallestDistance) {
-          nearest = point;
+          nearestIndex = index;
           smallestDistance = distance;
         }
       }
 
+      return nearestIndex;
+    };
+
+    const snapPointAtIndex = (index: number) => {
+      const snapPoints = snapPointsRef.current;
+      if (!snapPoints.length) return 0;
+      const nearest = snapPoints[clampSnapIndex(index)] ?? 0;
       const maxScroll = Math.max(element.scrollHeight - element.clientHeight, 0);
       return clamp(nearest, 0, maxScroll);
     };
 
-    const handleScroll = () => {
-      stateRef.current.target = element.scrollTop;
-      stateRef.current.lastScrollAt = performance.now();
-      if (stateRef.current.snappingTo !== null && Math.abs(element.scrollTop - stateRef.current.snappingTo) < 1.5) {
-        stateRef.current.snappingTo = null;
+    const lockToIndex = (index: number) => {
+      const lockedPoint = snapPointAtIndex(index);
+      stateRef.current.activeIndex = clampSnapIndex(index);
+      stateRef.current.lockedTo = lockedPoint;
+      stateRef.current.snappingTo = null;
+      stateRef.current.target = lockedPoint;
+      stateRef.current.current = lockedPoint;
+      stateRef.current.velocity = 0;
+      if (Math.abs(element.scrollTop - lockedPoint) > 0.5) {
+        element.scrollTop = lockedPoint;
       }
     };
 
-    const handleTouchStart = () => {
-      stateRef.current.isTouching = true;
-      stateRef.current.snappingTo = null;
+    const snapToIndex = (index: number, behavior: ScrollBehavior) => {
+      const snappedIndex = clampSnapIndex(index);
+      const snapTarget = snapPointAtIndex(snappedIndex);
+      stateRef.current.activeIndex = snappedIndex;
+      stateRef.current.lockedTo = null;
+      stateRef.current.snappingTo = snapTarget;
+      stateRef.current.target = snapTarget;
+      element.scrollTo({
+        top: snapTarget,
+        behavior,
+      });
+    };
+
+    const handleScroll = () => {
+      const state = stateRef.current;
+
+      if (!state.isTouching && state.lockedTo !== null && state.snappingTo === null) {
+        if (Math.abs(element.scrollTop - state.lockedTo) > 0.5) {
+          element.scrollTop = state.lockedTo;
+        }
+        state.target = state.lockedTo;
+        state.current = state.lockedTo;
+        state.velocity = 0;
+        return;
+      }
+
+      state.target = element.scrollTop;
+      state.lastScrollAt = performance.now();
+      if (state.snappingTo !== null && Math.abs(element.scrollTop - state.snappingTo) < 1.25) {
+        lockToIndex(state.activeIndex);
+      }
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      const state = stateRef.current;
+      state.isTouching = true;
+      state.snappingTo = null;
+      state.lockedTo = null;
+      state.gestureStartY = event.touches[0]?.clientY ?? 0;
+      state.gestureDeltaY = 0;
+      state.gestureStartIndex = nearestSnapIndex(element.scrollTop);
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      const state = stateRef.current;
+      state.gestureDeltaY = (event.touches[0]?.clientY ?? state.gestureStartY) - state.gestureStartY;
     };
 
     const handleTouchEnd = () => {
-      stateRef.current.isTouching = false;
-      stateRef.current.lastScrollAt = performance.now();
+      const state = stateRef.current;
+      state.isTouching = false;
+      state.lastScrollAt = performance.now();
+
+      const currentPoint = snapPointAtIndex(state.gestureStartIndex);
+      const movedForward = element.scrollTop - currentPoint > 18 || state.gestureDeltaY < -20;
+      const movedBackward = currentPoint - element.scrollTop > 18 || state.gestureDeltaY > 20;
+      const direction = movedForward ? 1 : movedBackward ? -1 : 0;
+
+      snapToIndex(state.gestureStartIndex + direction, reducedMotion ? "auto" : "smooth");
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      const state = stateRef.current;
+      const now = performance.now();
+      if (Math.abs(event.deltaY) < 4 || now - state.lastWheelStepAt < 320) {
+        event.preventDefault();
+        return;
+      }
+
+      state.lastWheelStepAt = now;
+      state.isTouching = false;
+      state.snappingTo = null;
+      state.lockedTo = null;
+      const currentIndex = nearestSnapIndex(element.scrollTop);
+      const direction = event.deltaY > 0 ? 1 : -1;
+      snapToIndex(currentIndex + direction, reducedMotion ? "auto" : "smooth");
+      event.preventDefault();
     };
 
     let frameId = 0;
@@ -219,17 +317,16 @@ function useSmoothSceneScroll({
 
       const state = stateRef.current;
       const before = state.current;
-      if (!state.isTouching && state.snappingTo === null && now - state.lastScrollAt > 85) {
-        const snapTarget = nearestSnapPoint(element.scrollTop);
-        if (Math.abs(element.scrollTop - snapTarget) > 6) {
-          state.snappingTo = snapTarget;
-          element.scrollTo({
-            top: snapTarget,
-            behavior: reducedMotion ? "auto" : "smooth",
-          });
-          state.target = snapTarget;
+      if (state.snappingTo !== null && Math.abs(element.scrollTop - state.snappingTo) < 0.85) {
+        lockToIndex(state.activeIndex);
+      } else if (!state.isTouching && state.lockedTo === null && state.snappingTo === null && now - state.lastScrollAt > 85) {
+        const snapIndex = nearestSnapIndex(element.scrollTop);
+        const snapTarget = snapPointAtIndex(snapIndex);
+        state.activeIndex = snapIndex;
+        if (Math.abs(element.scrollTop - snapTarget) > 4) {
+          snapToIndex(snapIndex, reducedMotion ? "auto" : "smooth");
         } else {
-          state.target = snapTarget;
+          lockToIndex(snapIndex);
         }
       }
 
@@ -254,15 +351,19 @@ function useSmoothSceneScroll({
 
     element.addEventListener("scroll", handleScroll, { passive: true });
     element.addEventListener("touchstart", handleTouchStart, { passive: true });
+    element.addEventListener("touchmove", handleTouchMove, { passive: true });
     element.addEventListener("touchend", handleTouchEnd, { passive: true });
     element.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+    element.addEventListener("wheel", handleWheel, { passive: false });
     frameId = window.requestAnimationFrame(tick);
 
     return () => {
       element.removeEventListener("scroll", handleScroll);
       element.removeEventListener("touchstart", handleTouchStart);
+      element.removeEventListener("touchmove", handleTouchMove);
       element.removeEventListener("touchend", handleTouchEnd);
       element.removeEventListener("touchcancel", handleTouchEnd);
+      element.removeEventListener("wheel", handleWheel);
       window.cancelAnimationFrame(frameId);
     };
   }, [reducedMotion, snapPointsRef]);
