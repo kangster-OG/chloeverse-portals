@@ -258,6 +258,24 @@ function paintBackdropStyle(seed: number): CSSProperties {
   };
 }
 
+function idlePulseStyle(seed: number): CssVars {
+  const rnd = mulberry32((seed ^ 0x7f4a7c15) >>> 0);
+  const duration = 2.45 + rnd() * 1.55;
+  const scalePeak = 1.026 + rnd() * 0.04;
+  const liftPeak = -3.2 - rnd() * 5.2;
+  const brightnessPeak = 1.08 + rnd() * 0.18;
+  const glowPeak = 0.2 + rnd() * 0.26;
+
+  return {
+    "--glyph-pulse-duration": `${duration.toFixed(3)}s`,
+    "--glyph-pulse-delay": `${(-rnd() * duration).toFixed(3)}s`,
+    "--glyph-pulse-scale-peak": scalePeak.toFixed(4),
+    "--glyph-pulse-lift-peak": `${liftPeak.toFixed(3)}px`,
+    "--glyph-pulse-brightness-peak": brightnessPeak.toFixed(3),
+    "--glyph-pulse-glow-peak": glowPeak.toFixed(3),
+  };
+}
+
 function paintCursorFillStyle(seed: number): CSSProperties {
   const rnd = mulberry32((seed ^ 0xa5a5a5a5) >>> 0);
   const mediumLayers: string[] = [];
@@ -666,6 +684,7 @@ function renderDepthGlyphs(
   return Array.from(text).map((char, index) => {
     const glyph = char === " " ? "\u00A0" : char;
     const refIndex = indexOffset + index;
+    const pulseStyle = kind === "title" ? idlePulseStyle(seedStart + (refIndex * 53)) : undefined;
 
     return (
       <span
@@ -674,20 +693,23 @@ function renderDepthGlyphs(
           refs.current[refIndex] = node;
         }}
         className={`chv-glyph-stack chv-glyph-stack--${kind}${char === " " ? " chv-glyph-stack--space" : ""}`}
+        style={pulseStyle}
       >
-        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--back">{glyph}</span>
-        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-1">{glyph}</span>
-        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-2">{glyph}</span>
-        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-3">{glyph}</span>
-        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-4">{glyph}</span>
-        <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-5">{glyph}</span>
-        <span
-          className={`chv-glyph-layer chv-glyph-layer--face ${
-            tone === "painted" ? "chv-glyph-face--painted" : "chv-glyph-face--plain"
-          }`}
-          style={tone === "painted" ? paintStyle(seedStart + index * 37) : faceStyle}
-        >
-          {glyph}
+        <span className="chv-glyph-pulse">
+          <span aria-hidden className="chv-glyph-layer chv-glyph-layer--back">{glyph}</span>
+          <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-1">{glyph}</span>
+          <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-2">{glyph}</span>
+          <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-3">{glyph}</span>
+          <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-4">{glyph}</span>
+          <span aria-hidden className="chv-glyph-layer chv-glyph-layer--slice chv-glyph-layer--slice-5">{glyph}</span>
+          <span
+            className={`chv-glyph-layer chv-glyph-layer--face ${
+              tone === "painted" ? "chv-glyph-face--painted" : "chv-glyph-face--plain"
+            }`}
+            style={tone === "painted" ? paintStyle(seedStart + index * 37) : faceStyle}
+          >
+            {glyph}
+          </span>
         </span>
       </span>
     );
@@ -781,6 +803,7 @@ export default function ChloeverseMainLanding({
   const titleTransition = prefersReducedMotion
     ? "none"
     : "opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1)";
+  const shouldPulseTitle = !prefersReducedMotion && activeSpotTarget !== "title";
 
   const syncPointerModeFromType = (pointerType: string | undefined) => {
     if (pointerType === "mouse" || pointerType === "pen") {
@@ -1300,7 +1323,9 @@ export default function ChloeverseMainLanding({
           <div className="mx-auto flex w-full max-w-6xl flex-col items-center text-center">
             <div
               ref={titleHitRef}
-              className="relative inline-flex w-auto flex-col flex-nowrap items-center whitespace-nowrap overflow-visible px-6 select-none"
+              className={`relative inline-flex w-auto flex-col flex-nowrap items-center whitespace-nowrap overflow-visible px-6 select-none ${
+                shouldPulseTitle ? "chv-title-idle-pulse" : ""
+              }`}
               style={{
                 opacity: titleEntered ? 1 : 0,
                 transform: titleEntered ? "translateY(0px)" : "translateY(100px)",

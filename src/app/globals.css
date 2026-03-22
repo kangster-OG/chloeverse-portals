@@ -1014,6 +1014,20 @@ body {
   will-change: mask-image, -webkit-mask-image;
 }
 
+@keyframes chv-title-glyph-idle-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  48% {
+    opacity: calc(0.94 + var(--glyph-pulse-glow-peak, 0.24));
+    filter: brightness(var(--glyph-pulse-brightness-peak, 1.16)) saturate(1.2);
+    transform: translate3d(0, var(--glyph-pulse-lift-peak, -3px), 0) scale(var(--glyph-pulse-scale-peak, 1.02));
+  }
+}
+
 @keyframes chvScrollBlink {
   0%,
   100% {
@@ -1197,6 +1211,20 @@ body {
   will-change: transform;
 }
 
+.chv-glyph-pulse {
+  grid-area: 1 / 1;
+  display: inline-grid;
+  place-items: center;
+  transform-style: preserve-3d;
+  transform-origin: 50% 58%;
+  will-change: transform, opacity, filter;
+}
+
+.chv-title-idle-pulse .chv-glyph-stack--title .chv-glyph-pulse {
+  animation: chv-title-glyph-idle-pulse var(--glyph-pulse-duration, 3s) ease-in-out infinite;
+  animation-delay: var(--glyph-pulse-delay, 0s);
+}
+
 .chv-glyph-stack--title {
   margin-inline: -0.01em;
 }
@@ -1361,6 +1389,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .chv-depth-plane,
   .chv-glyph-stack,
+  .chv-glyph-pulse,
   .chv-menu-card,
   .chv-cursor-shadow,
   .chv-cursor-lens,
