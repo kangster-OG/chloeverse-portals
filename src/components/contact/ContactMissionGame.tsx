@@ -686,11 +686,6 @@ function drawBackground(ctx: CanvasRenderingContext2D, game: GameState, time: nu
       ctx.fillRect(star.x, star.y - star.size * 3, star.size, star.size * 2);
     }
   }
-
-  ctx.fillStyle = "rgba(255, 214, 176, 0.08)";
-  ctx.fillRect(0, GAME_HEIGHT - 48, GAME_WIDTH, 1);
-  ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
-  ctx.fillRect(0, GAME_HEIGHT - 40, GAME_WIDTH, 1);
 }
 
 function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]) {
@@ -743,8 +738,9 @@ export default function ContactMissionGame() {
     playFocusWhoosh,
     playOpenBloom,
   } = useAudioGate({
-    volume: 0.18,
-    ambientLevel: 0.24,
+    volume: 0.32,
+    ambientLevel: 0.34,
+    style: "arcade",
   });
 
   const updatePhase = useCallback((nextPhase: ContactGamePhase) => {

@@ -7,13 +7,17 @@ type AudioGraph = {
   master: GainNode;
   ambientBus: GainNode;
   sfxBus: GainNode;
+  style: AudioStyle;
   ambientNodes: AudioNode[];
   ambientStops: Array<() => void>;
 };
 
+type AudioStyle = "cinematic" | "arcade";
+
 type UseAudioGateOptions = {
   volume?: number;
   ambientLevel?: number;
+  style?: AudioStyle;
 };
 
 function createNoiseBuffer(ctx: AudioContext, seconds: number): AudioBuffer {
@@ -26,7 +30,7 @@ function createNoiseBuffer(ctx: AudioContext, seconds: number): AudioBuffer {
   return buffer;
 }
 
-function setupAmbient(graph: AudioGraph, level: number) {
+function setupAmbientCinematic(graph: AudioGraph, level: number) {
   const { ctx, ambientBus } = graph;
   ambientBus.gain.value = level;
 
@@ -76,6 +80,128 @@ function setupAmbient(graph: AudioGraph, level: number) {
   });
 }
 
+function setupAmbientArcade(graph: AudioGraph, level: number) {
+  const { ctx, ambientBus } = graph;
+  ambientBus.gain.value = level * 0.92;
+
+  const drone = ctx.createOscillator();
+  drone.type = "triangle";
+  drone.frequency.value = 82.41;
+  const droneFilter = ctx.createBiquadFilter();
+  droneFilter.type = "lowpass";
+  droneFilter.frequency.value = 540;
+  const droneGain = ctx.createGain();
+  droneGain.gain.value = 0.045;
+
+  const pad = ctx.createOscillator();
+  pad.type = "square";
+  pad.frequency.value = 164.81;
+  const padFilter = ctx.createBiquadFilter();
+  padFilter.type = "lowpass";
+  padFilter.frequency.value = 880;
+  const padGain = ctx.createGain();
+  padGain.gain.value = 0.0001;
+
+  const sparkle = ctx.createOscillator();
+  sparkle.type = "triangle";
+  sparkle.frequency.value = 329.63;
+  const sparkleFilter = ctx.createBiquadFilter();
+  sparkleFilter.type = "lowpass";
+  sparkleFilter.frequency.value = 1800;
+  const sparkleGain = ctx.createGain();
+  sparkleGain.gain.value = 0.0001;
+
+  const hiss = ctx.createBufferSource();
+  hiss.buffer = createNoiseBuffer(ctx, 2.2);
+  hiss.loop = true;
+  const hissFilter = ctx.createBiquadFilter();
+  hissFilter.type = "highpass";
+  hissFilter.frequency.value = 2800;
+  const hissGain = ctx.createGain();
+  hissGain.gain.value = 0.0045;
+
+  drone.connect(droneFilter).connect(droneGain).connect(ambientBus);
+  pad.connect(padFilter).connect(padGain).connect(ambientBus);
+  sparkle.connect(sparkleFilter).connect(sparkleGain).connect(ambientBus);
+  hiss.connect(hissFilter).connect(hissGain).connect(ambientBus);
+
+  const t = ctx.currentTime + 0.01;
+  drone.start(t);
+  pad.start(t);
+  sparkle.start(t);
+  hiss.start(t);
+
+  const attractLoop = [
+    { root: 82.41, pad: 164.81, sparkle: 329.63 },
+    { root: 98, pad: 196, sparkle: 392 },
+    { root: 73.42, pad: 146.83, sparkle: 293.66 },
+    { root: 110, pad: 220, sparkle: 440 },
+  ] as const;
+
+  let step = 0;
+  const playStep = () => {
+    const now = ctx.currentTime;
+    const note = attractLoop[step % attractLoop.length] ?? attractLoop[0];
+
+    drone.frequency.cancelScheduledValues(now);
+    drone.frequency.setValueAtTime(note.root, now);
+
+    pad.frequency.cancelScheduledValues(now);
+    pad.frequency.setValueAtTime(note.pad, now);
+    padGain.gain.cancelScheduledValues(now);
+    padGain.gain.setValueAtTime(0.0001, now);
+    padGain.gain.linearRampToValueAtTime(0.034, now + 0.08);
+    padGain.gain.linearRampToValueAtTime(0.02, now + 0.55);
+    padGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+    sparkle.frequency.cancelScheduledValues(now);
+    sparkle.frequency.setValueAtTime(note.sparkle, now);
+    sparkleGain.gain.cancelScheduledValues(now);
+    sparkleGain.gain.setValueAtTime(0.0001, now);
+    sparkleGain.gain.linearRampToValueAtTime(0.015, now + 0.05);
+    sparkleGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+
+    step += 1;
+  };
+
+  playStep();
+  const seq = window.setInterval(playStep, 1600);
+
+  graph.ambientNodes.push(
+    drone,
+    droneFilter,
+    droneGain,
+    pad,
+    padFilter,
+    padGain,
+    sparkle,
+    sparkleFilter,
+    sparkleGain,
+    hiss,
+    hissFilter,
+    hissGain,
+  );
+  graph.ambientStops.push(() => {
+    window.clearInterval(seq);
+    try {
+      drone.stop();
+      pad.stop();
+      sparkle.stop();
+      hiss.stop();
+    } catch {
+      // no-op
+    }
+  });
+}
+
+function setupAmbient(graph: AudioGraph, level: number) {
+  if (graph.style === "arcade") {
+    setupAmbientArcade(graph, level);
+    return;
+  }
+  setupAmbientCinematic(graph, level);
+}
+
 function disposeGraph(graph: AudioGraph) {
   for (const stop of graph.ambientStops) stop();
   for (const node of graph.ambientNodes) {
@@ -97,6 +223,7 @@ function disposeGraph(graph: AudioGraph) {
 export function useAudioGate(options: UseAudioGateOptions = {}) {
   const volume = options.volume ?? 0.18;
   const ambientLevel = options.ambientLevel ?? 0.26;
+  const style = options.style ?? "cinematic";
 
   const [muted, setMuted] = useState(false);
   const [ready, setReady] = useState(false);
@@ -132,6 +259,7 @@ export function useAudioGate(options: UseAudioGateOptions = {}) {
       master,
       ambientBus,
       sfxBus,
+      style,
       ambientNodes: [],
       ambientStops: [],
     };
@@ -139,7 +267,7 @@ export function useAudioGate(options: UseAudioGateOptions = {}) {
     setupAmbient(graph, ambientLevel);
     graphRef.current = graph;
     return graph;
-  }, [ambientLevel]);
+  }, [ambientLevel, style]);
 
   const requestStart = useCallback(async () => {
     const graph = ensureGraph();
@@ -164,18 +292,18 @@ export function useAudioGate(options: UseAudioGateOptions = {}) {
 
     const t = graph.ctx.currentTime + 0.005;
     const osc = graph.ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(720, t);
-    osc.frequency.exponentialRampToValueAtTime(980, t + 0.2);
+    osc.type = graph.style === "arcade" ? "square" : "sine";
+    osc.frequency.setValueAtTime(graph.style === "arcade" ? 880 : 720, t);
+    osc.frequency.exponentialRampToValueAtTime(graph.style === "arcade" ? 1320 : 980, t + 0.2);
 
     const gain = graph.ctx.createGain();
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.06, t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(graph.style === "arcade" ? 0.065 : 0.06, t + 0.03);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
 
     const hp = graph.ctx.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 420;
+    hp.type = graph.style === "arcade" ? "lowpass" : "highpass";
+    hp.frequency.value = graph.style === "arcade" ? 2100 : 420;
 
     osc.connect(hp).connect(gain).connect(graph.sfxBus);
     osc.start(t);
@@ -197,6 +325,41 @@ export function useAudioGate(options: UseAudioGateOptions = {}) {
     if (!graph || mutedRef.current || graph.ctx.state !== "running") return;
 
     const t = graph.ctx.currentTime + 0.004;
+
+    if (graph.style === "arcade") {
+      const osc = graph.ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(150, t);
+      osc.frequency.exponentialRampToValueAtTime(105, t + 0.12);
+      osc.frequency.exponentialRampToValueAtTime(185, t + 0.24);
+
+      const gain = graph.ctx.createGain();
+      const peak = 0.032 * Math.max(0.45, Math.min(1.5, intensity));
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.linearRampToValueAtTime(peak, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+
+      const filter = graph.ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(900, t);
+      filter.frequency.exponentialRampToValueAtTime(620, t + 0.24);
+
+      osc.connect(filter).connect(gain).connect(graph.sfxBus);
+      osc.start(t);
+      osc.stop(t + 0.28);
+
+      window.setTimeout(() => {
+        try {
+          osc.disconnect();
+          filter.disconnect();
+          gain.disconnect();
+        } catch {
+          // no-op
+        }
+      }, 450);
+      return;
+    }
+
     const noise = graph.ctx.createBufferSource();
     noise.buffer = createNoiseBuffer(graph.ctx, 0.16);
 
@@ -232,6 +395,55 @@ export function useAudioGate(options: UseAudioGateOptions = {}) {
     if (!graph || mutedRef.current || graph.ctx.state !== "running") return;
 
     const t = graph.ctx.currentTime + 0.004;
+
+    if (graph.style === "arcade") {
+      const lead = graph.ctx.createOscillator();
+      lead.type = "square";
+      lead.frequency.setValueAtTime(261.63, t);
+      lead.frequency.setValueAtTime(329.63, t + 0.11);
+      lead.frequency.setValueAtTime(392, t + 0.22);
+      lead.frequency.setValueAtTime(523.25, t + 0.34);
+
+      const bass = graph.ctx.createOscillator();
+      bass.type = "triangle";
+      bass.frequency.setValueAtTime(130.81, t);
+      bass.frequency.exponentialRampToValueAtTime(196, t + 0.4);
+
+      const leadGain = graph.ctx.createGain();
+      leadGain.gain.setValueAtTime(0.0001, t);
+      leadGain.gain.linearRampToValueAtTime(0.08, t + 0.05);
+      leadGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+
+      const bassGain = graph.ctx.createGain();
+      bassGain.gain.setValueAtTime(0.0001, t);
+      bassGain.gain.linearRampToValueAtTime(0.055, t + 0.06);
+      bassGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.58);
+
+      const filter = graph.ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(1800, t);
+      filter.frequency.exponentialRampToValueAtTime(2400, t + 0.45);
+
+      lead.connect(filter).connect(leadGain).connect(graph.sfxBus);
+      bass.connect(bassGain).connect(graph.sfxBus);
+      lead.start(t);
+      lead.stop(t + 0.6);
+      bass.start(t);
+      bass.stop(t + 0.62);
+
+      window.setTimeout(() => {
+        try {
+          lead.disconnect();
+          bass.disconnect();
+          leadGain.disconnect();
+          bassGain.disconnect();
+          filter.disconnect();
+        } catch {
+          // no-op
+        }
+      }, 900);
+      return;
+    }
 
     const tone = graph.ctx.createOscillator();
     tone.type = "triangle";
