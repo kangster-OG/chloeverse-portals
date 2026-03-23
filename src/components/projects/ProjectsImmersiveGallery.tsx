@@ -360,17 +360,10 @@ function createPlaqueTexture() {
   }
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "#f3f0e8";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-
-  for (let x = 0; x < canvas.width; x += 18) {
-    const insideBand = x > canvas.width * 0.31 && x < canvas.width * 0.57;
-    context.fillStyle = insideBand ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.025)";
-    context.fillRect(x, 0, insideBand ? 5 : 2, canvas.height);
-  }
-
   context.strokeStyle = "rgba(17,17,17,0.9)";
   context.lineWidth = 7;
+  context.lineCap = "square";
+  context.lineJoin = "miter";
   context.beginPath();
   context.moveTo(610, 268);
   context.lineTo(1370, 268);
@@ -403,11 +396,11 @@ function createPlaqueTexture() {
     context.stroke();
   });
 
-  context.lineWidth = 9;
+  context.lineWidth = 8;
   context.beginPath();
-  context.moveTo(1195, 1118);
-  context.lineTo(1632, 1138);
-  context.lineTo(1662, 596);
+  context.moveTo(1232, 1118);
+  context.lineTo(1568, 1118);
+  context.lineTo(1568, 678);
   context.stroke();
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -1120,7 +1113,7 @@ function RoomShell() {
 
       <mesh position={HOME_DESCRIPTION_POSITION.toArray() as [number, number, number]}>
         <planeGeometry args={HOME_DESCRIPTION_SCALE} />
-        <meshBasicMaterial map={plaqueTexture} toneMapped={false} />
+        <meshBasicMaterial map={plaqueTexture} transparent toneMapped={false} depthWrite={false} />
       </mesh>
 
       <mesh
@@ -1474,6 +1467,7 @@ export function ProjectsImmersiveGallery() {
   const previewIndex = hoveredMenuIndex ?? homeSelectionIndex;
   const previewReel = DESKTOP_PROJECT_REELS[previewIndex] ?? DESKTOP_PROJECT_REELS[0];
   const detailMediaLabel = !videoStarted ? "Watch reel" : videoPaused ? "Play reel" : "Pause reel";
+  const showHomeControls = detailIndex === null && !menuOpen && !focusedHomeEntry;
 
   const filteredReels = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -1773,36 +1767,46 @@ export function ProjectsImmersiveGallery() {
         />
 
         <div
-          className="pointer-events-none absolute left-1/2 z-[70] -translate-x-1/2 whitespace-nowrap text-black/76"
-          style={{ bottom: "98px", marginLeft: "-18px", width: "730px", height: "104px", fontSize: "19px", letterSpacing: "0.01em", fontWeight: 500 }}
+          className={`pointer-events-none absolute left-1/2 z-[70] -translate-x-1/2 whitespace-nowrap text-black/76 transition-opacity duration-300 ${
+            showHomeControls ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ bottom: "86px", width: "780px", fontSize: "18.5px", letterSpacing: "0.01em", fontWeight: 500 }}
         >
-          <div className="relative h-full w-full">
-            <div className="absolute leading-none text-black/82" style={{ left: "28px", bottom: "0.88rem" }}>Move</div>
-            <div className="absolute flex flex-col gap-[3px]" style={{ left: "94px", bottom: 0 }}>
-              <div className="flex justify-center">
-                <span className="flex h-[2.75rem] w-[2.75rem] items-center justify-center border border-black/50 leading-none">
-                  &uarr;
-                </span>
-              </div>
-              <div className="flex gap-[3px]">
-                <span className="flex h-[2.75rem] w-[2.75rem] items-center justify-center border border-black/50 leading-none">
-                  &larr;
-                </span>
-                <span className="flex h-[2.75rem] w-[2.75rem] items-center justify-center border border-black/50 leading-none">
-                  &darr;
-                </span>
-                <span className="flex h-[2.75rem] w-[2.75rem] items-center justify-center border border-black/50 leading-none">
-                  &rarr;
-                </span>
+          <div className="flex items-end justify-center gap-[3.05rem]">
+            <div className="flex items-end gap-[1.15rem]">
+              <div className="pb-[0.7rem] leading-none text-black/82">Move</div>
+              <div className="flex flex-col gap-[0.22rem]">
+                <div className="flex justify-center">
+                  <span className="flex h-[2.62rem] w-[2.62rem] items-center justify-center border border-black/50 leading-none text-black/82">
+                    &uarr;
+                  </span>
+                </div>
+                <div className="flex gap-[0.22rem]">
+                  <span className="flex h-[2.62rem] w-[2.62rem] items-center justify-center border border-black/50 leading-none text-black/82">
+                    &larr;
+                  </span>
+                  <span className="flex h-[2.62rem] w-[2.62rem] items-center justify-center border border-black/50 leading-none text-black/82">
+                    &darr;
+                  </span>
+                  <span className="flex h-[2.62rem] w-[2.62rem] items-center justify-center border border-black/50 leading-none text-black/82">
+                    &rarr;
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="absolute leading-none text-black/82" style={{ left: "260px", bottom: "0.88rem" }}>Open/Close Menu</div>
-            <div className="absolute flex h-[2.75rem] w-[2.75rem] items-center justify-center border border-black/50 text-[0.74em] leading-none text-black/82" style={{ left: "435px", bottom: 0 }}>
-              ESC
+
+            <div className="flex items-end gap-[1rem]">
+              <div className="pb-[0.7rem] leading-none text-black/82">Open/Close Menu</div>
+              <span className="flex h-[2.62rem] w-[2.62rem] items-center justify-center border border-black/50 text-[0.74em] leading-none text-black/82">
+                ESC
+              </span>
             </div>
-            <div className="absolute leading-none text-black/82" style={{ left: "548px", bottom: "0.88rem" }}>See details</div>
-            <div className="absolute flex h-[2.75rem] w-[2.75rem] items-center justify-center border border-black/50 leading-none text-black/82" style={{ left: "668px", bottom: 0 }}>
-              &#8629;
+
+            <div className="flex items-end gap-[1rem]">
+              <div className="pb-[0.7rem] leading-none text-black/82">See details</div>
+              <span className="flex h-[2.62rem] w-[2.62rem] items-center justify-center border border-black/50 leading-none text-black/82">
+                &#8629;
+              </span>
             </div>
           </div>
         </div>
@@ -1818,24 +1822,16 @@ export function ProjectsImmersiveGallery() {
         <div className="absolute inset-0">
           <div
             className="absolute leading-none"
-            style={{ left: "56px", top: "42px", fontSize: "27px", lineHeight: "0.96", letterSpacing: "-0.04em" }}
+            style={{ left: "52px", top: "42px", fontSize: "24px", lineHeight: "0.96", letterSpacing: "-0.04em" }}
           >
-            <Link href="/" className="block text-white/22 transition hover:text-white/46">
-              Home
-            </Link>
-            <a
-              href="https://chloeverse.io"
-              target="_blank"
-              rel="noreferrer"
-              className="mt-[0.5rem] block text-white transition hover:opacity-72"
-            >
+            <Link href="/" className="block text-white transition hover:opacity-72">
               Chloeverse
-            </a>
+            </Link>
           </div>
 
-          <div className="absolute w-px bg-white/42" style={{ left: "169px", top: "42px", bottom: "43px" }} />
+          <div className="absolute w-px bg-white/42" style={{ left: "184px", top: "42px", bottom: "43px" }} />
 
-          <div className="absolute" style={{ left: "196px", top: "42px", width: "340px", maxHeight: "682px" }}>
+          <div className="absolute" style={{ left: "212px", top: "42px", width: "340px", maxHeight: "682px" }}>
             <ul className="overflow-y-auto pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ maxHeight: "682px", fontSize: "17px", lineHeight: "1.02" }}>
               {filteredReels.length ? (
                 filteredReels.map((reel) => {
@@ -1871,7 +1867,7 @@ export function ProjectsImmersiveGallery() {
             </ul>
           </div>
 
-          <div className="absolute flex items-center gap-2 text-white/90" style={{ left: "196px", bottom: "42px" }}>
+          <div className="absolute flex items-center gap-2 text-white/90" style={{ left: "212px", bottom: "42px" }}>
             <svg
               aria-hidden="true"
               viewBox="0 0 20 20"
