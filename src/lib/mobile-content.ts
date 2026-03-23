@@ -116,6 +116,19 @@ export const PROJECT_REELS: MobileProjectReel[] = [
     },
   },
   {
+    id: "r12",
+    instagramUrl: "https://www.instagram.com/reel/DVcRnM5kurR/",
+    coverImage: "/projects/reels/r12/cover.jpg",
+    videoSrc: "/projects/reels/r12/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DVcRnM5kurR.",
+    durationLabel: "1:26",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
     id: "r7",
     instagramUrl: "https://www.instagram.com/reel/DOQ-ZxuEzan/",
     coverImage: "/projects/reels/r7/cover.jpg",
@@ -181,6 +194,8 @@ export const PROJECT_REELS: MobileProjectReel[] = [
     },
   },
 ];
+
+export const DESKTOP_PROJECT_REEL_ORDER = ["r3", "r4", "r5", "r12", "r6", "r11", "r10", "r9", "r8", "r7"] as const;
 
 export const WORK_ROLE_STACK = [
   "Creator",
