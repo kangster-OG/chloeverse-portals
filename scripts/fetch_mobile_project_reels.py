@@ -18,6 +18,7 @@ REELS = [
     {"id": "r3", "url": "https://www.instagram.com/reel/DTZ2XtNkeNC/"},
     {"id": "r4", "url": "https://www.instagram.com/reel/DR_GW1BkQci/"},
     {"id": "r5", "url": "https://www.instagram.com/reel/DSitVRLkjEf/"},
+    {"id": "r12", "url": "https://www.instagram.com/reel/DVcRnM5kurR/"},
     {"id": "r6", "url": "https://www.instagram.com/reel/DOH8x_gk2Ew/"},
     {"id": "r7", "url": "https://www.instagram.com/reel/DOQ-ZxuEzan/"},
     {"id": "r8", "url": "https://www.instagram.com/reel/DObX6ceE-di/"},

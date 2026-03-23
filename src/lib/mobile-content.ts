@@ -62,6 +62,8 @@ export type MobileProjectReel = {
   };
 };
 
+export const DESKTOP_PROJECT_REEL_ORDER = ["r3", "r4", "r5", "r12", "r6", "r11", "r10", "r9", "r8", "r7"] as const;
+
 export const PROJECT_REELS: MobileProjectReel[] = [
   {
     id: "r3",
@@ -96,6 +98,19 @@ export const PROJECT_REELS: MobileProjectReel[] = [
     videoSrc: "/projects/reels/r5/video.mp4",
     posterAlt: "Instagram reel cover for Chloe Kang reel DSitVRLkjEf.",
     durationLabel: "0:16",
+    metrics: {
+      likes: "watch",
+      comments: "swipe",
+      shares: "source",
+    },
+  },
+  {
+    id: "r12",
+    instagramUrl: "https://www.instagram.com/reel/DVcRnM5kurR/",
+    coverImage: "/projects/reels/r12/cover.jpg",
+    videoSrc: "/projects/reels/r12/video.mp4",
+    posterAlt: "Instagram reel cover for Chloe Kang reel DVcRnM5kurR.",
+    durationLabel: "1:26",
     metrics: {
       likes: "watch",
       comments: "swipe",

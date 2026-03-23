@@ -18,6 +18,7 @@ import {
   SearchIcon,
   ShareIcon,
 } from "@/components/projects/reels/icons";
+import { DESKTOP_PROJECT_REEL_ORDER, PROJECT_REELS } from "@/lib/mobile-content";
 
 type Reel = {
   id: string;
@@ -27,17 +28,20 @@ type Reel = {
 };
 
 const REELS: Reel[] = [
-  { id: "r1", permalink: "https://www.instagram.com/p/DR1MfgoDvzQ/", user: "edemmii", caption: "Instagram post embed placeholder caption." },
-  { id: "r2", permalink: "https://www.instagram.com/p/DTMwW_Pjv-P/", user: "edemmii", caption: "Instagram post embed placeholder caption." },
-  { id: "r3", permalink: "https://www.instagram.com/reel/DTZ2XtNkeNC/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r4", permalink: "https://www.instagram.com/reel/DR_GW1BkQci/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r5", permalink: "https://www.instagram.com/reel/DSitVRLkjEf/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r6", permalink: "https://www.instagram.com/reel/DOH8x_gk2Ew/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r7", permalink: "https://www.instagram.com/reel/DOQ-ZxuEzan/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r8", permalink: "https://www.instagram.com/reel/DObX6ceE-di/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r9", permalink: "https://www.instagram.com/reel/DOsvvxCkUxJ/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r10", permalink: "https://www.instagram.com/reel/DMLYWLOhTfg/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
-  { id: "r11", permalink: "https://www.instagram.com/reel/DMxxlTEp98D/", user: "edemmii", caption: "Instagram reel embed placeholder caption." },
+  ...DESKTOP_PROJECT_REEL_ORDER.map((id) => {
+    const reel = PROJECT_REELS.find((entry) => entry.id === id);
+
+    if (!reel) {
+      throw new Error(`Missing project reel data for desktop reel ${id}.`);
+    }
+
+    return {
+      id: reel.id,
+      permalink: reel.instagramUrl,
+      user: "edemmii",
+      caption: "Instagram reel embed placeholder caption.",
+    };
+  }),
 ];
 
 const WHEEL_THRESHOLD = 45;
