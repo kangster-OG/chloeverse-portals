@@ -93,7 +93,7 @@ export const PROJECT_REELS: MobileProjectReel[] = [
   },
   {
     id: "r12",
-    instagramUrl: "https://www.instagram.com/reel/DVcRnM5kurR/",
+    instagramUrl: "https://www.instagram.com/p/DVcRnM5kurR/",
     coverImage: "/projects/reels/r12/cover.jpg",
     videoSrc: "/projects/reels/r12/video.mp4",
     posterAlt: "Instagram reel cover for Chloe Kang reel DVcRnM5kurR.",
@@ -119,7 +119,7 @@ export const PROJECT_REELS: MobileProjectReel[] = [
   },
   {
     id: "r12",
-    instagramUrl: "https://www.instagram.com/reel/DVcRnM5kurR/",
+    instagramUrl: "https://www.instagram.com/p/DVcRnM5kurR/",
     coverImage: "/projects/reels/r12/cover.jpg",
     videoSrc: "/projects/reels/r12/video.mp4",
     posterAlt: "Instagram reel cover for Chloe Kang reel DVcRnM5kurR.",

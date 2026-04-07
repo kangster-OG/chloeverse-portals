@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import html
+import importlib.util
 import re
 import subprocess
 import sys
@@ -18,7 +19,7 @@ REELS = [
     {"id": "r3", "url": "https://www.instagram.com/reel/DTZ2XtNkeNC/"},
     {"id": "r4", "url": "https://www.instagram.com/reel/DR_GW1BkQci/"},
     {"id": "r5", "url": "https://www.instagram.com/reel/DSitVRLkjEf/"},
-    {"id": "r12", "url": "https://www.instagram.com/reel/DVcRnM5kurR/"},
+    {"id": "r12", "url": "https://www.instagram.com/p/DVcRnM5kurR/"},
     {"id": "r6", "url": "https://www.instagram.com/reel/DOH8x_gk2Ew/"},
     {"id": "r7", "url": "https://www.instagram.com/reel/DOQ-ZxuEzan/"},
     {"id": "r8", "url": "https://www.instagram.com/reel/DObX6ceE-di/"},
@@ -46,6 +47,46 @@ def get_url_with_ytdlp(flag: str, url: str) -> Optional[str]:
 
     value = output.strip()
     return value or None
+
+
+def get_ffmpeg_location() -> Optional[str]:
+    try:
+        if importlib.util.find_spec("imageio_ffmpeg") is None:
+            return None
+        from imageio_ffmpeg import get_ffmpeg_exe
+
+        return get_ffmpeg_exe()
+    except Exception:
+        return None
+
+
+def download_video_with_ytdlp(url: str, destination: Path) -> bool:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    ffmpeg_location = get_ffmpeg_location()
+    command = [
+        sys.executable,
+        "-m",
+        "yt_dlp",
+        "--no-playlist",
+        "-f",
+        "bestvideo+bestaudio/best",
+        "--merge-output-format",
+        "mp4",
+        "-o",
+        str(destination),
+    ]
+
+    if ffmpeg_location:
+        command.extend(["--ffmpeg-location", ffmpeg_location])
+
+    command.append(url)
+
+    try:
+        subprocess.check_call(command)
+    except Exception:
+        return False
+
+    return destination.exists()
 
 
 def extract_cover_url(page_html: str) -> str:
@@ -82,20 +123,20 @@ def main() -> None:
         reel_dir = OUT_DIR / reel["id"]
         page_html = fetch(reel["url"])
         cover_url = get_url_with_ytdlp("--get-thumbnail", reel["url"]) or extract_cover_url(page_html)
-        video_url = get_url_with_ytdlp("--get-url", reel["url"])
-
-        if video_url is None:
-            split_url = urlsplit(reel["url"])
-            embed_html = fetch(split_url._replace(path=split_url.path.rstrip("/") + "/embed/").geturl())
-            video_url = extract_video_url(embed_html)
-
-        cover_path = reel_dir / "cover.jpg"
         video_path = reel_dir / "video.mp4"
 
+        if not download_video_with_ytdlp(reel["url"], video_path):
+            video_url = get_url_with_ytdlp("--get-url", reel["url"])
+            if video_url is None:
+                split_url = urlsplit(reel["url"])
+                embed_html = fetch(split_url._replace(path=split_url.path.rstrip("/") + "/embed/").geturl())
+                video_url = extract_video_url(embed_html)
+            print(f"Downloading {reel['id']} video -> {video_path.relative_to(ROOT)}")
+            download_file(video_url, video_path)
+
+        cover_path = reel_dir / "cover.jpg"
         print(f"Downloading {reel['id']} cover -> {cover_path.relative_to(ROOT)}")
         download_file(cover_url, cover_path)
-        print(f"Downloading {reel['id']} video -> {video_path.relative_to(ROOT)}")
-        download_file(video_url, video_path)
 
 
 if __name__ == "__main__":

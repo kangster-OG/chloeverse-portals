@@ -98,14 +98,17 @@ const WALKTHROUGH_ROOM_SLOT_INDICES = [0, 1, 2, 3, 4, 9, 8, 7, 6, 5] as const;
 const ROOM_SLOT_TO_WALKTHROUGH_INDEX = ROOM_SLOTS.map((_, slotIndex) =>
   WALKTHROUGH_ROOM_SLOT_INDICES.indexOf(slotIndex as (typeof WALKTHROUGH_ROOM_SLOT_INDICES)[number]),
 );
-const ROOM_SLOT_REELS: DesktopProjectReel[] = ROOM_SLOTS.map((_, slotIndex) => {
-  const walkthroughIndex = ROOM_SLOT_TO_WALKTHROUGH_INDEX[slotIndex];
-  return DESKTOP_PROJECT_REELS[walkthroughIndex] ?? DESKTOP_PROJECT_REELS[0];
+const MENU_REELS = WALKTHROUGH_ROOM_SLOT_INDICES.map((slotIndex, walkthroughIndex) => {
+  const reel = DESKTOP_PROJECT_REELS[slotIndex] ?? DESKTOP_PROJECT_REELS[0];
+  const sequence = String(walkthroughIndex + 1).padStart(2, "0");
+
+  return {
+    ...reel,
+    title: `Project Reel ${sequence}`,
+    label: `R-${sequence}`,
+    slotIndex,
+  };
 });
-const MENU_REELS = DESKTOP_PROJECT_REELS.map((reel, walkthroughIndex) => ({
-  ...reel,
-  slotIndex: WALKTHROUGH_ROOM_SLOT_INDICES[walkthroughIndex] ?? 0,
-}));
 const HOME_FRAME_COUNT = ROOM_SLOTS.length;
 const PLAQUE_TITLE = "Projects";
 const PLAQUE_BODY = "A smattering of works that show who I am!";
@@ -230,7 +233,7 @@ const HOME_WALK_BOUNDS = {
 const HOME_CONTROL_KEYS = ["keyw", "keya", "keys", "keyd", "arrowleft", "arrowright", "arrowup", "arrowdown"] as const;
 
 function clampIndex(index: number) {
-  return Math.max(0, Math.min(ROOM_SLOT_REELS.length - 1, index));
+  return Math.max(0, Math.min(DESKTOP_PROJECT_REELS.length - 1, index));
 }
 
 function clampWalkthroughIndex(index: number) {
@@ -1258,7 +1261,7 @@ function HomeGalleryContents({
   onSelectionChange: (index: number, plaqueSelected: boolean) => void;
   onFocusChange: (focusEntry: HomeFocusEntry | null) => void;
 }) {
-  const textures = useTexture(ROOM_SLOT_REELS.map((reel) => reel.coverImage));
+  const textures = useTexture(DESKTOP_PROJECT_REELS.map((reel) => reel.coverImage));
   const avatarPositionRef = useRef(new THREE.Vector3());
 
   return (
@@ -1278,7 +1281,7 @@ function HomeGalleryContents({
         />
       ))}
 
-      {ROOM_SLOT_REELS.slice(0, HOME_FRAME_COUNT).map((reel, index) => (
+      {DESKTOP_PROJECT_REELS.slice(0, HOME_FRAME_COUNT).map((reel, index) => (
         <RoomFrame
           key={reel.id}
           slot={ROOM_SLOTS[index]}
@@ -1451,9 +1454,9 @@ export function ProjectsImmersiveGallery() {
 
   const homeSelectionIndex = homeIndex;
   const activeIndex = detailIndex ?? homeSelectionIndex;
-  const activeReel = ROOM_SLOT_REELS[activeIndex] ?? ROOM_SLOT_REELS[0];
+  const activeReel = DESKTOP_PROJECT_REELS[activeIndex] ?? DESKTOP_PROJECT_REELS[0];
   const previewIndex = hoveredMenuIndex ?? homeSelectionIndex;
-  const previewReel = ROOM_SLOT_REELS[previewIndex] ?? ROOM_SLOT_REELS[0];
+  const previewReel = DESKTOP_PROJECT_REELS[previewIndex] ?? DESKTOP_PROJECT_REELS[0];
   const activeWalkthroughIndex = ROOM_SLOT_TO_WALKTHROUGH_INDEX[activeIndex] ?? 0;
   const detailMediaLabel = !videoStarted ? "Watch reel" : videoPaused ? "Play reel" : "Pause reel";
   const showHomeControls = detailIndex === null && !menuOpen && !focusedHomeEntry;
