@@ -771,7 +771,6 @@ export default function ChloeverseMainLanding({
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuRevealNonce, setMenuRevealNonce] = useState(0);
   const [webglSupported, setWebglSupported] = useState(true);
-  const [astroFieldDisabled, setAstroFieldDisabled] = useState(false);
 
   const backdropPaint = useMemo(() => paintBackdropStyle(1337), []);
   const cursorBgPaint = useMemo(() => paintCursorFillStyle(1337), []);
@@ -1256,7 +1255,7 @@ export default function ChloeverseMainLanding({
       : cursorMode === "bg"
         ? "opacity-50 shadow-[0_0_24px_rgba(255,255,255,0.12),0_0_44px_rgba(255,255,255,0.08)]"
         : "opacity-40 shadow-[0_0_16px_rgba(255,255,255,0.14)]";
-  const useAstroField = !prefersReducedMotion && webglSupported && !astroFieldDisabled;
+  const useAstroField = !prefersReducedMotion && webglSupported;
   const showBgRainbow = !useAstroField && isFinePointer && hoverRegion === "bg";
 
   return (
@@ -1272,9 +1271,6 @@ export default function ChloeverseMainLanding({
       {useAstroField ? (
         <DesktopAstroField
           className="chv-home-astro-field pointer-events-none fixed inset-0 z-[8]"
-          onPerformanceFail={() => {
-            setAstroFieldDisabled(true);
-          }}
         />
       ) : (
         <div aria-hidden className="pointer-events-none fixed inset-0 z-10">

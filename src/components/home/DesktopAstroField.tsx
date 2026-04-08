@@ -2,14 +2,13 @@
 
 import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 type DesktopAstroFieldProps = {
   className?: string;
   monochrome?: boolean;
   onReady?: () => void;
-  onPerformanceFail?: () => void;
 };
 
 type ParticleConfig = {
@@ -39,6 +38,16 @@ type StreakConfig = {
   height: number;
   opacity: number;
   color: THREE.Color;
+};
+
+type AstroFieldQualityTier = "high" | "medium" | "low";
+
+type AstroFieldQualityPreset = {
+  farCount: number;
+  orbCount: number;
+  streakCount: number;
+  dpr: [number, number];
+  glowLayerScale: number | null;
 };
 
 export const ASTRO_FIELD_TUNING = {
@@ -71,6 +80,30 @@ export const ASTRO_FIELD_TUNING = {
     "#ffe06b",
   ] as const,
 } as const;
+
+const ASTRO_FIELD_QUALITY: Record<AstroFieldQualityTier, AstroFieldQualityPreset> = {
+  high: {
+    farCount: ASTRO_FIELD_TUNING.farCount,
+    orbCount: ASTRO_FIELD_TUNING.orbCount,
+    streakCount: ASTRO_FIELD_TUNING.streakCount,
+    dpr: [1, 1.75],
+    glowLayerScale: ASTRO_FIELD_TUNING.orbPointScale * 2.15,
+  },
+  medium: {
+    farCount: 940,
+    orbCount: 56,
+    streakCount: 10,
+    dpr: [1, 1.35],
+    glowLayerScale: ASTRO_FIELD_TUNING.orbPointScale * 1.75,
+  },
+  low: {
+    farCount: 680,
+    orbCount: 36,
+    streakCount: 6,
+    dpr: [1, 1.1],
+    glowLayerScale: null,
+  },
+};
 
 const fullscreenVertexShader = `
 varying vec2 vUv;
@@ -329,6 +362,13 @@ function buildStreakConfigs(count: number, monochrome = false) {
   return configs;
 }
 
+function cloneParticleConfigs(configs: ParticleConfig[]) {
+  return configs.map((config) => ({
+    ...config,
+    hue: config.hue.clone(),
+  }));
+}
+
 function createStreakTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 128;
@@ -513,7 +553,7 @@ function ParticleField({
 }) {
   const pointsRef = useRef<THREE.Points | null>(null);
   const materialRef = useRef<THREE.ShaderMaterial | null>(null);
-  const configsRef = useRef(configs);
+  const configsRef = useRef(cloneParticleConfigs(configs));
   const { gl } = useThree();
 
   const geometry = useMemo(() => {
@@ -567,6 +607,10 @@ function ParticleField({
     return () => material?.dispose();
   }, []);
 
+  useEffect(() => {
+    configsRef.current = cloneParticleConfigs(configs);
+  }, [configs]);
+
   useFrame((state, delta) => {
     const points = pointsRef.current;
     const material = materialRef.current;
@@ -614,10 +658,16 @@ function ParticleField({
   );
 }
 
-function StreakFieldMonochrome({ monochrome = false }: { monochrome?: boolean }) {
+function StreakFieldMonochrome({
+  monochrome = false,
+  count,
+}: {
+  monochrome?: boolean;
+  count: number;
+}) {
   const groupRef = useRef<THREE.Group | null>(null);
   const materialRefs = useRef<Array<THREE.SpriteMaterial | null>>([]);
-  const streakConfigs = useMemo(() => buildStreakConfigs(ASTRO_FIELD_TUNING.streakCount, monochrome), [monochrome]);
+  const streakConfigs = useMemo(() => buildStreakConfigs(count, monochrome), [count, monochrome]);
   const configsRef = useRef(
     streakConfigs.map((config) => ({
       ...config,
@@ -703,17 +753,17 @@ function StreakFieldMonochrome({ monochrome = false }: { monochrome?: boolean })
 
 function AstroFieldScene({
   onReady,
-  onPerformanceFail,
   monochrome = false,
+  qualityPreset,
 }: {
   onReady?: () => void;
-  onPerformanceFail?: () => void;
   monochrome?: boolean;
+  qualityPreset: AstroFieldQualityPreset;
 }) {
   const farConfigs = useMemo(
     () =>
       buildParticleConfigs({
-        count: ASTRO_FIELD_TUNING.farCount,
+        count: qualityPreset.farCount,
         seed: 71331,
         depth: ASTRO_FIELD_TUNING.farDepth,
         speed: ASTRO_FIELD_TUNING.farSpeed,
@@ -726,12 +776,12 @@ function AstroFieldScene({
         drift: 0.12,
         monochrome,
       }),
-    [monochrome],
+    [monochrome, qualityPreset.farCount],
   );
   const orbConfigs = useMemo(
     () =>
       buildParticleConfigs({
-        count: ASTRO_FIELD_TUNING.orbCount,
+        count: qualityPreset.orbCount,
         seed: 913337,
         depth: ASTRO_FIELD_TUNING.orbDepth,
         speed: ASTRO_FIELD_TUNING.orbSpeed,
@@ -744,17 +794,11 @@ function AstroFieldScene({
         drift: 0.34,
         monochrome,
       }),
-    [monochrome],
+    [monochrome, qualityPreset.orbCount],
   );
 
   return (
     <>
-      <PerformanceMonitor
-        ms={350}
-        threshold={0.94}
-        bounds={() => [28, 58]}
-        onDecline={() => onPerformanceFail?.()}
-      />
       <ReadySignal onReady={onReady} />
       <CameraRig />
       <FieldBackdrop monochrome={monochrome} />
@@ -772,14 +816,16 @@ function AstroFieldScene({
         softness={0.34}
         coreBoost={0.14}
       />
-      <ParticleField
-        configs={orbConfigs}
-        scale={ASTRO_FIELD_TUNING.orbPointScale * 2.15}
-        intensity={0.2}
-        softness={0.62}
-        coreBoost={0.05}
-      />
-      <StreakFieldMonochrome monochrome={monochrome} />
+      {qualityPreset.glowLayerScale ? (
+        <ParticleField
+          configs={orbConfigs}
+          scale={qualityPreset.glowLayerScale}
+          intensity={0.2}
+          softness={0.62}
+          coreBoost={0.05}
+        />
+      ) : null}
+      <StreakFieldMonochrome monochrome={monochrome} count={qualityPreset.streakCount} />
     </>
   );
 }
@@ -788,12 +834,30 @@ export function DesktopAstroField({
   className,
   monochrome = false,
   onReady,
-  onPerformanceFail,
 }: DesktopAstroFieldProps) {
+  const [qualityTier, setQualityTier] = useState<AstroFieldQualityTier>("high");
+  const qualityPreset = ASTRO_FIELD_QUALITY[qualityTier];
+
+  const handleDecline = useCallback(() => {
+    setQualityTier((current) => {
+      if (current === "high") return "medium";
+      if (current === "medium") return "low";
+      return current;
+    });
+  }, []);
+
+  const handleIncline = useCallback(() => {
+    setQualityTier((current) => {
+      if (current === "low") return "medium";
+      if (current === "medium") return "high";
+      return current;
+    });
+  }, []);
+
   return (
     <div className={className} aria-hidden="true">
       <Canvas
-        dpr={[1, 1.75]}
+        dpr={qualityPreset.dpr}
         gl={{ alpha: false, antialias: false, powerPreference: "high-performance" }}
         camera={{ position: [0, 0, 7.4], fov: 48, near: 0.1, far: 90 }}
         onCreated={({ gl }) => {
@@ -805,7 +869,15 @@ export function DesktopAstroField({
         eventSource={typeof document !== "undefined" ? document.documentElement : undefined}
         eventPrefix="client"
       >
-        <AstroFieldScene monochrome={monochrome} onReady={onReady} onPerformanceFail={onPerformanceFail} />
+        <PerformanceMonitor
+          ms={350}
+          threshold={0.94}
+          bounds={() => [28, 58]}
+          flipflops={4}
+          onDecline={handleDecline}
+          onIncline={handleIncline}
+        />
+        <AstroFieldScene monochrome={monochrome} onReady={onReady} qualityPreset={qualityPreset} />
       </Canvas>
       <div className="chv-home-astro-pocket" />
       <div className="chv-home-astro-veil" />

@@ -374,7 +374,6 @@ export function StartupExperience({ titleFontClassName, monoFontClassName }: Sta
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [entered, setEntered] = useState(false);
   const [webglSupported, setWebglSupported] = useState(true);
-  const [astroFieldDisabled, setAstroFieldDisabled] = useState(false);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const [waitlistError, setWaitlistError] = useState<string | null>(null);
@@ -481,7 +480,7 @@ export function StartupExperience({ titleFontClassName, monoFontClassName }: Sta
     return () => window.cancelAnimationFrame(frame);
   }, [prefersReducedMotion]);
 
-  const useAstroField = !prefersReducedMotion && webglSupported && !astroFieldDisabled;
+  const useAstroField = !prefersReducedMotion && webglSupported;
 
   const onRootPointerEnter = (event: ReactPointerEvent<HTMLElement>) => {
     if (event.pointerType === "touch") return;
@@ -582,9 +581,6 @@ export function StartupExperience({ titleFontClassName, monoFontClassName }: Sta
         <DesktopAstroField
           monochrome
           className="pointer-events-none fixed inset-0 z-[8]"
-          onPerformanceFail={() => {
-            setAstroFieldDisabled(true);
-          }}
         />
       ) : (
         <div aria-hidden className="pointer-events-none fixed inset-0 z-[8] startup-mono__field" />
