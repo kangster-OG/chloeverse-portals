@@ -7,6 +7,7 @@ import * as THREE from "three";
 
 type DesktopAstroFieldProps = {
   className?: string;
+  monochrome?: boolean;
   onReady?: () => void;
   onPerformanceFail?: () => void;
 };
@@ -250,6 +251,11 @@ function pickColor(rng: () => number) {
   return new THREE.Color(color);
 }
 
+function pickMonochromeColor(rng: () => number) {
+  const value = 0.74 + rng() * 0.24;
+  return new THREE.Color(value, value, value);
+}
+
 function buildParticleConfigs({
   count,
   seed,
@@ -262,6 +268,7 @@ function buildParticleConfigs({
   alphaMin,
   alphaMax,
   drift,
+  monochrome = false,
 }: {
   count: number;
   seed: number;
@@ -274,6 +281,7 @@ function buildParticleConfigs({
   alphaMin: number;
   alphaMax: number;
   drift: number;
+  monochrome?: boolean;
 }) {
   const rng = createRng(seed);
   const configs: ParticleConfig[] = [];
@@ -291,14 +299,14 @@ function buildParticleConfigs({
       phase: rng() * Math.PI * 2,
       size: sizeMin + rng() * (sizeMax - sizeMin),
       alpha: alphaMin + rng() * (alphaMax - alphaMin),
-      hue: pickColor(rng),
+      hue: monochrome ? pickMonochromeColor(rng) : pickColor(rng),
     });
   }
 
   return configs;
 }
 
-function buildStreakConfigs(count: number) {
+function buildStreakConfigs(count: number, monochrome = false) {
   const rng = createRng(321791);
   const configs: StreakConfig[] = [];
 
@@ -314,7 +322,7 @@ function buildStreakConfigs(count: number) {
       width: 0.32 + rng() * 0.34,
       height: 0.8 + rng() * 1.1,
       opacity: 0.04 + rng() * 0.08,
-      color: pickColor(rng),
+      color: monochrome ? pickMonochromeColor(rng) : pickColor(rng),
     });
   }
 
@@ -428,7 +436,7 @@ function ReadySignal({ onReady }: { onReady?: () => void }) {
   return null;
 }
 
-function FieldBackdrop() {
+function FieldBackdrop({ monochrome = false }: { monochrome?: boolean }) {
   const materialRef = useRef<THREE.ShaderMaterial | null>(null);
   const { size } = useThree();
   const uniforms = useMemo(
@@ -443,11 +451,11 @@ function FieldBackdrop() {
       uPocketRadiusX: { value: ASTRO_FIELD_TUNING.pocketRadiusX },
       uPocketRadiusY: { value: ASTRO_FIELD_TUNING.pocketRadiusY },
       uPocketDarkness: { value: ASTRO_FIELD_TUNING.pocketDarkness },
-      uBaseA: { value: new THREE.Color("#07111a") },
-      uBaseB: { value: new THREE.Color("#140d1f") },
-      uBaseC: { value: new THREE.Color("#1a1014") },
+      uBaseA: { value: new THREE.Color(monochrome ? "#0d0d10" : "#07111a") },
+      uBaseB: { value: new THREE.Color(monochrome ? "#141418" : "#140d1f") },
+      uBaseC: { value: new THREE.Color(monochrome ? "#1b1b20" : "#1a1014") },
     }),
-    [],
+    [monochrome],
   );
 
   useEffect(() => {
@@ -606,10 +614,10 @@ function ParticleField({
   );
 }
 
-function StreakField() {
+function StreakFieldMonochrome({ monochrome = false }: { monochrome?: boolean }) {
   const groupRef = useRef<THREE.Group | null>(null);
   const materialRefs = useRef<Array<THREE.SpriteMaterial | null>>([]);
-  const streakConfigs = useMemo(() => buildStreakConfigs(ASTRO_FIELD_TUNING.streakCount), []);
+  const streakConfigs = useMemo(() => buildStreakConfigs(ASTRO_FIELD_TUNING.streakCount, monochrome), [monochrome]);
   const configsRef = useRef(
     streakConfigs.map((config) => ({
       ...config,
@@ -617,6 +625,13 @@ function StreakField() {
     })),
   );
   const texture = useMemo(() => createStreakTexture(), []);
+
+  useEffect(() => {
+    configsRef.current = streakConfigs.map((config) => ({
+      ...config,
+      color: config.color.clone(),
+    }));
+  }, [streakConfigs]);
 
   useEffect(() => {
     const materials = materialRefs.current;
@@ -689,9 +704,11 @@ function StreakField() {
 function AstroFieldScene({
   onReady,
   onPerformanceFail,
+  monochrome = false,
 }: {
   onReady?: () => void;
   onPerformanceFail?: () => void;
+  monochrome?: boolean;
 }) {
   const farConfigs = useMemo(
     () =>
@@ -707,8 +724,9 @@ function AstroFieldScene({
         alphaMin: 0.16,
         alphaMax: 0.42,
         drift: 0.12,
+        monochrome,
       }),
-    [],
+    [monochrome],
   );
   const orbConfigs = useMemo(
     () =>
@@ -724,8 +742,9 @@ function AstroFieldScene({
         alphaMin: 0.06,
         alphaMax: 0.16,
         drift: 0.34,
+        monochrome,
       }),
-    [],
+    [monochrome],
   );
 
   return (
@@ -738,7 +757,7 @@ function AstroFieldScene({
       />
       <ReadySignal onReady={onReady} />
       <CameraRig />
-      <FieldBackdrop />
+      <FieldBackdrop monochrome={monochrome} />
       <ParticleField
         configs={farConfigs}
         scale={ASTRO_FIELD_TUNING.farPointScale}
@@ -760,13 +779,14 @@ function AstroFieldScene({
         softness={0.62}
         coreBoost={0.05}
       />
-      <StreakField />
+      <StreakFieldMonochrome monochrome={monochrome} />
     </>
   );
 }
 
 export function DesktopAstroField({
   className,
+  monochrome = false,
   onReady,
   onPerformanceFail,
 }: DesktopAstroFieldProps) {
@@ -785,7 +805,7 @@ export function DesktopAstroField({
         eventSource={typeof document !== "undefined" ? document.documentElement : undefined}
         eventPrefix="client"
       >
-        <AstroFieldScene onReady={onReady} onPerformanceFail={onPerformanceFail} />
+        <AstroFieldScene monochrome={monochrome} onReady={onReady} onPerformanceFail={onPerformanceFail} />
       </Canvas>
       <div className="chv-home-astro-pocket" />
       <div className="chv-home-astro-veil" />

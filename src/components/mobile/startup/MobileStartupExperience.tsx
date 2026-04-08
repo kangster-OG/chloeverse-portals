@@ -1,5 +1,10 @@
 import { StartupExperience } from "@/components/startup/StartupExperience";
 
-export function MobileStartupExperience() {
-  return <StartupExperience />;
+type MobileStartupExperienceProps = {
+  titleFontClassName: string;
+  monoFontClassName: string;
+};
+
+export function MobileStartupExperience(props: MobileStartupExperienceProps) {
+  return <StartupExperience {...props} />;
 }
