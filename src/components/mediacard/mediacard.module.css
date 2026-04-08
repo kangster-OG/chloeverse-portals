@@ -678,11 +678,11 @@
   z-index: 1;
   display: block;
   margin: 0 auto;
-  height: 52px;
+  height: var(--logo-height, 52px);
   width: auto;
   max-width: 220px;
   object-fit: contain;
-  filter: none;
+  filter: var(--logo-filter, none);
   opacity: 1;
   mix-blend-mode: normal;
 }

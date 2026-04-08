@@ -110,6 +110,21 @@ function CollabsPanel() {
     { name: "Adobe", pngSrc: "/mediacard/logos/adobe.png", svgSrc: "/mediacard/logos/adobe.svg", accent: "255 0 0" },
     { name: "Adidas", pngSrc: "/mediacard/logos/adidas.png", svgSrc: "/mediacard/logos/adidas.svg", accent: "125 249 255" },
     {
+      name: "Armani",
+      pngSrc: "/mediacard/logos/armani.svg",
+      svgSrc: "/mediacard/logos/armani.svg",
+      accent: "245 232 220",
+      logoHeight: "28px",
+      logoFilter: "invert(1) brightness(1.08)",
+    },
+    {
+      name: "BTS",
+      pngSrc: "/mediacard/logos/bts.png",
+      svgSrc: "/mediacard/logos/bts.svg",
+      accent: "185 154 247",
+      logoHeight: "58px",
+    },
+    {
       name: "Estee Lauder",
       pngSrc: "/mediacard/logos/esteelauder.png",
       svgSrc: "/mediacard/logos/esteelauder.svg",
@@ -125,7 +140,17 @@ function CollabsPanel() {
       </header>
       <div className={styles.logoGrid}>
         {partners.map((partner) => (
-          <div key={partner.name} className={styles.logoTile} style={{ "--logo-accent": partner.accent } as CSSProperties}>
+          <div
+            key={partner.name}
+            className={styles.logoTile}
+            style={
+              {
+                "--logo-accent": partner.accent,
+                "--logo-height": partner.logoHeight,
+                "--logo-filter": partner.logoFilter,
+              } as CSSProperties
+            }
+          >
             <img
               className={styles.brandLogoImg}
               src={partner.pngSrc}
@@ -217,4 +242,3 @@ export function MediaKitPanel({
     </motion.aside>
   );
 }
-

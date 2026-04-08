@@ -68,9 +68,25 @@ const TUNE = {
   ATMOS_GLASS_ALPHA: 0.035,
   SCANLINE_ROWS: 240,
   SCANLINE_SPEED: 1.2,
-  IDLE_ROTATION_RAD_PER_SEC: 0.02,
+  IDLE_ROTATION_RAD_PER_SEC: 0.03,
   MASK_RETRY_MAX: 2,
   MASK_RETRY_DELAY_MS: 280,
+  PULSE_HOVER_DURATION_SEC: 1.56,
+  PULSE_ACTIVE_DURATION_SEC: 1.96,
+  PULSE_HOVER_WIDTH_RAD: 0.16,
+  PULSE_ACTIVE_WIDTH_RAD: 0.2,
+  PULSE_EDGE_SOFTNESS_RAD: 0.12,
+  PULSE_HOVER_STRENGTH: 0.68,
+  PULSE_ACTIVE_STRENGTH: 1.0,
+  PULSE_MAIN_SIZE_BUMP: 0.12,
+  PULSE_MAIN_BRIGHTNESS: 0.22,
+  PULSE_SOURCE_BRIGHTNESS: 0.46,
+  PULSE_SOURCE_GLOW: 0.44,
+  BEACON_BASE_OPACITY: 0.11,
+  BEACON_ACTIVE_OPACITY: 0.23,
+  BEACON_SCALE_BOOST: 0.14,
+  BEACON_BREATH_BASE: 0.03,
+  BEACON_BREATH_ACTIVE: 0.075,
 } as const;
 
 const HOME_TARGET_LAT_DEG = (TARGETS.audience.lat + TARGETS.metrics.lat) / 2;
@@ -177,7 +193,7 @@ const FRONT = new THREE.Vector3(0, 0, 1);
 const GLOBE_RADIUS = 1;
 const DPR_CAP = 2;
 const EARTH_MASK_URL = "/mediacard/earth_mask.png";
-const MEDIACARD_BUILD_TAG = "mediacard_homeview_lock_v1";
+const MEDIACARD_BUILD_TAG = "mediacard_surface_pulse_v4";
 const UNDERLAY_ENABLE = true;
 const UNDERLAY_COLOR = 0x26285c;
 const UNDERLAY_ALPHA = 0.10;
@@ -1086,23 +1102,23 @@ function createMarketBeaconTexture() {
   const cy = size * 0.5;
   ctx.clearRect(0, 0, size, size);
   const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.5);
-  glow.addColorStop(0, "rgba(214, 232, 255, 0.68)");
-  glow.addColorStop(0.22, "rgba(178, 146, 255, 0.36)");
-  glow.addColorStop(0.5, "rgba(124, 58, 237, 0.14)");
+  glow.addColorStop(0, "rgba(230, 238, 255, 0.42)");
+  glow.addColorStop(0.2, "rgba(194, 177, 255, 0.18)");
+  glow.addColorStop(0.48, "rgba(124, 58, 237, 0.07)");
   glow.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = glow;
   ctx.beginPath();
   ctx.arc(cx, cy, size * 0.5, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "rgba(244, 248, 255, 0.98)";
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgba(244, 248, 255, 0.70)";
+  ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.24, 0, Math.PI * 2);
+  ctx.arc(cx, cy, size * 0.232, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(198, 221, 255, 0.82)";
-  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = "rgba(205, 224, 255, 0.40)";
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.155, 0, Math.PI * 2);
+  ctx.arc(cx, cy, size * 0.15, 0, Math.PI * 2);
   ctx.stroke();
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -1205,6 +1221,31 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       ...market,
       center: latLonToUnit(market.latDeg, market.lonDeg, MEDIACARD_TUNING.LON_OFFSET_DEG),
     }));
+    const pulseGlowColor = new THREE.Color("#FBE7CF");
+    const pulseFocusColor = new THREE.Color("#FFE7C4");
+    const pulseUniforms = {
+      uPulseOrigin: { value: marketRuntime[0]?.center.clone() ?? new THREE.Vector3(0, 1, 0) },
+      uPulseStart: { value: -100 },
+      uPulseDuration: { value: Number(TUNE.PULSE_HOVER_DURATION_SEC) },
+      uPulseWidth: { value: Number(TUNE.PULSE_HOVER_WIDTH_RAD) },
+      uPulseEdge: { value: Number(TUNE.PULSE_EDGE_SOFTNESS_RAD) },
+      uPulseMaxAngle: { value: Math.PI * 0.92 },
+      uPulseStrength: { value: 0 },
+      uPulseColor: { value: pulseGlowColor.clone() },
+    };
+    const triggerSurfacePulse = (marketId: number, mode: "hover" | "focus", nowSec: number) => {
+      if (marketId <= 0) return;
+      const market = marketRuntime.find((entry) => entry.id === marketId);
+      if (!market) return;
+      pulseUniforms.uPulseOrigin.value.copy(market.center);
+      pulseUniforms.uPulseStart.value = nowSec;
+      pulseUniforms.uPulseDuration.value = mode === "focus" ? TUNE.PULSE_ACTIVE_DURATION_SEC : TUNE.PULSE_HOVER_DURATION_SEC;
+      pulseUniforms.uPulseWidth.value = mode === "focus" ? TUNE.PULSE_ACTIVE_WIDTH_RAD : TUNE.PULSE_HOVER_WIDTH_RAD;
+      pulseUniforms.uPulseEdge.value = TUNE.PULSE_EDGE_SOFTNESS_RAD;
+      pulseUniforms.uPulseMaxAngle.value = mode === "focus" ? Math.PI * 0.98 : Math.PI * 0.9;
+      pulseUniforms.uPulseStrength.value = mode === "focus" ? TUNE.PULSE_ACTIVE_STRENGTH : TUNE.PULSE_HOVER_STRENGTH;
+      pulseUniforms.uPulseColor.value.copy(mode === "focus" ? pulseFocusColor : pulseGlowColor);
+    };
     const marketStrengths = new THREE.Vector4(0, 0, 0, 0);
     const setMarketStrength = (marketId: number, value: number) => {
       if (marketId === MARKET_ID.us) marketStrengths.x = Math.max(marketStrengths.x, value);
@@ -1215,6 +1256,8 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
     let activeFlashMarket = MARKET_NONE_ID;
     let activeFlashUntilMs = 0;
     let lastActiveMarketSeen = activeMarketIdRef.current;
+    let lastPulseHoverSeen = MARKET_NONE_ID;
+    let lastPulseActiveSeen = activeMarketIdRef.current;
     const computeMarketStrengths = (timeSec: number) => {
       const nowMs = timeSec * 1000;
       if (activeMarketIdRef.current !== lastActiveMarketSeen) {
@@ -1533,9 +1576,9 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
     for (const market of marketRuntime) {
       const material = new THREE.SpriteMaterial({
         map: beaconTexture ?? null,
-        color: new THREE.Color("#D2DDFF"),
+        color: new THREE.Color("#DEE7FF"),
         transparent: true,
-        opacity: 0.18,
+        opacity: TUNE.BEACON_BASE_OPACITY,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         depthTest: true,
@@ -1619,6 +1662,14 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uHoverMarket: { value: hoverMarketIdRef.current },
       uActiveMarket: { value: activeMarketIdRef.current },
       uDebugBaseOnly: { value: 0 },
+      uPulseOrigin: pulseUniforms.uPulseOrigin,
+      uPulseStart: pulseUniforms.uPulseStart,
+      uPulseDuration: pulseUniforms.uPulseDuration,
+      uPulseWidth: pulseUniforms.uPulseWidth,
+      uPulseEdge: pulseUniforms.uPulseEdge,
+      uPulseMaxAngle: pulseUniforms.uPulseMaxAngle,
+      uPulseStrength: pulseUniforms.uPulseStrength,
+      uPulseColor: pulseUniforms.uPulseColor,
     };
     const glowUniforms = {
       uPointPx: { value: TUNE.POINT_PX * 1.35 },
@@ -1633,6 +1684,14 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uBase: { value: new THREE.Color(MEDIACARD_TUNING.DOT_COLOR_BASE) },
       uViolet: { value: new THREE.Color(MEDIACARD_TUNING.DOT_COLOR_SECONDARY) },
       uDebugBaseOnly: { value: 0 },
+      uPulseOrigin: pulseUniforms.uPulseOrigin,
+      uPulseStart: pulseUniforms.uPulseStart,
+      uPulseDuration: pulseUniforms.uPulseDuration,
+      uPulseWidth: pulseUniforms.uPulseWidth,
+      uPulseEdge: pulseUniforms.uPulseEdge,
+      uPulseMaxAngle: pulseUniforms.uPulseMaxAngle,
+      uPulseStrength: pulseUniforms.uPulseStrength,
+      uPulseColor: pulseUniforms.uPulseColor,
     };
     const marketOverlayUniforms = {
       uPointPx: { value: TUNE.POINT_PX },
@@ -1663,6 +1722,14 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uniform float uBeadNear;
       uniform float uBeadFar;
       uniform float uBeadBoost;
+      uniform float uTime;
+      uniform vec3 uPulseOrigin;
+      uniform float uPulseStart;
+      uniform float uPulseDuration;
+      uniform float uPulseWidth;
+      uniform float uPulseEdge;
+      uniform float uPulseMaxAngle;
+      uniform float uPulseStrength;
       varying float vHot;
       varying float vPhase;
       varying float vFacing;
@@ -1672,12 +1739,27 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       varying float vVar;
       varying float vMarketId;
       varying float vMarketMask;
+      varying float vPulseBand;
+      varying float vPulseAura;
+      varying float vPulseSource;
       void main() {
         vHot = aHot;
         vPhase = aPhase;
         vMarketId = aMarketId;
         vMarketMask = aMarketMask;
         vec3 unit = normalize(position);
+        float pulseDt = uTime - uPulseStart;
+        float pulseActive = step(0.0, pulseDt) * (1.0 - step(uPulseDuration, pulseDt));
+        float pulseProgress = clamp(pulseDt / max(uPulseDuration, 0.0001), 0.0, 1.0);
+        float pulseRadius = mix(0.0, uPulseMaxAngle, pulseProgress);
+        float pulseAngle = acos(clamp(dot(unit, normalize(uPulseOrigin)), -1.0, 1.0));
+        float pulseBand = 1.0 - smoothstep(uPulseWidth, uPulseWidth + uPulseEdge, abs(pulseAngle - pulseRadius));
+        float pulseAura = 1.0 - smoothstep(uPulseWidth + uPulseEdge * 0.2, uPulseWidth + uPulseEdge * 4.4, abs(pulseAngle - pulseRadius));
+        float pulseSource = 1.0 - smoothstep(uPulseWidth * 1.4, uPulseWidth * 3.0, pulseAngle);
+        float sourceWindow = 1.0 - smoothstep(0.08, 0.48, pulseProgress);
+        vPulseBand = pulseBand * pulseActive * uPulseStrength;
+        vPulseAura = pulseAura * pulseActive * uPulseStrength;
+        vPulseSource = pulseSource * pulseActive * sourceWindow * uPulseStrength;
         vReveal = clamp(0.5 - asin(clamp(unit.y, -1.0, 1.0)) / 3.14159265359, 0.0, 1.0);
         vec3 worldPos = (modelMatrix * vec4(position, 1.0)).xyz;
         vec3 worldNormal = normalize((modelMatrix * vec4(unit, 0.0)).xyz);
@@ -1694,6 +1776,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         float d = length(mv.xyz);
         float t = smoothstep(uBeadFar, uBeadNear, d);
         gl_PointSize *= mix(1.0, uBeadBoost, t);
+        gl_PointSize *= 1.0 + vPulseBand * ${TUNE.PULSE_MAIN_SIZE_BUMP.toFixed(2)} + vPulseSource * ${(TUNE.PULSE_MAIN_SIZE_BUMP * 0.45).toFixed(2)};
       }
     `;
     const fragmentShader = `
@@ -1707,6 +1790,9 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       varying float vVar;
       varying float vMarketId;
       varying float vMarketMask;
+      varying float vPulseBand;
+      varying float vPulseAura;
+      varying float vPulseSource;
       uniform float uTime;
       uniform float uReveal;
       uniform vec3 uBase;
@@ -1716,6 +1802,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uniform float uHoverMarket;
       uniform float uActiveMarket;
       uniform float uDebugBaseOnly;
+      uniform vec3 uPulseColor;
       void main() {
         if (vReveal > uReveal) discard;
         vec2 p = gl_PointCoord * 2.0 - 1.0;
@@ -1744,9 +1831,14 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
           float isHover = step(0.5, 1.0 - abs(vMarketId - uHoverMarket));
           float isActive = step(0.5, 1.0 - abs(vMarketId - uActiveMarket));
           float marketOn = max(isHover, isActive) * step(0.5, vMarketMask);
-          vec3 highlightColor = vec3(0.70, 0.55, 1.00);
-          color = mix(color, mix(color, highlightColor, 0.65), marketOn);
+          vec3 highlightColor = vec3(0.78, 0.72, 0.98);
+          color = mix(color, mix(color, highlightColor, 0.22), marketOn);
         }
+        float pulseLift = clamp(vPulseBand * 0.9 + vPulseSource * 0.7, 0.0, 1.0);
+        float pulseSourceLift = clamp(vPulseSource * 1.15, 0.0, 1.0);
+        color = mix(color, uPulseColor, pulseLift * 0.24 + pulseSourceLift * 0.22);
+        color *= 1.0 + pulseLift * ${TUNE.PULSE_MAIN_BRIGHTNESS.toFixed(2)};
+        color *= 1.0 + pulseSourceLift * ${TUNE.PULSE_SOURCE_BRIGHTNESS.toFixed(2)};
         float r = sqrt(r2);
         float coreMask = 1.0 - smoothstep(0.0, 0.24, r);
         float haloMask = (1.0 - smoothstep(0.28, 0.55, r)) * 0.18;
@@ -1772,6 +1864,9 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       varying vec3 vWorldN;
       varying vec3 vWorldPos;
       varying float vVar;
+      varying float vPulseBand;
+      varying float vPulseAura;
+      varying float vPulseSource;
       uniform float uReveal;
       uniform float uTime;
       uniform vec3 uBase;
@@ -1779,6 +1874,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uniform vec3 uKeyDirWorld;
       uniform float uCineStrength;
       uniform float uDebugBaseOnly;
+      uniform vec3 uPulseColor;
       void main() {
         if (vReveal > uReveal) discard;
         if (uDebugBaseOnly > 0.5) discard;
@@ -1797,6 +1893,10 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         float hotMix = clamp(hotPeaks, 0.0, 1.0);
         vec3 haloCol = mix(uBase * vec3(0.70, 0.56, 0.34), uViolet * vec3(0.72, 0.60, 0.90), hotMix * 0.5);
         float alpha = (0.032 * body + 0.078 * edge) * front;
+        float pulseGlow = clamp(vPulseAura * 1.18 + vPulseBand * 0.72 + vPulseSource * 1.42, 0.0, 1.7);
+        haloCol = mix(haloCol, uPulseColor, clamp(vPulseAura * 0.64 + vPulseBand * 0.82 + vPulseSource * 1.28, 0.0, 1.0));
+        alpha += front * (vPulseAura * 0.12 + vPulseBand * 0.18 + vPulseSource * ${TUNE.PULSE_SOURCE_GLOW.toFixed(2)});
+        alpha *= 1.0 + pulseGlow * 0.18;
         gl_FragColor = vec4(haloCol, alpha);
       }
     `;
@@ -1823,7 +1923,7 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = clamp(uPointPx, ${MEDIACARD_TUNING.DOT_MIN_SIZE_DPR.toFixed(1)} * uDpr, ${(MEDIACARD_TUNING.DOT_MAX_SIZE_DPR * 1.25).toFixed(1)} * uDpr);
-        gl_PointSize *= (1.0 + 0.10 * w);
+        gl_PointSize *= (1.0 + 0.035 * w);
       }
     `;
     const marketOverlayFragmentShader = `
@@ -1844,9 +1944,9 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
         float isActive = step(0.5, 1.0 - abs(vMarketId - uActiveMarket));
         float w = clamp((isHover + isActive) * vMarketMask, 0.0, 1.0);
         if (w <= 0.001) discard;
-        vec3 accent = vec3(0.70, 0.55, 1.00);
+        vec3 accent = vec3(0.84, 0.80, 1.00);
         float disc = 1.0 - smoothstep(0.86, 1.0, r);
-        float a = 0.16 * w;
+        float a = 0.055 * w;
         float outA = a * disc;
         gl_FragColor = vec4(accent * outA, outA);
       }
@@ -2656,6 +2756,14 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       uniforms.uTime.value = timeSec;
       glowUniforms.uTime.value = timeSec;
       const finalHover = hoverMarketIdRef.current > 0 ? hoverMarketIdRef.current : cursorHoverMarketIdRef.current;
+      if (finalHover !== lastPulseHoverSeen) {
+        if (finalHover > 0) triggerSurfacePulse(finalHover, "hover", timeSec);
+        lastPulseHoverSeen = finalHover;
+      }
+      if (activeMarketIdRef.current !== lastPulseActiveSeen) {
+        if (activeMarketIdRef.current > 0) triggerSurfacePulse(activeMarketIdRef.current, "focus", timeSec);
+        lastPulseActiveSeen = activeMarketIdRef.current;
+      }
       uniforms.uHoverMarket.value = finalHover;
       uniforms.uActiveMarket.value = activeMarketIdRef.current;
       marketOverlayUniforms.uHoverMarket.value = finalHover;
@@ -2673,15 +2781,15 @@ export const GlobeRenderer = forwardRef<GlobeRendererHandle, GlobeRendererProps>
       for (const sprite of beaconSprites) {
         const marketId = Number(sprite.userData.marketId ?? MARKET_NONE_ID);
         const marketStrength = strengthForMarket(marketId, strengths);
-        const pulse = 0.96 + (0.04 + 0.12 * marketStrength) * (0.5 + 0.5 * Math.sin(timeSec * 0.72 + marketId * 1.1));
-        const scale = beaconScaleBase * (1.0 + 0.26 * marketStrength) * pulse;
+        const pulse = 0.985 + (TUNE.BEACON_BREATH_BASE + TUNE.BEACON_BREATH_ACTIVE * marketStrength) * (0.5 + 0.5 * Math.sin(timeSec * 0.72 + marketId * 1.1));
+        const scale = beaconScaleBase * (1.0 + TUNE.BEACON_SCALE_BOOST * marketStrength) * pulse;
         sprite.scale.setScalar(scale);
         const material = sprite.material;
         if (material instanceof THREE.SpriteMaterial) {
-          material.opacity = clamp(0.10 + 0.30 * marketStrength + (pulse - 0.96) * 0.3, 0.08, 0.46);
+          material.opacity = clamp(TUNE.BEACON_BASE_OPACITY + TUNE.BEACON_ACTIVE_OPACITY * marketStrength + (pulse - 0.985) * 0.22, 0.08, 0.34);
           material.color.setRGB(
-            THREE.MathUtils.lerp(0.72, 0.92, marketStrength),
-            THREE.MathUtils.lerp(0.76, 0.96, marketStrength),
+            THREE.MathUtils.lerp(0.76, 0.90, marketStrength),
+            THREE.MathUtils.lerp(0.80, 0.94, marketStrength),
             THREE.MathUtils.lerp(0.96, 1.0, marketStrength)
           );
         }

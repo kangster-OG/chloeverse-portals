@@ -8,6 +8,8 @@ const outDir = path.join(rootDir, "public", "contact", "planet-dodge");
 
 const REQUIRED_ASSETS = [
   "ship.png",
+  "alien-fighter.png",
+  "space-station.png",
   "mercury.png",
   "venus.png",
   "earth.png",

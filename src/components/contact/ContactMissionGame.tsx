@@ -12,14 +12,19 @@ import styles from "./ContactMissionGame.module.css";
 const GAME_WIDTH = 480;
 const GAME_HEIGHT = 270;
 const SHIP_RADIUS = 9;
-const FLIGHT_DURATION = 13;
-const CRASH_DURATION = 4.4;
+const MISSION_DURATION = 20;
+const DOCK_DURATION = 4.8;
 const MAX_INTEGRITY = 100;
-const DAMAGE_PER_HIT = 24;
+const DAMAGE_PER_HIT = 22;
+const DAMAGE_PER_ENEMY_SHOT = 12;
+const SHOT_COOLDOWN = 0.18;
+const SHOT_SPEED = 238;
+const PROJECTILE_TTL = 1.08;
+const ENEMY_PROJECTILE_TTL = 1.8;
 const MAX_DT = 1 / 30;
 const RECENT_KIND_MEMORY = 4;
 
-type ContactGamePhase = "boot" | "launch" | "flight" | "crash" | "card";
+type ContactGamePhase = "boot" | "launch" | "flight" | "dock" | "card";
 type PlanetKind =
   | "mercury"
   | "venus"
@@ -30,8 +35,8 @@ type PlanetKind =
   | "uranus"
   | "neptune"
   | "pluto";
-
-type ContactArtKey = PlanetKind | "ship";
+type ObstacleKind = PlanetKind | "alien";
+type ContactArtKey = PlanetKind | "ship" | "alien" | "station";
 type ContactArtMap = Partial<Record<ContactArtKey, HTMLImageElement>>;
 type ContactArtSourceMap = Record<ContactArtKey, string[]>;
 
@@ -72,9 +77,21 @@ type Particle = {
   color: string;
 };
 
+type Projectile = {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  life: number;
+  ttl: number;
+  friendly: boolean;
+};
+
 type Obstacle = {
   id: number;
-  kind: PlanetKind;
+  kind: ObstacleKind;
   x: number;
   y: number;
   radius: number;
@@ -82,7 +99,13 @@ type Obstacle = {
   vy: number;
   spin: number;
   spinVelocity: number;
+  wobble: number;
+  wobbleSpeed: number;
+  shootCooldown: number;
+  hp: number;
+  maxHp: number;
   passed: boolean;
+  destroyed: boolean;
   hitFlash: number;
 };
 
@@ -93,20 +116,32 @@ type ShipState = {
   vy: number;
   tilt: number;
   flash: number;
+  gunFlash: number;
 };
 
-type PlutoState = {
+type StationState = {
   x: number;
   y: number;
-  radius: number;
+  size: number;
   glow: number;
+  bayGlow: number;
 };
 
 type RunStats = {
   dodges: number;
-  nearMisses: number;
+  destroyed: number;
+  shipsDestroyed: number;
   integrityLeft: number;
   survivedSeconds: number;
+};
+
+type HudState = {
+  integrity: number;
+  dodges: number;
+  destroyed: number;
+  aliens: number;
+  timeLeft: number;
+  progress: number;
 };
 
 type GameState = {
@@ -114,21 +149,27 @@ type GameState = {
   phaseElapsed: number;
   flightElapsed: number;
   ship: ShipState;
+  station: StationState;
   stars: Star[];
   clouds: Cloud[];
   particles: Particle[];
+  projectiles: Projectile[];
   obstacles: Obstacle[];
   obstacleId: number;
+  projectileId: number;
   recentKinds: PlanetKind[];
   spawnTimer: number;
+  shootCooldown: number;
   collisionCooldown: number;
   integrity: number;
   dodgeCount: number;
-  nearMissCount: number;
+  destroyCount: number;
+  alienDestroyCount: number;
+  planetSpawnCount: number;
+  alienSpawnCount: number;
   cameraShake: number;
   flash: number;
-  pluto: PlutoState;
-  crashOrigin: { x: number; y: number };
+  dockOrigin: { x: number; y: number };
   cardPulse: number;
 };
 
@@ -145,6 +186,8 @@ const PLANET_ORDER: PlanetKind[] = [
 
 const CONTACT_ART_PATHS: ContactArtSourceMap = {
   ship: ["/contact/planet-dodge/ship.png", "/contact/planet-dodge/ship.svg"],
+  alien: ["/contact/planet-dodge/alien-fighter.png"],
+  station: ["/contact/planet-dodge/space-station.png"],
   mercury: ["/contact/planet-dodge/mercury.png", "/contact/planet-dodge/mercury.svg"],
   venus: ["/contact/planet-dodge/venus.png", "/contact/planet-dodge/venus.svg"],
   earth: ["/contact/planet-dodge/earth.png", "/contact/planet-dodge/earth.svg"],
@@ -156,7 +199,6 @@ const CONTACT_ART_PATHS: ContactArtSourceMap = {
   pluto: ["/contact/planet-dodge/pluto.png", "/contact/planet-dodge/pluto.svg"],
 };
 
-// Fallback palette metadata used for glow and procedural backup rendering.
 const PLANET_PALETTES: Record<PlanetKind, PlanetPalette> = {
   mercury: {
     body: "#b79275",
@@ -286,27 +328,35 @@ function createInitialState(phase: ContactGamePhase = "boot"): GameState {
       vy: 0,
       tilt: 0,
       flash: 0,
+      gunFlash: 0,
+    },
+    station: {
+      x: GAME_WIDTH * 0.5,
+      y: -110,
+      size: 54,
+      glow: 0,
+      bayGlow: 0,
     },
     stars: createStars(96),
     clouds: createClouds(9),
     particles: [],
+    projectiles: [],
     obstacles: [],
     obstacleId: 0,
+    projectileId: 0,
     recentKinds: [],
-    spawnTimer: 0.9,
+    spawnTimer: 0.52,
+    shootCooldown: 0,
     collisionCooldown: 0,
     integrity: MAX_INTEGRITY,
     dodgeCount: 0,
-    nearMissCount: 0,
+    destroyCount: 0,
+    alienDestroyCount: 0,
+    planetSpawnCount: 0,
+    alienSpawnCount: 0,
     cameraShake: 0,
     flash: 0,
-    pluto: {
-      x: GAME_WIDTH * 0.5,
-      y: -90,
-      radius: 28,
-      glow: 0,
-    },
-    crashOrigin: {
+    dockOrigin: {
       x: GAME_WIDTH * 0.5,
       y: GAME_HEIGHT * 0.28,
     },
@@ -338,19 +388,58 @@ function spawnBurst(game: GameState, x: number, y: number, color: string, count:
   }
 }
 
-function spawnExhaust(game: GameState) {
+function spawnExhaust(game: GameState, intensity = 1) {
   const x = game.ship.x;
   const y = game.ship.y + 9;
   game.particles.push({
     x: x - 1 + Math.random() * 2,
     y,
     vx: -4 + Math.random() * 8,
-    vy: 18 + Math.random() * 32,
+    vy: (18 + Math.random() * 32) * intensity,
     size: 1 + Math.floor(Math.random() * 2),
     life: 0,
-    ttl: 0.2 + Math.random() * 0.22,
+    ttl: 0.18 + Math.random() * 0.18,
     color: Math.random() > 0.5 ? "#ffd3a1" : "#ff8a5c",
   });
+}
+
+function spawnProjectile(game: GameState) {
+  game.projectiles.push({
+    id: game.projectileId,
+    x: game.ship.x + Math.sin(game.ship.tilt) * 4,
+    y: game.ship.y - 13,
+    vx: Math.sin(game.ship.tilt) * 28,
+    vy: -SHOT_SPEED + game.ship.vy * 0.2,
+    radius: 3,
+    life: 0,
+    ttl: PROJECTILE_TTL,
+    friendly: true,
+  });
+  game.projectileId += 1;
+  game.ship.gunFlash = 1;
+  spawnBurst(game, game.ship.x, game.ship.y - 13, "#ffe9b8", 5);
+}
+
+function spawnAlienProjectile(game: GameState, obstacle: Obstacle) {
+  const dx = game.ship.x - obstacle.x;
+  const dy = Math.max(18, game.ship.y - obstacle.y);
+  const length = Math.hypot(dx, dy) || 1;
+  const intensity = clamp(game.flightElapsed / MISSION_DURATION, 0, 1);
+  const speed = 128 + intensity * 18;
+
+  game.projectiles.push({
+    id: game.projectileId,
+    x: obstacle.x,
+    y: obstacle.y + obstacle.radius * 0.65,
+    vx: (dx / length) * speed * 0.38,
+    vy: Math.abs((dy / length) * speed) + 78,
+    radius: 2.5,
+    life: 0,
+    ttl: ENEMY_PROJECTILE_TTL,
+    friendly: false,
+  });
+  game.projectileId += 1;
+  obstacle.hitFlash = Math.max(obstacle.hitFlash, 0.42);
 }
 
 function choosePlanet(intensity: number, recentKinds: PlanetKind[], usedKinds: PlanetKind[]): PlanetKind {
@@ -371,44 +460,97 @@ function choosePlanet(intensity: number, recentKinds: PlanetKind[], usedKinds: P
   return uniquePool[Math.floor(Math.random() * uniquePool.length)] ?? "mars";
 }
 
+function chooseObstacleKind(game: GameState, usedKinds: ObstacleKind[], intensity: number): ObstacleKind {
+  if (game.alienSpawnCount < game.planetSpawnCount && !usedKinds.includes("alien")) {
+    return "alien";
+  }
+
+  if (game.planetSpawnCount < game.alienSpawnCount) {
+    return choosePlanet(intensity, game.recentKinds, usedKinds.filter((kind): kind is PlanetKind => kind !== "alien"));
+  }
+
+  if (Math.random() > 0.5 && !usedKinds.includes("alien")) {
+    return "alien";
+  }
+
+  return choosePlanet(intensity, game.recentKinds, usedKinds.filter((kind): kind is PlanetKind => kind !== "alien"));
+}
+
 function spawnObstacle(game: GameState) {
-  const intensity = clamp(game.flightElapsed / FLIGHT_DURATION, 0, 1);
-  const count = intensity > 0.58 && Math.random() > 0.46 ? 2 : 1;
+  const intensity = clamp(game.flightElapsed / MISSION_DURATION, 0, 1);
+  const count = intensity > 0.22 && Math.random() > 0.38 ? 2 : 1;
   const laneWidth = GAME_WIDTH - 110;
-  const radiusBase = 13 + intensity * 12;
   const positions: number[] = [];
-  const usedKinds: PlanetKind[] = [];
+  const usedKinds: ObstacleKind[] = [];
 
   for (let index = 0; index < count; index += 1) {
     let x = 55 + Math.random() * laneWidth;
     let attempts = 0;
-    while (positions.some((existing) => Math.abs(existing - x) < 86) && attempts < 8) {
+    while (positions.some((existing) => Math.abs(existing - x) < 84) && attempts < 8) {
       x = 55 + Math.random() * laneWidth;
       attempts += 1;
     }
     positions.push(x);
 
-    const kind = choosePlanet(intensity, game.recentKinds, usedKinds);
+    const kind = chooseObstacleKind(game, usedKinds, intensity);
     usedKinds.push(kind);
-    const radius = radiusBase + Math.random() * 11 + (kind === "jupiter" ? 10 : 0) + (kind === "saturn" ? 8 : 0);
-    game.obstacles.push({
-      id: game.obstacleId,
-      kind,
-      x,
-      y: -radius - 22 - Math.random() * 60,
-      radius,
-      vx: (-24 + Math.random() * 48) * (0.3 + intensity * 0.6),
-      vy: 44 + intensity * 84 + Math.random() * 30,
-      spin: Math.random() * Math.PI * 2,
-      spinVelocity: -0.7 + Math.random() * 1.4,
-      passed: false,
-      hitFlash: 0,
-    });
-    game.obstacleId += 1;
-    game.recentKinds.push(kind);
-    if (game.recentKinds.length > RECENT_KIND_MEMORY) {
-      game.recentKinds = game.recentKinds.slice(-RECENT_KIND_MEMORY);
+
+    if (kind === "alien") {
+      game.obstacles.push({
+        id: game.obstacleId,
+        kind,
+        x,
+        y: -30 - Math.random() * 48,
+        radius: 13 + intensity * 5 + Math.random() * 4,
+        vx: (-56 + Math.random() * 112) * (0.55 + intensity * 0.35),
+        vy: 62 + intensity * 92 + Math.random() * 24,
+        spin: 0,
+        spinVelocity: -0.24 + Math.random() * 0.48,
+        wobble: Math.random() * Math.PI * 2,
+        wobbleSpeed: 2.2 + Math.random() * 1.4,
+        shootCooldown: 0.45 + Math.random() * 0.4,
+        hp: 1,
+        maxHp: 1,
+        passed: false,
+        destroyed: false,
+        hitFlash: 0,
+      });
+      game.alienSpawnCount += 1;
+    } else {
+      const radius =
+        13 +
+        intensity * 12 +
+        Math.random() * 11 +
+        (kind === "jupiter" ? 10 : 0) +
+        (kind === "saturn" ? 8 : 0);
+      const hp = kind === "jupiter" || kind === "saturn" ? 2 : 1;
+      game.obstacles.push({
+        id: game.obstacleId,
+        kind,
+        x,
+        y: -radius - 22 - Math.random() * 60,
+        radius,
+        vx: (-24 + Math.random() * 48) * (0.3 + intensity * 0.6),
+        vy: 44 + intensity * 84 + Math.random() * 30,
+        spin: Math.random() * Math.PI * 2,
+        spinVelocity: -0.7 + Math.random() * 1.4,
+        wobble: 0,
+        wobbleSpeed: 0,
+        shootCooldown: 0,
+        hp,
+        maxHp: hp,
+        passed: false,
+        destroyed: false,
+        hitFlash: 0,
+      });
+      game.planetSpawnCount += 1;
+      game.recentKinds.push(kind);
+      if (game.recentKinds.length > RECENT_KIND_MEMORY) {
+        game.recentKinds = game.recentKinds.slice(-RECENT_KIND_MEMORY);
+      }
     }
+
+    game.obstacleId += 1;
   }
 }
 
@@ -477,10 +619,11 @@ function drawPlanet(
   ctx.restore();
 }
 
-function drawShip(ctx: CanvasRenderingContext2D, ship: ShipState, flightBoost: number) {
+function drawShip(ctx: CanvasRenderingContext2D, ship: ShipState, flightBoost: number, scale = 1) {
   ctx.save();
   ctx.translate(ship.x, ship.y);
   ctx.rotate(ship.tilt);
+  ctx.scale(scale, scale);
 
   const flashMix = ship.flash * 0.6;
   ctx.fillStyle = flashMix > 0.1 ? "#fff6ef" : "#efe2cc";
@@ -498,6 +641,13 @@ function drawShip(ctx: CanvasRenderingContext2D, ship: ShipState, flightBoost: n
   ctx.fillStyle = "#fff4e3";
   ctx.fillRect(-1, -4, 2, 3);
 
+  ctx.fillStyle = "#a58a62";
+  ctx.fillRect(-1, -14, 2, 7);
+  if (ship.gunFlash > 0.04) {
+    ctx.fillStyle = "#fff0b0";
+    ctx.fillRect(-2, -17, 4, 4);
+  }
+
   ctx.fillStyle = "#ffb06c";
   ctx.fillRect(-3, 10, 2, 4 + flightBoost * 6);
   ctx.fillRect(1, 10, 2, 4 + flightBoost * 6);
@@ -505,6 +655,51 @@ function drawShip(ctx: CanvasRenderingContext2D, ship: ShipState, flightBoost: n
   ctx.fillStyle = "#ffd6a7";
   ctx.fillRect(-2, 11, 4, 2 + flightBoost * 4);
 
+  ctx.restore();
+}
+
+function drawAlienShip(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, glowBoost = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.shadowColor = "rgba(118, 255, 207, 0.28)";
+  ctx.shadowBlur = 16 + glowBoost * 10;
+  ctx.fillStyle = "#4ad7c3";
+  ctx.beginPath();
+  ctx.moveTo(0, -radius * 1.08);
+  ctx.lineTo(radius * 0.28, -radius * 0.28);
+  ctx.lineTo(radius * 0.9, radius * 0.56);
+  ctx.lineTo(radius * 0.24, radius * 0.22);
+  ctx.lineTo(0, radius * 0.84);
+  ctx.lineTo(-radius * 0.24, radius * 0.22);
+  ctx.lineTo(-radius * 0.9, radius * 0.56);
+  ctx.lineTo(-radius * 0.28, -radius * 0.28);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = "#16233a";
+  ctx.beginPath();
+  ctx.moveTo(0, -radius * 0.72);
+  ctx.lineTo(radius * 0.18, -radius * 0.16);
+  ctx.lineTo(radius * 0.36, radius * 0.36);
+  ctx.lineTo(0, radius * 0.1);
+  ctx.lineTo(-radius * 0.36, radius * 0.36);
+  ctx.lineTo(-radius * 0.18, -radius * 0.16);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#94fff1";
+  ctx.fillRect(-radius * 0.6, radius * 0.42, radius * 0.24, radius * 0.1);
+  ctx.fillRect(radius * 0.36, radius * 0.42, radius * 0.24, radius * 0.1);
+  ctx.fillStyle = "#9be3ff";
+  ctx.fillRect(-radius * 0.12, -radius * 0.36, radius * 0.24, radius * 0.16);
+  ctx.fillStyle = "#ffe085";
+  ctx.fillRect(-Math.max(1, radius * 0.08), -radius * 1.12, Math.max(2, radius * 0.16), radius * 0.44);
+  ctx.fillRect(-radius * 0.16, radius * 0.04, radius * 0.32, radius * 0.12);
+  ctx.fillStyle = "#2a9487";
+  ctx.fillRect(-radius * 0.76, radius * 0.58, radius * 0.18, radius * 0.08);
+  ctx.fillRect(radius * 0.58, radius * 0.58, radius * 0.18, radius * 0.08);
   ctx.restore();
 }
 
@@ -596,58 +791,160 @@ function drawPlanetVisual(
   ctx.restore();
 }
 
+function drawAlienVisual(
+  ctx: CanvasRenderingContext2D,
+  _art: ContactArtMap,
+  x: number,
+  y: number,
+  radius: number,
+  _rotation: number,
+  glowBoost = 0,
+) {
+  drawAlienShip(ctx, x, y, radius, glowBoost);
+}
+
+function drawStation(ctx: CanvasRenderingContext2D, station: StationState) {
+  ctx.save();
+  ctx.translate(station.x, station.y);
+  const width = station.size * 1.08;
+  const height = station.size * 0.62;
+
+  ctx.shadowColor = "rgba(255, 196, 129, 0.18)";
+  ctx.shadowBlur = 18 + station.glow * 16;
+  ctx.fillStyle = "#d6d5e2";
+  ctx.fillRect(-width * 0.5, -height * 0.22, width, height * 0.42);
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = "#59647f";
+  ctx.fillRect(-width * 0.45, -height * 0.08, width * 0.9, height * 0.18);
+  ctx.fillStyle = "#1c2340";
+  ctx.fillRect(-width * 0.1, -height * 0.06, width * 0.2, height * 0.14);
+
+  ctx.fillStyle = `rgba(255, 225, 160, ${0.2 + station.bayGlow * 0.55})`;
+  ctx.fillRect(-width * 0.08, -height * 0.04, width * 0.16, height * 0.1);
+  ctx.restore();
+}
+
+function drawStationVisual(ctx: CanvasRenderingContext2D, art: ContactArtMap, station: StationState) {
+  const sprite = art.station;
+  if (!sprite) {
+    drawStation(ctx, station);
+    return;
+  }
+
+  const width = station.size;
+  const height = station.size * 0.62;
+
+  ctx.save();
+  ctx.translate(station.x, station.y);
+  ctx.globalAlpha = 0.26 + station.glow * 0.18;
+  drawCircle(ctx, 0, 0, station.size * 0.34, "rgba(255, 212, 168, 0.12)");
+  ctx.globalAlpha = 1;
+  ctx.shadowColor = "rgba(255, 196, 129, 0.16)";
+  ctx.shadowBlur = 18 + station.glow * 18;
+  ctx.drawImage(sprite, -width / 2, -height / 2, width, height);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = `rgba(255, 239, 194, ${0.12 + station.bayGlow * 0.34})`;
+  ctx.fillRect(-station.size * 0.08, -station.size * 0.01, station.size * 0.16, station.size * 0.07);
+  ctx.restore();
+}
+
+function drawDockingLane(ctx: CanvasRenderingContext2D, station: StationState, progress: number) {
+  ctx.save();
+  ctx.translate(station.x, station.y);
+  ctx.strokeStyle = `rgba(255, 236, 207, ${0.08 + progress * 0.18})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-station.size * 0.12, station.size * 0.12);
+  ctx.lineTo(-station.size * 0.04, -station.size * 0.02);
+  ctx.moveTo(station.size * 0.12, station.size * 0.12);
+  ctx.lineTo(station.size * 0.04, -station.size * 0.02);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawShipVisual(
   ctx: CanvasRenderingContext2D,
   art: ContactArtMap,
   ship: ShipState,
   flightBoost: number,
+  scale = 1,
 ) {
   const sprite = art.ship;
   if (!sprite) {
-    drawShip(ctx, ship, flightBoost);
+    drawShip(ctx, ship, flightBoost, scale);
     return;
   }
 
-  const size = 31 + flightBoost * 6;
+  const size = (31 + flightBoost * 6) * scale;
 
   ctx.save();
   ctx.translate(ship.x, ship.y);
   ctx.rotate(ship.tilt);
   ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+  ctx.fillStyle = "#8e7a59";
+  ctx.fillRect(-Math.max(1, size * 0.03), -size * 0.48, Math.max(2, size * 0.06), size * 0.18);
   if (ship.flash > 0.04) {
     ctx.globalAlpha = Math.min(0.52, ship.flash * 0.45);
     ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
   }
+  if (ship.gunFlash > 0.04) {
+    ctx.globalAlpha = Math.min(0.68, ship.gunFlash * 0.55);
+    ctx.fillStyle = "#fff0b0";
+    ctx.fillRect(-size * 0.08, -size * 0.54, size * 0.16, size * 0.16);
+  }
   ctx.restore();
+}
+
+function drawProjectiles(ctx: CanvasRenderingContext2D, projectiles: Projectile[]) {
+  for (const projectile of projectiles) {
+    const alpha = clamp(1 - projectile.life / projectile.ttl, 0, 1);
+    ctx.globalAlpha = alpha;
+    if (projectile.friendly) {
+      ctx.fillStyle = "#fff1ba";
+      ctx.fillRect(projectile.x - 0.5, projectile.y - 5, 1, 10);
+      ctx.fillStyle = "#ffc071";
+      ctx.fillRect(projectile.x - 0.5, projectile.y + 4, 1, 2);
+    } else {
+      ctx.fillStyle = "#9fe7ff";
+      ctx.fillRect(projectile.x - 1, projectile.y - 3, 2, 7);
+      ctx.fillStyle = "#eaffff";
+      ctx.fillRect(projectile.x, projectile.y - 1, 1, 3);
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawHud(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.save();
-  ctx.font = '10px "Silkscreen", monospace';
+  ctx.font = '12px "Silkscreen", monospace';
   ctx.textBaseline = "top";
+  ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
+  ctx.shadowOffsetY = 1;
 
   ctx.fillStyle = "rgba(255,255,255,0.86)";
-  ctx.fillText("PLUTO VECTOR", 16, 14);
+  ctx.fillText("DOCK VECTOR", 16, 14);
 
   ctx.fillStyle = "rgba(255,222,196,0.8)";
   const integrityLabel = `HULL ${Math.max(0, Math.round(game.integrity)).toString().padStart(3, "0")}%`;
-  ctx.fillText(integrityLabel, 16, 30);
+  ctx.fillText(integrityLabel, 16, 32);
 
   ctx.fillStyle = "rgba(255,255,255,0.2)";
-  ctx.fillRect(16, 46, 116, 6);
+  ctx.fillRect(16, 52, 122, 7);
   ctx.fillStyle = game.integrity > 48 ? "#ffd099" : "#ff916d";
-  ctx.fillRect(16, 46, 116 * clamp(game.integrity / MAX_INTEGRITY, 0, 1), 6);
+  ctx.fillRect(16, 52, 122 * clamp(game.integrity / MAX_INTEGRITY, 0, 1), 7);
 
   ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.fillText(`THREADS ${game.dodgeCount.toString().padStart(2, "0")}`, 16, 60);
-  ctx.fillText(`CLOSE ${game.nearMissCount.toString().padStart(2, "0")}`, 16, 74);
-  ctx.fillText(`T-PLUTO ${(Math.max(0, FLIGHT_DURATION - game.flightElapsed)).toFixed(1)}s`, GAME_WIDTH - 118, 14);
+  ctx.fillText(`DODGES ${game.dodgeCount.toString().padStart(2, "0")}`, 16, 69);
+  ctx.fillText(`DOWN ${game.destroyCount.toString().padStart(2, "0")}`, 16, 86);
+  ctx.fillText(`ALIENS ${game.alienDestroyCount.toString().padStart(2, "0")}`, GAME_WIDTH - 132, 52);
+  ctx.fillText(`T-DOCK ${(Math.max(0, MISSION_DURATION - game.flightElapsed)).toFixed(1)}s`, GAME_WIDTH - 132, 14);
 
-  const progress = clamp(game.flightElapsed / FLIGHT_DURATION, 0, 1);
+  const progress = clamp(game.flightElapsed / MISSION_DURATION, 0, 1);
   ctx.fillStyle = "rgba(255,255,255,0.16)";
-  ctx.fillRect(GAME_WIDTH - 126, 30, 108, 5);
+  ctx.fillRect(GAME_WIDTH - 138, 32, 120, 6);
   ctx.fillStyle = "#ddd4ff";
-  ctx.fillRect(GAME_WIDTH - 126, 30, 108 * progress, 5);
+  ctx.fillRect(GAME_WIDTH - 138, 32, 120 * progress, 6);
 
   ctx.restore();
 }
@@ -671,7 +968,8 @@ function drawBackground(ctx: CanvasRenderingContext2D, game: GameState, time: nu
   ctx.globalAlpha = 1;
 
   for (const star of game.stars) {
-    const speedBoost = game.phase === "crash" ? 2.6 : game.phase === "flight" ? 1.45 : 0.45;
+    const speedBoost =
+      game.phase === "dock" ? 0.7 : game.phase === "flight" ? 1.45 : game.phase === "launch" ? 0.6 : 0.45;
     star.y += star.speed * speedBoost * 0.006;
     if (star.y > GAME_HEIGHT + 4) {
       star.y = -4;
@@ -703,9 +1001,21 @@ function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]) {
 function makeStats(game: GameState): RunStats {
   return {
     dodges: game.dodgeCount,
-    nearMisses: game.nearMissCount,
+    destroyed: game.destroyCount,
+    shipsDestroyed: game.alienDestroyCount,
     integrityLeft: Math.max(0, Math.round(game.integrity)),
     survivedSeconds: Number(game.flightElapsed.toFixed(1)),
+  };
+}
+
+function makeHudState(game: GameState): HudState {
+  return {
+    integrity: Math.max(0, Math.round(game.integrity)),
+    dodges: game.dodgeCount,
+    destroyed: game.destroyCount,
+    aliens: game.alienDestroyCount,
+    timeLeft: Number(Math.max(0, MISSION_DURATION - game.flightElapsed).toFixed(1)),
+    progress: clamp(game.flightElapsed / MISSION_DURATION, 0, 1),
   };
 }
 
@@ -716,19 +1026,21 @@ export default function ContactMissionGame() {
   const artRef = useRef<ContactArtMap>({});
   const rafRef = useRef<number | null>(null);
   const phaseStateRef = useRef<ContactGamePhase>("boot");
+  const hudKeyRef = useRef("");
   const startedAudioRef = useRef(false);
   const keyStateRef = useRef({
     up: false,
     down: false,
     left: false,
     right: false,
+    fire: false,
   });
   const copyTimeoutRef = useRef<number | null>(null);
 
   const [phase, setPhase] = useState<ContactGamePhase>("boot");
   const [stats, setStats] = useState<RunStats | null>(null);
+  const [hud, setHud] = useState<HudState>(() => makeHudState(gameRef.current));
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  const [artReady, setArtReady] = useState(false);
 
   const {
     muted,
@@ -760,6 +1072,8 @@ export default function ContactMissionGame() {
     const nextState = createInitialState("launch");
     nextState.phaseElapsed = 0;
     gameRef.current = nextState;
+    hudKeyRef.current = "";
+    setHud(makeHudState(nextState));
     setStats(null);
     updatePhase("launch");
     playFocusWhoosh(0.7);
@@ -786,13 +1100,14 @@ export default function ContactMissionGame() {
   useEffect(() => {
     let cancelled = false;
 
-    const loadAsset = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
-      const image = new window.Image();
-      image.decoding = "async";
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error(`Failed to load ${src}`));
-      image.src = src;
-    });
+    const loadAsset = (src: string) =>
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new window.Image();
+        image.decoding = "async";
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error(`Failed to load ${src}`));
+        image.src = src;
+      });
 
     const loadAssetCandidates = async (sources: string[]) => {
       for (const source of sources) {
@@ -812,11 +1127,7 @@ export default function ContactMissionGame() {
           artRef.current[key as ContactArtKey] = image;
         }
       }),
-    ).then((results) => {
-      if (cancelled) return;
-      const loadedCount = results.filter((result) => result.status === "fulfilled").length;
-      setArtReady(loadedCount === Object.keys(CONTACT_ART_PATHS).length);
-    });
+    );
 
     return () => {
       cancelled = true;
@@ -830,6 +1141,7 @@ export default function ContactMissionGame() {
 
       const key = event.key.toLowerCase();
       if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " ", "enter", "r"].includes(key)) {
+        event.preventDefault();
         startAudio();
       }
 
@@ -847,6 +1159,7 @@ export default function ContactMissionGame() {
       if (key === "s" || key === "arrowdown") keyStateRef.current.down = true;
       if (key === "a" || key === "arrowleft") keyStateRef.current.left = true;
       if (key === "d" || key === "arrowright") keyStateRef.current.right = true;
+      if (key === " ") keyStateRef.current.fire = true;
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
@@ -855,6 +1168,7 @@ export default function ContactMissionGame() {
       if (key === "s" || key === "arrowdown") keyStateRef.current.down = false;
       if (key === "a" || key === "arrowleft") keyStateRef.current.left = false;
       if (key === "d" || key === "arrowright") keyStateRef.current.right = false;
+      if (key === " ") keyStateRef.current.fire = false;
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -887,13 +1201,15 @@ export default function ContactMissionGame() {
       game.cameraShake = Math.max(0, game.cameraShake - dt * 2.5);
       game.flash = Math.max(0, game.flash - dt * 1.4);
       game.ship.flash = Math.max(0, game.ship.flash - dt * 2.8);
+      game.ship.gunFlash = Math.max(0, game.ship.gunFlash - dt * 6.4);
       game.collisionCooldown = Math.max(0, game.collisionCooldown - dt);
+      game.shootCooldown = Math.max(0, game.shootCooldown - dt);
 
       if (game.phase === "launch") {
         game.ship.y = lerp(game.ship.y, GAME_HEIGHT * 0.72, 0.08);
-        spawnExhaust(game);
+        spawnExhaust(game, 0.85);
 
-        if (game.phaseElapsed > 1.2) {
+        if (game.phaseElapsed > 1.05) {
           game.phase = "flight";
           game.phaseElapsed = 0;
           updatePhase("flight");
@@ -905,95 +1221,180 @@ export default function ContactMissionGame() {
         game.flightElapsed += dt;
         const inputX = (keyStateRef.current.right ? 1 : 0) - (keyStateRef.current.left ? 1 : 0);
         const inputY = (keyStateRef.current.down ? 1 : 0) - (keyStateRef.current.up ? 1 : 0);
-        const intensity = clamp(game.flightElapsed / FLIGHT_DURATION, 0, 1);
-        const targetVx = inputX * (116 + intensity * 36);
-        const targetVy = inputY * (88 + intensity * 18);
+        const intensity = clamp(game.flightElapsed / MISSION_DURATION, 0, 1);
+        const targetVx = inputX * (116 + intensity * 40);
+        const targetVy = inputY * (90 + intensity * 22);
 
         game.ship.vx = lerp(game.ship.vx, targetVx, 0.12);
         game.ship.vy = lerp(game.ship.vy, targetVy, 0.12);
         game.ship.x = clamp(game.ship.x + game.ship.vx * dt, 22, GAME_WIDTH - 22);
-        game.ship.y = clamp(game.ship.y + game.ship.vy * dt, GAME_HEIGHT * 0.36, GAME_HEIGHT - 24);
+        game.ship.y = clamp(game.ship.y + game.ship.vy * dt, GAME_HEIGHT * 0.34, GAME_HEIGHT - 24);
         game.ship.tilt = lerp(game.ship.tilt, game.ship.vx / 240, 0.16);
+
+        if (keyStateRef.current.fire && game.shootCooldown <= 0) {
+          spawnProjectile(game);
+          game.shootCooldown = SHOT_COOLDOWN;
+        }
 
         spawnExhaust(game);
 
         game.spawnTimer -= dt;
         if (game.spawnTimer <= 0) {
           spawnObstacle(game);
-          game.spawnTimer = 0.94 - intensity * 0.48 + Math.random() * 0.22;
+          game.spawnTimer = 0.68 - intensity * 0.2 + Math.random() * 0.14;
         }
 
+        for (const projectile of game.projectiles) {
+          projectile.life += dt;
+          projectile.x += projectile.vx * dt;
+          projectile.y += projectile.vy * dt;
+        }
+
+        let alienProjectileBudget = Math.max(
+          0,
+          4 - game.projectiles.filter((projectile) => !projectile.friendly && projectile.life < projectile.ttl).length,
+        );
+
         for (const obstacle of game.obstacles) {
-          obstacle.x += obstacle.vx * dt;
+          if (obstacle.destroyed) continue;
+
+          const wobbleOffset =
+            obstacle.kind === "alien"
+              ? Math.sin(game.flightElapsed * obstacle.wobbleSpeed + obstacle.wobble) * (10 + obstacle.radius * 0.2)
+              : 0;
+          obstacle.x += obstacle.vx * dt + wobbleOffset * dt;
           obstacle.y += obstacle.vy * dt;
           obstacle.spin += obstacle.spinVelocity * dt;
-          obstacle.hitFlash = Math.max(0, obstacle.hitFlash - dt * 3.2);
+          obstacle.hitFlash = Math.max(0, obstacle.hitFlash - dt * 3.4);
+          obstacle.shootCooldown = Math.max(0, obstacle.shootCooldown - dt);
+
+          if (
+            obstacle.kind === "alien" &&
+            alienProjectileBudget > 0 &&
+            obstacle.shootCooldown <= 0 &&
+            obstacle.y > 28 &&
+            obstacle.y < GAME_HEIGHT * 0.78 &&
+            Math.abs(obstacle.x - game.ship.x) < 140
+          ) {
+            spawnAlienProjectile(game, obstacle);
+            obstacle.shootCooldown = 0.55 + Math.random() * 0.35;
+            alienProjectileBudget -= 1;
+          }
 
           const dx = obstacle.x - game.ship.x;
           const dy = obstacle.y - game.ship.y;
           const distance = Math.hypot(dx, dy);
-          const collisionDistance = obstacle.radius + SHIP_RADIUS - 3;
+          const collisionDistance = obstacle.radius + SHIP_RADIUS - 4;
 
           if (game.collisionCooldown <= 0 && distance < collisionDistance) {
             game.integrity = clamp(game.integrity - DAMAGE_PER_HIT, 0, MAX_INTEGRITY);
             game.cameraShake = 1;
-            game.flash = 0.75;
+            game.flash = 0.72;
             game.ship.flash = 1;
             game.collisionCooldown = 0.68;
             obstacle.hitFlash = 1;
-            game.ship.vx -= dx * 1.6;
-            game.ship.vy -= dy * 1.1;
-            spawnBurst(game, obstacle.x, obstacle.y, "#ffd3bf", 14);
-            playFocusWhoosh(1.15);
+            game.ship.vx -= dx * 1.35;
+            game.ship.vy -= dy * 0.95;
+            spawnBurst(game, obstacle.x, obstacle.y, obstacle.kind === "alien" ? "#afffe6" : "#ffd3bf", 14);
+            playFocusWhoosh(1.1);
           }
 
-          if (!obstacle.passed && obstacle.y > game.ship.y + obstacle.radius + 10) {
+          if (!obstacle.passed && obstacle.y > game.ship.y + obstacle.radius + 12) {
             obstacle.passed = true;
             game.dodgeCount += 1;
-            if (distance < obstacle.radius + SHIP_RADIUS + 14) {
-              game.nearMissCount += 1;
-              game.flash = Math.max(game.flash, 0.16);
-              playFocusWhoosh(0.55);
-            }
           }
         }
 
-        game.obstacles = game.obstacles.filter((obstacle) => obstacle.y < GAME_HEIGHT + obstacle.radius + 22);
+        for (const projectile of game.projectiles) {
+          if (projectile.life >= projectile.ttl) continue;
+          if (!projectile.friendly) {
+            const distance = Math.hypot(projectile.x - game.ship.x, projectile.y - game.ship.y);
+            if (game.collisionCooldown <= 0 && distance < projectile.radius + SHIP_RADIUS - 1) {
+              projectile.life = projectile.ttl;
+              game.integrity = clamp(game.integrity - DAMAGE_PER_ENEMY_SHOT, 0, MAX_INTEGRITY);
+              game.cameraShake = Math.max(game.cameraShake, 0.42);
+              game.flash = Math.max(game.flash, 0.34);
+              game.ship.flash = 1;
+              game.collisionCooldown = 0.48;
+              spawnBurst(game, projectile.x, projectile.y, "#b9f2ff", 8);
+              playFocusWhoosh(0.86);
+            }
+            continue;
+          }
 
-        if (game.flightElapsed >= FLIGHT_DURATION) {
-          game.phase = "crash";
+          for (const obstacle of game.obstacles) {
+            if (obstacle.destroyed) continue;
+            const distance = Math.hypot(obstacle.x - projectile.x, obstacle.y - projectile.y);
+            if (distance > obstacle.radius + projectile.radius) continue;
+
+            projectile.life = projectile.ttl;
+            obstacle.hitFlash = 1;
+            obstacle.hp -= 1;
+
+            if (obstacle.hp <= 0) {
+              obstacle.destroyed = true;
+              game.destroyCount += 1;
+              if (obstacle.kind === "alien") {
+                game.alienDestroyCount += 1;
+              }
+              game.cameraShake = Math.max(game.cameraShake, 0.24);
+              game.flash = Math.max(game.flash, 0.14);
+              spawnBurst(game, obstacle.x, obstacle.y, obstacle.kind === "alien" ? "#a2ffe0" : "#ffd7b6", 16);
+            } else {
+              spawnBurst(game, obstacle.x, obstacle.y, "#ffe2c1", 7);
+            }
+            break;
+          }
+        }
+
+        game.projectiles = game.projectiles.filter(
+          (projectile) =>
+            projectile.life < projectile.ttl &&
+            projectile.y > -24 &&
+            projectile.y < GAME_HEIGHT + 24 &&
+            projectile.x > -24 &&
+            projectile.x < GAME_WIDTH + 24,
+        );
+
+        game.obstacles = game.obstacles.filter(
+          (obstacle) => !obstacle.destroyed && obstacle.y < GAME_HEIGHT + obstacle.radius + 24,
+        );
+
+        if (game.flightElapsed >= MISSION_DURATION) {
+          game.phase = "dock";
           game.phaseElapsed = 0;
-          game.crashOrigin = {
+          game.dockOrigin = {
             x: game.ship.x,
             y: game.ship.y,
           };
           game.obstacles = [];
-          updatePhase("crash");
-          playFocusWhoosh(1.35);
+          game.projectiles = [];
+          updatePhase("dock");
+          playFocusWhoosh(1.26);
         }
       }
 
-      if (game.phase === "crash") {
-        const progress = clamp(game.phaseElapsed / CRASH_DURATION, 0, 1);
-        const orbitEase = easeOutCubic(clamp(progress / 0.72, 0, 1));
-        const shipEase = easeInOutSine(clamp(progress / 0.76, 0, 1));
+      if (game.phase === "dock") {
+        const progress = clamp(game.phaseElapsed / DOCK_DURATION, 0, 1);
+        const stationEase = easeOutCubic(progress);
+        const shipEase = easeInOutSine(clamp(progress / 0.82, 0, 1));
 
-        game.pluto.x = GAME_WIDTH * 0.5 + Math.sin(progress * 9) * 5 * (1 - progress);
-        game.pluto.y = lerp(-86, GAME_HEIGHT * 0.34, orbitEase);
-        game.pluto.radius = lerp(34, 116, orbitEase);
-        game.pluto.glow = progress;
-        game.ship.x = lerp(game.crashOrigin.x, game.pluto.x, shipEase);
-        game.ship.y = lerp(game.crashOrigin.y, game.pluto.y + 12, shipEase);
-        game.ship.tilt = lerp(game.ship.tilt, 0.8 + Math.sin(progress * 12) * 0.1, 0.08);
+        game.station.x = GAME_WIDTH * 0.5 + Math.sin(progress * 5.4) * 3 * (1 - progress);
+        game.station.y = lerp(-110, GAME_HEIGHT * 0.32, stationEase);
+        game.station.size = lerp(58, 164, stationEase);
+        game.station.glow = progress;
+        game.station.bayGlow = clamp((progress - 0.38) / 0.62, 0, 1);
 
-        spawnExhaust(game);
+        game.ship.x = lerp(game.dockOrigin.x, game.station.x, shipEase);
+        game.ship.y = lerp(game.dockOrigin.y, game.station.y - game.station.size * 0.09, shipEase);
+        game.ship.tilt = lerp(game.ship.tilt, 0, 0.12);
 
-        if (progress > 0.48) {
-          game.cameraShake = Math.max(game.cameraShake, 0.28 + (progress - 0.48) * 2.4);
-          game.flash = Math.max(game.flash, progress > 0.82 ? (progress - 0.82) * 3.8 : 0);
-          if (Math.random() > 0.55) {
-            spawnBurst(game, game.ship.x, game.ship.y, "#fff0df", 4);
-          }
+        if (progress < 0.86) {
+          spawnExhaust(game, 0.55);
+        }
+
+        if (progress > 0.72) {
+          game.flash = Math.max(game.flash, (progress - 0.72) * 1.5);
         }
 
         if (progress >= 1) {
@@ -1007,9 +1408,26 @@ export default function ContactMissionGame() {
 
       if (game.phase === "card") {
         game.ship.tilt = lerp(game.ship.tilt, 0, 0.1);
-        game.pluto.y = lerp(game.pluto.y, GAME_HEIGHT * 0.36, 0.06);
-        game.pluto.radius = lerp(game.pluto.radius, 104, 0.06);
-        game.pluto.glow = lerp(game.pluto.glow, 0.72, 0.06);
+        game.station.y = lerp(game.station.y, GAME_HEIGHT * 0.32, 0.06);
+        game.station.size = lerp(game.station.size, 164, 0.06);
+        game.station.glow = lerp(game.station.glow, 0.68, 0.06);
+        game.station.bayGlow = lerp(game.station.bayGlow, 0.55, 0.06);
+      }
+
+      if (game.phase === "launch" || game.phase === "flight" || game.phase === "dock") {
+        const nextHud = makeHudState(game);
+        const nextHudKey = [
+          nextHud.integrity,
+          nextHud.dodges,
+          nextHud.destroyed,
+          nextHud.aliens,
+          nextHud.timeLeft.toFixed(1),
+          nextHud.progress.toFixed(3),
+        ].join("|");
+        if (nextHudKey !== hudKeyRef.current) {
+          hudKeyRef.current = nextHudKey;
+          setHud(nextHud);
+        }
       }
 
       for (const particle of game.particles) {
@@ -1028,12 +1446,9 @@ export default function ContactMissionGame() {
 
       drawBackground(context, game, frameTime / 1000);
 
-      if (game.phase === "crash" || game.phase === "card") {
-        context.save();
-        context.globalAlpha = 0.28 + game.pluto.glow * 0.24;
-        drawCircle(context, game.pluto.x, game.pluto.y, game.pluto.radius * 1.34, "rgba(255,244,225,0.12)");
-        context.restore();
-        drawPlanetVisual(context, artRef.current, "pluto", game.pluto.x, game.pluto.y, game.pluto.radius, frameTime / 800, game.pluto.glow);
+      if (game.phase === "dock") {
+        drawDockingLane(context, game.station, clamp(game.station.glow, 0, 1));
+        drawStationVisual(context, artRef.current, game.station);
       }
 
       for (const obstacle of game.obstacles) {
@@ -1041,35 +1456,31 @@ export default function ContactMissionGame() {
         if (obstacle.hitFlash > 0) {
           context.globalAlpha = 0.55 + obstacle.hitFlash * 0.45;
         }
-        drawPlanetVisual(context, artRef.current, obstacle.kind, obstacle.x, obstacle.y, obstacle.radius, obstacle.spin, obstacle.hitFlash * 0.8);
+        if (obstacle.kind === "alien") {
+          drawAlienVisual(context, artRef.current, obstacle.x, obstacle.y, obstacle.radius, obstacle.spin, obstacle.hitFlash * 0.8);
+        } else {
+          drawPlanetVisual(context, artRef.current, obstacle.kind, obstacle.x, obstacle.y, obstacle.radius, obstacle.spin, obstacle.hitFlash * 0.8);
+        }
         context.restore();
       }
 
+      drawProjectiles(context, game.projectiles);
       drawParticles(context, game.particles);
-      drawShipVisual(
-        context,
-        artRef.current,
-        game.ship,
-        game.phase === "boot" ? 0 : game.phase === "crash" ? 1 : 0.45 + clamp(game.flightElapsed / FLIGHT_DURATION, 0, 1) * 0.35,
-      );
 
-      if (game.phase !== "boot" && game.phase !== "card") {
-        drawHud(context, game);
+      if (game.phase !== "card") {
+        const dockProgress = game.phase === "dock" ? clamp(game.phaseElapsed / DOCK_DURATION, 0, 1) : 0;
+        drawShipVisual(
+          context,
+          artRef.current,
+          game.ship,
+          game.phase === "boot" ? 0 : game.phase === "dock" ? 0.35 : 0.45 + clamp(game.flightElapsed / MISSION_DURATION, 0, 1) * 0.35,
+          game.phase === "dock" ? lerp(1, 0.28, dockProgress) : 1,
+        );
       }
 
-      if (game.phase === "boot") {
+      if (game.phase === "dock") {
         context.save();
-        context.fillStyle = "rgba(255,255,255,0.85)";
-        context.font = '11px "Silkscreen", monospace';
-        context.fillText("CONTACT MISSION", 16, 18);
-        context.fillStyle = "rgba(255,214,184,0.72)";
-        context.fillText("PRESS ANY KEY TO START", 16, 34);
-        context.restore();
-      }
-
-      if (game.phase === "crash") {
-        context.save();
-        context.globalAlpha = clamp(game.flash, 0, 0.92);
+        context.globalAlpha = clamp(game.flash, 0, 0.62);
         context.fillStyle = "#fff8ef";
         context.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         context.restore();
@@ -1143,8 +1554,49 @@ export default function ContactMissionGame() {
               width={GAME_WIDTH}
               height={GAME_HEIGHT}
               className={styles.canvas}
-              aria-label="Playable contact page where you steer through planets and arrive at Pluto."
+              aria-label="Playable contact page where you dodge or shoot planets and alien ships before docking with a station."
             />
+
+            {phase === "boot" ? (
+              <div className={styles.bootStatusOverlay}>
+                <div className={styles.bootStatusTitle}>contact mission</div>
+                <div className={styles.bootStatusPrompt}>press any key to start</div>
+              </div>
+            ) : null}
+
+            {phase === "launch" || phase === "flight" || phase === "dock" ? (
+              <div className={styles.hudOverlay}>
+                <div className={styles.hudBlock}>
+                  <div className={styles.hudLabel}>dock vector</div>
+                  <div className={styles.hudValue}>hull {hud.integrity.toString().padStart(3, "0")}%</div>
+                  <div className={styles.hudBar}>
+                    <div
+                      className={styles.hudBarFill}
+                      style={{ width: `${Math.max(0, Math.min(100, hud.integrity))}%` }}
+                    />
+                  </div>
+                  <div className={styles.hudMeta}>dodges {hud.dodges.toString().padStart(2, "0")}</div>
+                  <div className={styles.hudMeta}>down {hud.destroyed.toString().padStart(2, "0")}</div>
+                  {phase === "dock" ? (
+                    <>
+                      <div className={styles.hudLabelDock}>docking lock</div>
+                      <div className={styles.hudMetaDock}>beacon hold</div>
+                    </>
+                  ) : null}
+                </div>
+
+                <div className={`${styles.hudBlock} ${styles.hudBlockRight}`}>
+                  <div className={styles.hudValue}>t-dock {hud.timeLeft.toFixed(1)}s</div>
+                  <div className={styles.hudBar}>
+                    <div
+                      className={`${styles.hudBarFill} ${styles.hudBarFillProgress}`}
+                      style={{ width: `${Math.max(0, Math.min(100, hud.progress * 100))}%` }}
+                    />
+                  </div>
+                  <div className={styles.hudMeta}>aliens {hud.aliens.toString().padStart(2, "0")}</div>
+                </div>
+              </div>
+            ) : null}
 
             <div className={styles.bottomStrip}>
               {phase === "boot" ? (
@@ -1159,12 +1611,12 @@ export default function ContactMissionGame() {
                     return to candy castle
                   </a>
                 </div>
-              ) : phase !== "card" ? (
+              ) : phase === "launch" || phase === "flight" ? (
                 <div className={styles.bottomRow}>
                   <div className={styles.bottomSpacer} />
                   <div className={styles.controlsCopy}>
-                    <div>wasd / arrows</div>
-                    <div>dodge planets</div>
+                    <div>wasd / arrows move</div>
+                    <div>space shoots</div>
                   </div>
                 </div>
               ) : null}
@@ -1174,10 +1626,10 @@ export default function ContactMissionGame() {
               <div className={styles.bootOverlay}>
                 <div className={styles.bootPanel}>
                   <h1 className={styles.bootTitle}>
-                    <span>Dodge planets to make it to Pluto.</span>
-                    <span>Reward: Chloe&apos;s contact info!</span>
+                    <span>Shoot or dodge through planets and raiders.</span>
+                    <span>Dock cleanly to unlock Chloe&apos;s contact card.</span>
                   </h1>
-                  <p className={styles.bootBody}>WASD/arrow keys to move</p>
+                  <p className={styles.bootBody}>WASD or arrow keys move. Space shoots.</p>
                   <div className={styles.bootActions}>
                     <button
                       type="button"
@@ -1195,7 +1647,7 @@ export default function ContactMissionGame() {
             {phase === "launch" ? (
               <div className={styles.launchOverlay}>
                 <div className={styles.launchChip}>
-                  thrusters warming
+                  weapons primed
                 </div>
               </div>
             ) : null}
@@ -1214,20 +1666,20 @@ export default function ContactMissionGame() {
                     {stats ? (
                       <div className={styles.cardStats}>
                         <div className={styles.cardStatChip}>
-                          <span>threads</span>
+                          <span>dodges</span>
                           <strong>{stats.dodges}</strong>
                         </div>
                         <div className={styles.cardStatChip}>
-                          <span>close calls</span>
-                          <strong>{stats.nearMisses}</strong>
+                          <span>targets down</span>
+                          <strong>{stats.destroyed}</strong>
+                        </div>
+                        <div className={styles.cardStatChip}>
+                          <span>ships cleared</span>
+                          <strong>{stats.shipsDestroyed}</strong>
                         </div>
                         <div className={styles.cardStatChip}>
                           <span>hull left</span>
                           <strong>{stats.integrityLeft}%</strong>
-                        </div>
-                        <div className={styles.cardStatChip}>
-                          <span>time held</span>
-                          <strong>{stats.survivedSeconds}s</strong>
                         </div>
                       </div>
                     ) : null}
