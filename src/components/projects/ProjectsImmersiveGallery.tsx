@@ -1157,25 +1157,29 @@ function ReferenceLights() {
   const { scene } = useThree();
 
   useEffect(() => {
-    if (dirOneRef.current && dirOneTarget.current) {
-      dirOneRef.current.target = dirOneTarget.current;
-      scene.add(dirOneTarget.current);
+    const dirOneTargetNode = dirOneTarget.current;
+    const dirTwoTargetNode = dirTwoTarget.current;
+    const spotTargets = [...spotlightTargets.current];
+
+    if (dirOneRef.current && dirOneTargetNode) {
+      dirOneRef.current.target = dirOneTargetNode;
+      scene.add(dirOneTargetNode);
     }
-    if (dirTwoRef.current && dirTwoTarget.current) {
-      dirTwoRef.current.target = dirTwoTarget.current;
-      scene.add(dirTwoTarget.current);
+    if (dirTwoRef.current && dirTwoTargetNode) {
+      dirTwoRef.current.target = dirTwoTargetNode;
+      scene.add(dirTwoTargetNode);
     }
     spotlightRefs.current.forEach((light, index) => {
-      const target = spotlightTargets.current[index];
+      const target = spotTargets[index];
       if (!light || !target) return;
       light.target = target;
       scene.add(target);
     });
 
     return () => {
-      if (dirOneTarget.current) scene.remove(dirOneTarget.current);
-      if (dirTwoTarget.current) scene.remove(dirTwoTarget.current);
-      spotlightTargets.current.forEach((target) => {
+      if (dirOneTargetNode) scene.remove(dirOneTargetNode);
+      if (dirTwoTargetNode) scene.remove(dirTwoTargetNode);
+      spotTargets.forEach((target) => {
         if (target) scene.remove(target);
       });
     };

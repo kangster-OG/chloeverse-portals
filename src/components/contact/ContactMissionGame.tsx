@@ -915,40 +915,6 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, projectiles: Projectile[
   ctx.globalAlpha = 1;
 }
 
-function drawHud(ctx: CanvasRenderingContext2D, game: GameState) {
-  ctx.save();
-  ctx.font = '12px "Silkscreen", monospace';
-  ctx.textBaseline = "top";
-  ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
-  ctx.shadowOffsetY = 1;
-
-  ctx.fillStyle = "rgba(255,255,255,0.86)";
-  ctx.fillText("DOCK VECTOR", 16, 14);
-
-  ctx.fillStyle = "rgba(255,222,196,0.8)";
-  const integrityLabel = `HULL ${Math.max(0, Math.round(game.integrity)).toString().padStart(3, "0")}%`;
-  ctx.fillText(integrityLabel, 16, 32);
-
-  ctx.fillStyle = "rgba(255,255,255,0.2)";
-  ctx.fillRect(16, 52, 122, 7);
-  ctx.fillStyle = game.integrity > 48 ? "#ffd099" : "#ff916d";
-  ctx.fillRect(16, 52, 122 * clamp(game.integrity / MAX_INTEGRITY, 0, 1), 7);
-
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.fillText(`DODGES ${game.dodgeCount.toString().padStart(2, "0")}`, 16, 69);
-  ctx.fillText(`DOWN ${game.destroyCount.toString().padStart(2, "0")}`, 16, 86);
-  ctx.fillText(`ALIENS ${game.alienDestroyCount.toString().padStart(2, "0")}`, GAME_WIDTH - 132, 52);
-  ctx.fillText(`T-DOCK ${(Math.max(0, MISSION_DURATION - game.flightElapsed)).toFixed(1)}s`, GAME_WIDTH - 132, 14);
-
-  const progress = clamp(game.flightElapsed / MISSION_DURATION, 0, 1);
-  ctx.fillStyle = "rgba(255,255,255,0.16)";
-  ctx.fillRect(GAME_WIDTH - 138, 32, 120, 6);
-  ctx.fillStyle = "#ddd4ff";
-  ctx.fillRect(GAME_WIDTH - 138, 32, 120 * progress, 6);
-
-  ctx.restore();
-}
-
 function drawBackground(ctx: CanvasRenderingContext2D, game: GameState, time: number) {
   const gradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
   gradient.addColorStop(0, "#0e1630");
@@ -1022,7 +988,8 @@ function makeHudState(game: GameState): HudState {
 export default function ContactMissionGame() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const gameRef = useRef<GameState>(createInitialState());
+  const [initialGameState] = useState<GameState>(() => createInitialState());
+  const gameRef = useRef<GameState>(initialGameState);
   const artRef = useRef<ContactArtMap>({});
   const rafRef = useRef<number | null>(null);
   const phaseStateRef = useRef<ContactGamePhase>("boot");
@@ -1039,7 +1006,7 @@ export default function ContactMissionGame() {
 
   const [phase, setPhase] = useState<ContactGamePhase>("boot");
   const [stats, setStats] = useState<RunStats | null>(null);
-  const [hud, setHud] = useState<HudState>(() => makeHudState(gameRef.current));
+  const [hud, setHud] = useState<HudState>(() => makeHudState(initialGameState));
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const {

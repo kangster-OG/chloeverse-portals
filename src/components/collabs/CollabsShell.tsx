@@ -167,9 +167,11 @@ export default function CollabsShell({
   }, [audio, scrollEnergy]);
 
   useEffect(() => {
+    const openTimer = openTimerRef.current;
+    const resetTimer = resetTimerRef.current;
     return () => {
-      if (openTimerRef.current !== null) window.clearTimeout(openTimerRef.current);
-      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
+      if (openTimer !== null) window.clearTimeout(openTimer);
+      if (resetTimer !== null) window.clearTimeout(resetTimer);
     };
   }, []);
 

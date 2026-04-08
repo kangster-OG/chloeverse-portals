@@ -14,6 +14,15 @@ type MetricDatum = {
   descriptor?: string;
 };
 
+type PartnerDatum = {
+  name: string;
+  pngSrc: string;
+  svgSrc: string;
+  accent: string;
+  logoHeight?: string;
+  logoFilter?: string;
+};
+
 function MetricCard({ label, value, descriptor }: MetricDatum) {
   return (
     <div className={styles.metricCard}>
@@ -106,7 +115,7 @@ function ServicesPanel() {
 }
 
 function CollabsPanel() {
-  const partners = [
+  const partners: PartnerDatum[] = [
     { name: "Adobe", pngSrc: "/mediacard/logos/adobe.png", svgSrc: "/mediacard/logos/adobe.svg", accent: "255 0 0" },
     { name: "Adidas", pngSrc: "/mediacard/logos/adidas.png", svgSrc: "/mediacard/logos/adidas.svg", accent: "125 249 255" },
     {

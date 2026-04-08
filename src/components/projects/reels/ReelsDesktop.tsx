@@ -65,13 +65,13 @@ export function ReelsDesktop() {
   const activeReel = REELS[currentIndex];
   const maxIndex = REELS.length - 1;
 
-  const moveNext = () => {
+  const moveNext = useCallback(() => {
     setCurrentIndex((prev) => Math.min(maxIndex, prev + 1));
-  };
+  }, [maxIndex]);
 
-  const movePrev = () => {
+  const movePrev = useCallback(() => {
     setCurrentIndex((prev) => Math.max(0, prev - 1));
-  };
+  }, []);
 
   const handleWheelDelta = useCallback((deltaY: number) => {
     wheelAccumRef.current += deltaY;
@@ -95,7 +95,7 @@ export function ReelsDesktop() {
     }
     wheelAccumRef.current = 0;
     lastWheelNavRef.current = now;
-  }, []);
+  }, [moveNext, movePrev]);
 
   const handleWheelFrameBand = (event: React.WheelEvent<HTMLDivElement>) => {
     event.preventDefault();
