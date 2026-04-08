@@ -541,7 +541,7 @@ export function StartupExperience({ titleFontClassName, monoFontClassName }: Sta
     setWaitlistError(null);
 
     try {
-      const response = await fetch("/api/waitlist", {
+      const response = await fetch("/api/waitlist/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

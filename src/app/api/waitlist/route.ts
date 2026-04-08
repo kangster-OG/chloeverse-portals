@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+const DEFAULT_WAITLIST_APPS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbxOP0JpamQ_26ZKOL1wnE939tImNZm1iewK85ZyKbgWW_RmP27LELvjQVtPxnsUKET3HQ/exec";
+
 type WaitlistRequest = {
   email?: string;
   source?: string;
@@ -10,7 +13,7 @@ function isValidEmail(value: string) {
 }
 
 export async function POST(request: Request) {
-  const appsScriptUrl = process.env.WAITLIST_APPS_SCRIPT_URL;
+  const appsScriptUrl = process.env.WAITLIST_APPS_SCRIPT_URL || DEFAULT_WAITLIST_APPS_SCRIPT_URL;
 
   if (!appsScriptUrl) {
     return NextResponse.json(
