@@ -8,6 +8,9 @@ type StartupExperienceProps = {
   monoFontClassName: string;
 };
 
+const WAITLIST_APPS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbxOP0JpamQ_26ZKOL1wnE939tImNZm1iewK85ZyKbgWW_RmP27LELvjQVtPxnsUKET3HQ/exec";
+
 type CssVars = CSSProperties & Record<`--${string}`, string>;
 type GlyphMetric = { x: number; y: number; radius: number };
 type BlockMotionState = { tiltX: number; tiltY: number; shiftX: number; shiftY: number };
@@ -541,22 +544,18 @@ export function StartupExperience({ titleFontClassName, monoFontClassName }: Sta
     setWaitlistError(null);
 
     try {
-      const response = await fetch("/api/waitlist/", {
+      await fetch(WAITLIST_APPS_SCRIPT_URL, {
         method: "POST",
+        mode: "no-cors",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "text/plain;charset=utf-8",
         },
         body: JSON.stringify({
           email: trimmedEmail,
           source: "startup",
+          submittedAt: new Date().toISOString(),
         }),
       });
-
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to join the waitlist right now.");
-      }
 
       setWaitlistSuccess(true);
       setWaitlistEmail("");
