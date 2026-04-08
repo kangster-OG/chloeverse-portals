@@ -594,6 +594,15 @@ export function StartupExperience({ titleFontClassName, monoFontClassName }: Sta
       <div aria-hidden className="pointer-events-none absolute inset-0 z-20 chv-vignette opacity-95" />
       <div aria-hidden className="pointer-events-none absolute inset-0 z-20 chv-filmgrain opacity-45" />
 
+      <nav className="startup-mono__nav">
+        <a href="https://chloeverse.io" className={monoFontClassName}>
+          Chloeverse
+        </a>
+        <a href="https://iamchloekang.com" className={monoFontClassName}>
+          Candy Castle
+        </a>
+      </nav>
+
       <section className="relative z-30 flex min-h-screen items-center justify-center px-6">
         <div
           className="mx-auto flex w-full max-w-6xl flex-col items-center text-center"
@@ -753,6 +762,34 @@ export function StartupExperience({ titleFontClassName, monoFontClassName }: Sta
 
         .startup-mono__hero {
           animation: startupMonoFloat 8.4s ease-in-out infinite;
+        }
+
+        .startup-mono__nav {
+          position: absolute;
+          inset: 18px 22px auto 22px;
+          z-index: 40;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          pointer-events: none;
+        }
+
+        .startup-mono__nav a {
+          pointer-events: auto;
+          color: rgba(255, 255, 255, 0.68);
+          text-decoration: none;
+          font-size: 11px;
+          line-height: 1;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          transition: color 180ms ease, opacity 180ms ease;
+        }
+
+        .startup-mono__nav a:hover,
+        .startup-mono__nav a:focus-visible {
+          color: rgba(255, 255, 255, 0.96);
+          outline: none;
         }
 
         .startup-mono__title {
@@ -1045,6 +1082,15 @@ export function StartupExperience({ titleFontClassName, monoFontClassName }: Sta
         }
 
         @media (max-width: 767px) {
+          .startup-mono__nav {
+            inset: 16px 16px auto 16px;
+          }
+
+          .startup-mono__nav a {
+            font-size: 10px;
+            letter-spacing: 0.1em;
+          }
+
           .startup-mono__hero {
             width: 100%;
             white-space: normal;
