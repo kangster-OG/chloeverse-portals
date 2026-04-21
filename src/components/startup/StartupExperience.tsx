@@ -12,6 +12,9 @@ type StartupExperienceProps = {
 const WAITLIST_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxOP0JpamQ_26ZKOL1wnE939tImNZm1iewK85ZyKbgWW_RmP27LELvjQVtPxnsUKET3HQ/exec";
 
+const STARTUP_LAUNCH_DATE = "4.27.26";
+const STARTUP_STATUS_LABEL = "COMING SOON";
+
 type CssVars = CSSProperties & Record<`--${string}`, string>;
 type GlyphMetric = { x: number; y: number; radius: number };
 type BlockMotionState = { tiltX: number; tiltY: number; shiftX: number; shiftY: number };
@@ -431,10 +434,10 @@ export function StartupExperience({
 
   useEffect(() => {
     const syncMetrics = () => {
-      titleGlyphRefs.current.length = "4.20.26".length;
-      dateGlyphRefs.current.length = "COMING SOON".length;
-      titleGlyphMetricsRef.current = measureGlyphMetrics(titleHitRef.current, titleGlyphRefs.current, "4.20.26".length);
-      dateGlyphMetricsRef.current = measureGlyphMetrics(dateHitRef.current, dateGlyphRefs.current, "COMING SOON".length);
+      titleGlyphRefs.current.length = STARTUP_LAUNCH_DATE.length;
+      dateGlyphRefs.current.length = STARTUP_STATUS_LABEL.length;
+      titleGlyphMetricsRef.current = measureGlyphMetrics(titleHitRef.current, titleGlyphRefs.current, STARTUP_LAUNCH_DATE.length);
+      dateGlyphMetricsRef.current = measureGlyphMetrics(dateHitRef.current, dateGlyphRefs.current, STARTUP_STATUS_LABEL.length);
     };
 
     const raf = window.requestAnimationFrame(syncMetrics);
@@ -634,7 +637,7 @@ export function StartupExperience({
                       : "text-[clamp(4.6rem,15vw,12rem)]"
                   }`}
                 >
-                  {renderMonoDepthGlyphs("4.20.26", "title", titleGlyphRefs, 401)}
+                  {renderMonoDepthGlyphs(STARTUP_LAUNCH_DATE, "title", titleGlyphRefs, 401)}
                 </div>
               </div>
             </div>
@@ -657,7 +660,7 @@ export function StartupExperience({
                   } as CssVars
                 }
               >
-                {renderMonoDepthGlyphs("COMING SOON", "date", dateGlyphRefs, 901)}
+                {renderMonoDepthGlyphs(STARTUP_STATUS_LABEL, "date", dateGlyphRefs, 901)}
               </div>
             </div>
           </div>
