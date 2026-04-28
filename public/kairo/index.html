@@ -11,7 +11,7 @@
     <link rel="icon" href="./assets/kairo-logo.png" />
     <link rel="preload" href="./assets/kairo-demo-today.png" as="image" />
     <link rel="preload" href="./assets/kairo-logo.png" as="image" />
-    <link rel="stylesheet" href="./styles.css?v=before-after-bigger-1" />
+    <link rel="stylesheet" href="./styles.css?v=mobile-cleanup-1" />
   </head>
   <body>
     <div class="grain" aria-hidden="true"></div>
@@ -28,8 +28,11 @@
         <a href="#protocols">Protocols</a>
         <a href="#progress">Progress</a>
       </nav>
-      <a class="nav-cta magnetic" href="#waitlist">
-        <span>Join TestFlight</span>
+      <a class="nav-cta magnetic" href="#waitlist" aria-label="Join TestFlight">
+        <span class="nav-cta-copy" aria-hidden="true">
+          <span class="nav-cta-copy-full">Join TestFlight</span>
+          <span class="nav-cta-copy-short">Join</span>
+        </span>
         <span class="button-orb" aria-hidden="true">+</span>
       </a>
     </header>
@@ -57,9 +60,9 @@
             Calculator, inventory, nutrition, diet, and exercise all in one.
           </p>
           <div class="hero-actions">
-            <a class="store-button magnetic" href="#waitlist" aria-label="iOS App Store coming soon">
-              <span>Coming soon on the</span>
-              <strong>iOS App Store</strong>
+            <a class="store-button magnetic" href="#waitlist" aria-label="Join the Kairo TestFlight waitlist">
+              <span>Private beta</span>
+              <strong>Join TestFlight</strong>
             </a>
             <a class="store-button store-button-secondary" href="#waitlist" aria-label="Google Play coming soon">
               <span>Coming soon on</span>
