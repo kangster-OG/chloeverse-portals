@@ -82,112 +82,192 @@ function setupAmbientCinematic(graph: AudioGraph, level: number) {
 
 function setupAmbientArcade(graph: AudioGraph, level: number) {
   const { ctx, ambientBus } = graph;
-  ambientBus.gain.value = level * 0.92;
+  ambientBus.gain.value = level * 0.82;
 
-  const drone = ctx.createOscillator();
-  drone.type = "triangle";
-  drone.frequency.value = 82.41;
-  const droneFilter = ctx.createBiquadFilter();
-  droneFilter.type = "lowpass";
-  droneFilter.frequency.value = 540;
-  const droneGain = ctx.createGain();
-  droneGain.gain.value = 0.045;
+  const mixFilter = ctx.createBiquadFilter();
+  mixFilter.type = "lowpass";
+  mixFilter.frequency.value = 3600;
+  mixFilter.Q.value = 0.45;
+  mixFilter.connect(ambientBus);
 
-  const pad = ctx.createOscillator();
-  pad.type = "square";
-  pad.frequency.value = 164.81;
-  const padFilter = ctx.createBiquadFilter();
-  padFilter.type = "lowpass";
-  padFilter.frequency.value = 880;
-  const padGain = ctx.createGain();
-  padGain.gain.value = 0.0001;
-
-  const sparkle = ctx.createOscillator();
-  sparkle.type = "triangle";
-  sparkle.frequency.value = 329.63;
-  const sparkleFilter = ctx.createBiquadFilter();
-  sparkleFilter.type = "lowpass";
-  sparkleFilter.frequency.value = 1800;
-  const sparkleGain = ctx.createGain();
-  sparkleGain.gain.value = 0.0001;
-
-  const hiss = ctx.createBufferSource();
-  hiss.buffer = createNoiseBuffer(ctx, 2.2);
-  hiss.loop = true;
-  const hissFilter = ctx.createBiquadFilter();
-  hissFilter.type = "highpass";
-  hissFilter.frequency.value = 2800;
-  const hissGain = ctx.createGain();
-  hissGain.gain.value = 0.0045;
-
-  drone.connect(droneFilter).connect(droneGain).connect(ambientBus);
-  pad.connect(padFilter).connect(padGain).connect(ambientBus);
-  sparkle.connect(sparkleFilter).connect(sparkleGain).connect(ambientBus);
-  hiss.connect(hissFilter).connect(hissGain).connect(ambientBus);
-
-  const t = ctx.currentTime + 0.01;
-  drone.start(t);
-  pad.start(t);
-  sparkle.start(t);
-  hiss.start(t);
-
-  const attractLoop = [
-    { root: 82.41, pad: 164.81, sparkle: 329.63 },
-    { root: 98, pad: 196, sparkle: 392 },
-    { root: 73.42, pad: 146.83, sparkle: 293.66 },
-    { root: 110, pad: 220, sparkle: 440 },
-  ] as const;
-
-  let step = 0;
-  const playStep = () => {
-    const now = ctx.currentTime;
-    const note = attractLoop[step % attractLoop.length] ?? attractLoop[0];
-
-    drone.frequency.cancelScheduledValues(now);
-    drone.frequency.setValueAtTime(note.root, now);
-
-    pad.frequency.cancelScheduledValues(now);
-    pad.frequency.setValueAtTime(note.pad, now);
-    padGain.gain.cancelScheduledValues(now);
-    padGain.gain.setValueAtTime(0.0001, now);
-    padGain.gain.linearRampToValueAtTime(0.034, now + 0.08);
-    padGain.gain.linearRampToValueAtTime(0.02, now + 0.55);
-    padGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
-
-    sparkle.frequency.cancelScheduledValues(now);
-    sparkle.frequency.setValueAtTime(note.sparkle, now);
-    sparkleGain.gain.cancelScheduledValues(now);
-    sparkleGain.gain.setValueAtTime(0.0001, now);
-    sparkleGain.gain.linearRampToValueAtTime(0.015, now + 0.05);
-    sparkleGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-
-    step += 1;
+  const noiseBuffer = createNoiseBuffer(ctx, 0.28);
+  const midiToHz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
+  const makePulseWave = (duty: number) => {
+    const harmonics = 18;
+    const real = new Float32Array(harmonics);
+    const imag = new Float32Array(harmonics);
+    for (let index = 1; index < harmonics; index += 1) {
+      imag[index] = (2 / (index * Math.PI)) * Math.sin(index * Math.PI * duty);
+    }
+    return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
   };
 
-  playStep();
-  const seq = window.setInterval(playStep, 1600);
+  const leadWave = makePulseWave(0.125);
+  const arpWave = makePulseWave(0.25);
+  const bpm = 176;
+  const stepDuration = 60 / bpm / 4;
+  const lookAhead = 0.16;
 
-  graph.ambientNodes.push(
-    drone,
-    droneFilter,
-    droneGain,
-    pad,
-    padFilter,
-    padGain,
-    sparkle,
-    sparkleFilter,
-    sparkleGain,
-    hiss,
-    hissFilter,
-    hissGain,
-  );
+  const leadBars: readonly (readonly number[])[] = [
+    [69, 72, 76, 72, 69, 72, 76, 77, 76, 72, 69, 72, 64, 67, 69, -1],
+    [69, 72, 76, 72, 69, 72, 76, 77, 81, 77, 76, 72, 69, 67, 64, -1],
+    [76, 77, 81, 77, 76, 72, 69, 72, 76, 77, 81, 84, 81, 77, 76, -1],
+    [69, 72, 76, 72, 69, 72, 76, 77, 76, 72, 69, 72, 64, 67, 69, -1],
+  ];
+  const arpBars: readonly (readonly number[])[] = [
+    [69, 72, 76, 72, 69, 72, 76, 72, 69, 72, 76, 72, 69, 72, 76, 72],
+    [65, 69, 72, 69, 65, 69, 72, 69, 65, 69, 72, 69, 65, 69, 72, 69],
+    [67, 71, 74, 71, 67, 71, 74, 71, 67, 71, 74, 71, 67, 71, 74, 71],
+    [69, 72, 76, 72, 69, 72, 76, 72, 69, 72, 76, 72, 69, 72, 76, 72],
+  ];
+  const bassBars: readonly (readonly number[])[] = [
+    [45, -1, 40, -1, 45, -1, 40, -1, 45, -1, 40, -1, 45, -1, 40, -1],
+    [41, -1, 36, -1, 41, -1, 36, -1, 41, -1, 36, -1, 41, -1, 36, -1],
+    [43, -1, 38, -1, 43, -1, 38, -1, 43, -1, 38, -1, 43, -1, 38, -1],
+    [45, -1, 40, -1, 45, -1, 40, -1, 45, -1, 40, -1, 45, -1, 40, -1],
+  ];
+
+  let nextTime = ctx.currentTime + 0.04;
+  let step = 0;
+  let stopped = false;
+
+  const scheduleKick = (time: number) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(155, time);
+    osc.frequency.exponentialRampToValueAtTime(46, time + 0.1);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.24, time + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.14);
+    osc.connect(gain).connect(mixFilter);
+    osc.start(time);
+    osc.stop(time + 0.16);
+    window.setTimeout(() => {
+      try {
+        osc.disconnect();
+        gain.disconnect();
+      } catch {
+        // no-op
+      }
+    }, 320);
+  };
+
+  const scheduleNoiseHit = (time: number, kind: "snare" | "hat", accent = false) => {
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    source.buffer = noiseBuffer;
+    if (kind === "snare") {
+      filter.type = "bandpass";
+      filter.frequency.value = 1700;
+      filter.Q.value = 0.9;
+      gain.gain.setValueAtTime(0.0001, time);
+      gain.gain.exponentialRampToValueAtTime(0.065, time + 0.002);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
+    } else {
+      filter.type = "highpass";
+      filter.frequency.value = accent ? 4200 : 5600;
+      gain.gain.setValueAtTime(0.0001, time);
+      gain.gain.exponentialRampToValueAtTime(accent ? 0.04 : 0.024, time + 0.001);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + (accent ? 0.04 : 0.024));
+    }
+    source.connect(filter).connect(gain).connect(mixFilter);
+    source.start(time);
+    source.stop(time + (kind === "snare" ? 0.1 : 0.05));
+    window.setTimeout(() => {
+      try {
+        source.disconnect();
+        filter.disconnect();
+        gain.disconnect();
+      } catch {
+        // no-op
+      }
+    }, 260);
+  };
+
+  const scheduleTone = (time: number, midi: number, role: "bass" | "arp" | "lead", gate: number) => {
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    if (role === "lead") {
+      osc.setPeriodicWave(leadWave);
+      filter.frequency.value = 3200;
+      gain.gain.setValueAtTime(0.0001, time);
+      gain.gain.linearRampToValueAtTime(0.027, time + 0.003);
+      gain.gain.setValueAtTime(0.022, time + 0.038);
+    } else if (role === "arp") {
+      osc.setPeriodicWave(arpWave);
+      filter.frequency.value = 2100;
+      gain.gain.setValueAtTime(0.0001, time);
+      gain.gain.linearRampToValueAtTime(0.019, time + 0.002);
+    } else {
+      osc.type = "triangle";
+      filter.frequency.setValueAtTime(920, time);
+      filter.frequency.exponentialRampToValueAtTime(340, time + gate);
+      gain.gain.setValueAtTime(0.0001, time);
+      gain.gain.exponentialRampToValueAtTime(0.058, time + 0.004);
+    }
+
+    filter.type = "lowpass";
+    osc.frequency.setValueAtTime(midiToHz(midi), time);
+    if (role === "bass") osc.frequency.linearRampToValueAtTime(midiToHz(midi) * 0.99, time + gate);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + gate);
+    osc.connect(filter).connect(gain).connect(mixFilter);
+    osc.start(time);
+    osc.stop(time + gate + 0.02);
+    window.setTimeout(() => {
+      try {
+        osc.disconnect();
+        filter.disconnect();
+        gain.disconnect();
+      } catch {
+        // no-op
+      }
+    }, Math.ceil((gate + 0.25) * 1000));
+  };
+
+  const scheduleStep = (stepIndex: number, time: number) => {
+    const sixteenth = stepIndex % 16;
+    const bar = Math.floor(stepIndex / 16) % 4;
+
+    if (sixteenth === 0 || sixteenth === 8) scheduleKick(time);
+    if (sixteenth === 4 || sixteenth === 12) scheduleNoiseHit(time, "snare");
+    if (sixteenth % 2 === 0) scheduleNoiseHit(time, "hat", sixteenth === 0 || sixteenth === 8);
+
+    const bassMidi = bassBars[bar]?.[sixteenth] ?? -1;
+    if (bassMidi >= 0) scheduleTone(time, bassMidi, "bass", 0.13);
+
+    const arpMidi = arpBars[bar]?.[sixteenth] ?? -1;
+    if (arpMidi >= 0) scheduleTone(time, arpMidi, "arp", 0.075);
+
+    const leadMidi = leadBars[bar]?.[sixteenth] ?? -1;
+    if (leadMidi >= 0) scheduleTone(time, leadMidi, "lead", 0.14);
+    if (sixteenth === 15 && (bar === 1 || bar === 2)) {
+      const nextLead = leadBars[(bar + 1) % 4]?.[0] ?? -1;
+      if (nextLead >= 0) scheduleTone(time + stepDuration * 0.68, Math.max(48, nextLead - 2), "lead", 0.12);
+    }
+  };
+
+  const tick = () => {
+    if (stopped) return;
+    while (nextTime < ctx.currentTime + lookAhead) {
+      scheduleStep(step, nextTime);
+      nextTime += stepDuration;
+      step += 1;
+    }
+  };
+
+  tick();
+  const seq = window.setInterval(tick, 45);
+
+  graph.ambientNodes.push(mixFilter);
   graph.ambientStops.push(() => {
+    stopped = true;
     window.clearInterval(seq);
     try {
-      drone.stop();
-      pad.stop();
-      sparkle.stop();
-      hiss.stop();
+      mixFilter.disconnect();
     } catch {
       // no-op
     }
