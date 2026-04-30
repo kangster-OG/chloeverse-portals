@@ -2,16 +2,20 @@ const revealItems = document.querySelectorAll("[data-reveal]");
 const screens = document.querySelectorAll(".screen-image");
 const scrollMeter = document.querySelector(".scroll-meter span");
 const magneticItems = document.querySelectorAll(".magnetic");
-const supportLink = document.querySelector(".support-link");
+const supportLinks = document.querySelectorAll(".support-link");
 const waitlistScriptUrl =
   "https://script.google.com/macros/s/AKfycbxOP0JpamQ_26ZKOL1wnE939tImNZm1iewK85ZyKbgWW_RmP27LELvjQVtPxnsUKET3HQ/exec";
 const supportEmail = ["davidksng3000", "icloud.com"].join("@");
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-if (supportLink) {
-  supportLink.setAttribute("href", `mailto:${supportEmail}`);
-}
+supportLinks.forEach((link) => {
+  link.setAttribute("href", `mailto:${supportEmail}`);
+
+  if (link.hasAttribute("data-show-email")) {
+    link.textContent = supportEmail;
+  }
+});
 
 const revealObserver = new IntersectionObserver(
   (entries) => {
