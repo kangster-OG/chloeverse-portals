@@ -1085,6 +1085,8 @@ h3 {
 }
 
 .site-footer {
+  position: relative;
+  z-index: 5;
   display: flex;
   justify-content: center;
   gap: 14px;
@@ -1097,6 +1099,11 @@ h3 {
 }
 
 .site-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  margin: -10px -6px;
+  padding: 10px 6px;
   color: rgba(246, 251, 248, 0.52);
   transition: color 300ms var(--ease);
 }
