@@ -513,16 +513,8 @@ h3 {
 .phone-shell {
   position: relative;
   width: min(318px, 31vw);
-  aspect-ratio: 430 / 932;
-  padding: 10px;
-  border-radius: 43px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.045) 28%, rgba(0, 0, 0, 0.6)),
-    #111918;
-  box-shadow:
-    0 44px 110px rgba(0, 0, 0, 0.48),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
-    inset 0 0 0 8px rgba(255, 255, 255, 0.025);
+  aspect-ratio: 1470 / 3000;
+  filter: drop-shadow(0 44px 110px rgba(0, 0, 0, 0.48));
 }
 
 .phone-primary {
@@ -538,36 +530,46 @@ h3 {
   width: min(188px, 18vw);
   opacity: 0.48;
   transform: rotateZ(7deg) translateX(58px);
-  filter: saturate(0.82) blur(0.15px);
+  filter: saturate(0.82) blur(0.15px) drop-shadow(0 32px 80px rgba(0, 0, 0, 0.4));
 }
 
 .phone-bezel {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.1);
-  pointer-events: none;
+  display: none;
 }
 
 .phone-speaker {
   position: absolute;
-  top: 18px;
-  left: 50%;
-  z-index: 3;
-  width: 76px;
-  height: 18px;
+  top: 3.36%;
+  left: 36.95%;
+  z-index: 4;
+  width: 26.1%;
+  height: 3.76%;
   border-radius: 999px;
-  background: #060c0b;
-  transform: translateX(-50%);
+  background: #020504;
+  pointer-events: none;
 }
 
 .phone-glass {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  left: 5.102%;
+  top: 2.2%;
+  z-index: 1;
+  width: 89.796%;
+  height: 95.6%;
   overflow: hidden;
-  border-radius: 33px;
+  border-radius: 10% / 4.6%;
   background: #07110f;
+}
+
+.phone-shell::after,
+.mini-phone::after,
+.large-device::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: url("./assets/iphone-16-pro-max-black-titanium.png") center / 100% 100% no-repeat;
+  pointer-events: none;
 }
 
 .phone-glass img {
@@ -858,11 +860,8 @@ h3 {
   position: relative;
   z-index: 2;
   width: min(300px, 52vw);
-  aspect-ratio: 430 / 932;
-  padding: 11px;
-  border-radius: 44px;
-  background: #111918;
-  box-shadow: 0 44px 120px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.17);
+  aspect-ratio: 1470 / 3000;
+  filter: drop-shadow(0 44px 120px rgba(0, 0, 0, 0.42));
 }
 
 .large-device {
@@ -876,17 +875,37 @@ h3 {
 
 .mini-phone img,
 .large-device img {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  left: 5.102%;
+  top: 2.2%;
+  z-index: 1;
+  width: 89.796%;
+  height: 95.6%;
+  border-radius: 10% / 4.6%;
   object-fit: cover;
-  border-radius: 34px;
+}
+
+.mini-phone::before,
+.large-device::before {
+  content: "";
+  position: absolute;
+  top: 3.36%;
+  left: 36.95%;
+  z-index: 4;
+  width: 26.1%;
+  height: 3.76%;
+  border-radius: 999px;
+  background: #020504;
+  pointer-events: none;
 }
 
 .progress-device .progress-screen {
   position: absolute;
-  inset: 11px;
-  width: calc(100% - 22px);
-  height: calc(100% - 22px);
+  left: 5.102%;
+  top: 2.2%;
+  width: 89.796%;
+  height: 95.6%;
+  border-radius: 10% / 4.6%;
   opacity: 0;
   transform: scale(1.018);
   animation: progressPhoneCycle 12s var(--ease) infinite;
@@ -1605,25 +1624,11 @@ h3 {
 
   .phone-shell {
     width: min(260px, 72vw);
-    padding: 8px;
-    border-radius: 36px;
-    box-shadow:
-      0 30px 80px rgba(0, 0, 0, 0.46),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+    filter: drop-shadow(0 30px 80px rgba(0, 0, 0, 0.46));
   }
 
   .phone-primary {
     transform: rotateX(0deg) rotateY(-3deg) rotateZ(-2deg);
-  }
-
-  .phone-speaker {
-    top: 15px;
-    width: 64px;
-    height: 15px;
-  }
-
-  .phone-glass {
-    border-radius: 28px;
   }
 
   .section,
@@ -1750,17 +1755,10 @@ h3 {
   .mini-phone,
   .large-device {
     width: min(250px, 68vw);
-    padding: 8px;
-    border-radius: 36px;
   }
 
   .large-device {
     transform: none;
-  }
-
-  .mini-phone img,
-  .large-device img {
-    border-radius: 28px;
   }
 
   .floating-card {
